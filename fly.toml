@@ -1,0 +1,35 @@
+# Private backend app: UAR (Undead Assault Reborn) unit database — prerendered
+# static site served by Caddy. No public IP (the deploy workflow's bootstrap
+# creates the app with a private Flycast IP) — reachable only as
+# uar-website.flycast:80 from the cdd-gateway, which terminates TLS and routes
+# uar.cedricdessalles.dev here.
+
+app = 'uar-website'
+primary_region = 'cdg'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[http_service]
+  internal_port = 8080
+  # The gateway already forces HTTPS at the edge; no point redirecting again on
+  # the private hop (and a redirect here would break the plain-HTTP proxy).
+  force_https = false
+  # Always-on like the other backends: Flycast does not reliably wake a fully
+  # idled machine on a proxied request. Static Caddy is tiny — this is cheap.
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    interval = '15s'
+    timeout = '2s'
+    grace_period = '5s'
+    method = 'GET'
+    path = '/'
+
+# Just Caddy + static files — the smallest VM is plenty.
+[[vm]]
+  memory = '256mb'
+  cpu_kind = 'shared'
+  cpus = 1

@@ -1,0 +1,26 @@
+name: Deploy
+
+# Deploys the private Fly app `uar-website` on a version tag (vX.Y.Z).
+# Pushing to main does NOT deploy — cut a tag to release:
+#   git tag v0.1.0 && git push origin v0.1.0
+#
+# Deploy logic lives in the shared template Geptyro/github-workflows.
+# bootstrap: true — the template idempotently creates the app + private
+# Flycast IP on first run, so there is no manual `fly launch` step.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch: {}
+
+concurrency:
+  group: deploy-uar-website
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    uses: Geptyro/github-workflows/.github/workflows/fly-deploy.yml@main
+    with:
+      app: uar-website
+      bootstrap: true
+    secrets:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
