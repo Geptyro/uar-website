@@ -131,7 +131,12 @@
 				{/each}
 			</nav>
 
-			<div class="side-foot">Unofficial fan reference — map by Znimu#743.</div>
+			<div class="side-foot">
+				Unofficial fan reference — map by Znimu#743.
+				<a class="author" href="https://cedricdessalles.dev" target="_blank" rel="noopener">
+					Built by Cédric Dessalles ↗
+				</a>
+			</div>
 		</aside>
 
 		<main>
@@ -767,6 +772,19 @@
 		font-size: 10.5px;
 		color: var(--sidebar-ink-2);
 		line-height: 1.5;
+	}
+	.side-foot .author {
+		display: block;
+		margin-top: 6px;
+		color: var(--sidebar-ink);
+		text-decoration: none;
+		font-weight: 550;
+		transition: color 120ms ease;
+	}
+	.side-foot .author:hover {
+		color: var(--accent-hover);
+		text-decoration: underline;
+		text-underline-offset: 3px;
 	}
 
 	main {
