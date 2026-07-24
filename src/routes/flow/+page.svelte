@@ -115,6 +115,33 @@
 	};
 
 	let violations = $state(0);
+
+	// ---- hover highlight: light a whole bus, or everything touching a node ----
+	let hoveredBus = $state<string | undefined>(undefined);
+	let hoveredNode = $state<string | undefined>(undefined);
+	const busKey = (e: GridEdge) => `${e.source}|${e.bus ?? ''}`;
+	const activeBuses = $derived.by(() => {
+		const s = new Set<string>();
+		if (hoveredBus) s.add(hoveredBus);
+		else if (hoveredNode) {
+			for (const e of graph.edges) {
+				if (e.source === hoveredNode || e.target === hoveredNode) s.add(busKey(e));
+			}
+		}
+		return s;
+	});
+	const anyHover = $derived(activeBuses.size > 0);
+	const litNodes = $derived.by(() => {
+		const s = new Set<string>();
+		if (hoveredNode) s.add(hoveredNode);
+		for (const e of graph.edges) {
+			if (activeBuses.has(busKey(e))) {
+				s.add(e.source);
+				s.add(e.target);
+			}
+		}
+		return s;
+	});
 </script>
 
 <svelte:head>
@@ -175,9 +202,17 @@
 			revision={selectedId}
 			connStyle={(c) => ({
 				color: KIND_COLOR[String(c.data ?? 'enable')] ?? KIND_COLOR.enable,
-				dashed: c.data === 'disable'
+				dashed: c.data === 'disable',
+				class: anyHover ? (activeBuses.has(c.bus) ? 'active' : 'dim') : ''
 			})}
 			onrouted={(info) => (violations = info.violations)}
+			onconnenter={(c) => {
+				hoveredNode = undefined;
+				hoveredBus = c.bus;
+			}}
+			onconnleave={(c) => {
+				if (hoveredBus === c.bus) hoveredBus = undefined;
+			}}
 		>
 			{#snippet children(register)}
 				<div class="levels">
@@ -188,8 +223,17 @@
 								class="chip"
 								class:sel={n.id === selected.id}
 								class:has-mission={n.succeed.length > 0 || n.fail.length > 0}
+								class:lit={litNodes.has(n.id)}
+								class:faded={anyHover && !litNodes.has(n.id)}
 								use:register={n.id}
 								onclick={() => pick(n.id)}
+								onpointerenter={() => {
+									hoveredBus = undefined;
+									hoveredNode = n.id;
+								}}
+								onpointerleave={() => {
+									if (hoveredNode === n.id) hoveredNode = undefined;
+								}}
 							>
 								<b>{n.name}</b>
 								{#if n.events.length}
@@ -398,6 +442,18 @@
 		border-color: var(--accent);
 		box-shadow: 0 0 0 2px var(--accent-soft);
 		cursor: default;
+	}
+	.chip.lit {
+		border-color: var(--accent);
+	}
+	.chip.faded {
+		opacity: 0.35;
+	}
+	.board :global(path.gr-conn.active) {
+		stroke-width: 2.4;
+	}
+	.board :global(path.gr-conn.dim) {
+		opacity: 0.18;
 	}
 	.chip.has-mission {
 		border-left: 3px solid var(--accent);
