@@ -9,6 +9,8 @@ export default defineConfig({
 	preview: {
 		port: 6677
 	},
+	// grid-router ships Svelte source — keep it out of prebundling
+	optimizeDeps: { exclude: ['grid-router'] },
 	plugins: [
 		sveltekit({
 			compilerOptions: {

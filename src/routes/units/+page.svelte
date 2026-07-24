@@ -7,10 +7,12 @@
 	let sortKey = $state<keyof Unit>('category');
 	let sortDir = $state(1);
 
-	// Seed the category filter from ?cat= links on the overview page.
+	// Seed filters from links: ?cat= (overview tiles) and ?q= (top-bar quick search).
 	$effect(() => {
 		const cat = page.url.searchParams.get('cat');
 		if (cat && categories.includes(cat)) activeCats = new Set([cat]);
+		const q = page.url.searchParams.get('q');
+		if (q) query = q;
 	});
 
 	const numericKeys: (keyof Unit)[] = ['life', 'armor', 'speed', 'energy'];
@@ -67,8 +69,6 @@
 	<title>All units — UAR Unit Database</title>
 </svelte:head>
 
-<h1>All units</h1>
-
 <div class="controls">
 	<input
 		type="search"
@@ -81,17 +81,17 @@
 			{cat}
 		</button>
 	{/each}
-	<span class="count">{filtered.length} / {units.length} units</span>
+	<span class="count">{filtered.length} / {units.length}</span>
 </div>
 
 <div class="tablewrap">
-	<table>
+	<table class="data" style="min-width: 940px">
 		<thead>
 			<tr>
 				{#each columns as col (col.key)}
-					<th class:num={col.num} onclick={() => setSort(col.key)}>
+					<th class:num={col.num} class="sortable" onclick={() => setSort(col.key)}>
 						{col.label}
-						<span class="dir">{sortKey === col.key ? (sortDir > 0 ? '▲' : '▼') : ''}</span>
+						<span class="dir">{sortKey === col.key ? (sortDir > 0 ? '↑' : '↓') : ''}</span>
 					</th>
 				{/each}
 				<th>Weapons (dmg · range · period)</th>
@@ -100,7 +100,10 @@
 		<tbody>
 			{#each filtered as u (u.id)}
 				<tr>
-					<td><a href="/units/{u.id}">{u.name || '—'}</a></td>
+					<td class="namecell">
+						{#if u.icon}<img class="row-icon" src={u.icon} alt="" loading="lazy" />{/if}
+						<a href="/units/{u.id}">{u.name || '—'}</a>
+					</td>
 					<td class="mono">{u.id}</td>
 					<td><span class="tag {tagClass(u.category)}">{u.category}</span></td>
 					<td class="num">{u.life ?? ''}</td>
@@ -115,131 +118,52 @@
 </div>
 
 <style>
-	h1 {
-		margin: 0 0 14px;
-		font-size: clamp(22px, 4vw, 28px);
-		text-transform: uppercase;
-		letter-spacing: 0.02em;
-	}
-
 	.controls {
 		position: sticky;
-		top: 0;
+		top: -26px;
 		z-index: 5;
-		background: var(--paper);
+		background: var(--bg);
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
-		gap: 8px;
-		padding: 10px 0;
-		border-bottom: 1px solid var(--line);
+		gap: 7px;
+		padding: 10px 0 12px;
 	}
 	input[type='search'] {
-		background: var(--panel);
-		color: var(--ink);
-		border: 1px solid var(--line);
-		padding: 7px 12px;
-		font: inherit;
-		width: 230px;
-	}
-	.chip {
-		background: var(--chip-bg);
-		color: var(--ink);
-		border: 1px solid var(--line);
-		font: 12px/1 var(--mono);
-		letter-spacing: 0.04em;
-		padding: 7px 11px;
-		cursor: pointer;
-	}
-	.chip[aria-pressed='true'] {
-		background: var(--accent);
-		color: var(--accent-ink);
-		border-color: var(--accent);
+		width: 240px;
 	}
 	.count {
 		margin-left: auto;
 		font-family: var(--mono);
-		font-size: 12px;
-		color: var(--ink-soft);
+		font-size: 11.5px;
+		color: var(--ink-3);
+		font-variant-numeric: tabular-nums;
 	}
 
-	.tablewrap {
-		overflow-x: auto;
-		border: 1px solid var(--line);
-		margin-top: 14px;
-	}
-	table {
-		border-collapse: collapse;
-		width: 100%;
-		min-width: 900px;
-		font-size: 13px;
-	}
-	th {
-		font-family: var(--mono);
-		font-size: 10.5px;
-		letter-spacing: 0.1em;
-		text-transform: uppercase;
-		text-align: left;
-		background: var(--panel);
-		border-bottom: 2px solid var(--ink);
-		padding: 8px 10px;
+	th.sortable {
 		cursor: pointer;
-		white-space: nowrap;
 		user-select: none;
 	}
-	th .dir {
+	th.sortable:hover {
+		color: var(--ink);
+	}
+	.dir {
 		color: var(--accent);
+		font-size: 11px;
 	}
-	td {
-		border-bottom: 1px solid var(--line);
-		padding: 6px 10px;
-		vertical-align: top;
-	}
-	th.num,
-	td.num {
-		text-align: right;
-	}
-	td.num {
-		font-family: var(--mono);
-		font-variant-numeric: tabular-nums;
+	td.namecell {
 		white-space: nowrap;
 	}
-	.mono {
-		font-family: var(--mono);
-		font-size: 11.5px;
-		color: var(--ink-soft);
-		overflow-wrap: anywhere;
+	.row-icon {
+		width: 20px;
+		height: 20px;
+		object-fit: cover;
+		border-radius: 4px;
+		vertical-align: -5px;
+		margin-right: 7px;
 	}
 	td.wpns {
-		min-width: 220px;
-	}
-	tr:hover td {
-		background: color-mix(in srgb, var(--panel) 60%, transparent);
-	}
-
-	.tag {
-		display: inline-block;
-		font-family: var(--mono);
-		font-size: 10px;
-		letter-spacing: 0.05em;
-		padding: 2px 7px;
-		border: 1px solid;
-		white-space: nowrap;
-	}
-	.tag.t-mos {
-		color: var(--mos);
-		border-color: var(--mos);
-	}
-	.tag.t-hostile {
-		color: var(--hostile);
-		border-color: var(--hostile);
-	}
-	.tag.t-item {
-		color: var(--item);
-		border-color: var(--item);
-	}
-	.tag.t-other {
-		color: var(--ink-soft);
-		border-color: var(--line);
+		min-width: 240px;
+		overflow-wrap: anywhere;
 	}
 </style>

@@ -22,6 +22,7 @@ export interface Unit {
 	parent: string;
 	src: string;
 	weapons: Weapon[];
+	icon: string | null;
 	tooltip: string;
 }
 

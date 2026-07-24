@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { restrictionLabel } from '$lib/mos';
-	import { weaponLabel } from '$lib/units';
+	import { allowedLabel, itemTypeLabels, itemTypeOrder, type Item } from '$lib/mos';
 
 	let { data } = $props();
 
 	const mos = $derived(data.mos);
 	const usable = $derived(data.items);
+	const si = $derived(data.si);
 
 	const stats = $derived(
 		(
@@ -17,215 +17,429 @@
 			] as const
 		).filter(([, v]) => v !== null)
 	);
+
+	const weaponItems = $derived(usable.filter((i) => i.type === 'weapon'));
+	const gearGroups = $derived(
+		itemTypeOrder
+			.filter((t) => t !== 'weapon')
+			.map((t) => ({ type: t, label: itemTypeLabels[t], items: usable.filter((i) => i.type === t) }))
+			.filter((g) => g.items.length)
+	);
+
+	function dps(dmg: number | null, period: number | null): string {
+		return dmg && period ? String(Math.round(dmg / period)) : '?';
+	}
+
+	function itemNote(item: Item): string {
+		const parts = [...item.mods];
+		if (item.allowed !== null) {
+			const label = allowedLabel(item);
+			if (label && item.allowed.length > 1) parts.push(label);
+		}
+		return parts.join(' · ');
+	}
 </script>
 
 <svelte:head>
 	<title>{mos.name} — MOS — UAR Unit Database</title>
 </svelte:head>
 
-<header class="head">
-	<div>
-		<div class="eyebrow">{mos.mos ? `MOS ${mos.mos}` : 'MOS'}{mos.role ? ` · ${mos.role}` : ''}</div>
-		<h1>{mos.name}</h1>
-	</div>
-	<a class="unit-link" href="/units/{mos.id}">Unit data →</a>
-</header>
+<div class="layout">
+	<div class="main">
+		<header class="head">
+			<div>
+				<div class="eyebrow mos-eyebrow">
+					{mos.mos ? `MOS ${mos.mos}` : 'MOS'}{mos.role ? ` · ${mos.role}` : ''}
+				</div>
+				<h1 class="page-title">{mos.name}</h1>
+			</div>
+		</header>
 
-<div class="statrow">
-	{#each stats as [label, value] (label)}
-		<div class="stat"><b>{value}</b><span>{label}</span></div>
-	{/each}
-	{#if mos.inventory.slots}
-		<div class="stat"><b>{mos.inventory.slots}</b><span>Bag slots</span></div>
-	{/if}
-</div>
-
-{#if mos.tooltip}
-	<pre class="tooltip">{mos.tooltip}</pre>
-{/if}
-
-{#if mos.weapons.length}
-	<h2>Weapons</h2>
-	<div class="tablewrap">
-		<table>
-			<thead>
-				<tr>
-					<th>Weapon</th>
-					<th class="num">Damage</th>
-					<th class="num">Range</th>
-					<th class="num">Period (s)</th>
-					<th class="num">DPS</th>
-				</tr>
-			</thead>
-			<tbody>
-				{#each mos.weapons as w (w.id)}
-					<tr>
-						<td class="mono">{w.id}</td>
-						<td class="num">{w.dmg ?? '?'}</td>
-						<td class="num">{w.range ?? '?'}</td>
-						<td class="num">{w.period ?? '?'}</td>
-						<td class="num">{w.dmg && w.period ? Math.round(w.dmg / w.period) : '?'}</td>
-					</tr>
+		{#if mos.skills.length}
+			<h2 class="section">Skills · {mos.skills.length} trees</h2>
+			<div class="cards">
+				{#each mos.skills as s (s.id)}
+					<article class="card">
+						<h3>
+							{#if s.icon}
+								<img class="skill-icon" src={s.icon} alt="" loading="lazy" />
+							{:else}
+								<span class="skill-icon placeholder"></span>
+							{/if}
+							<span class="skill-name">{s.name}</span>
+							{#if s.levels}<span class="lv">{s.levels} lv</span>{/if}
+						</h3>
+						{#if s.tooltip}<p class="card-tip">{s.tooltip}</p>{/if}
+					</article>
 				{/each}
-			</tbody>
-		</table>
-	</div>
-{/if}
+			</div>
+		{/if}
 
-{#if mos.skills.length}
-	<h2>Skills</h2>
-	<p class="note">
-		Learnable skill trees ({mos.skills.length}) — one point per level-up, from the class's learn
-		ability.
-	</p>
-	<div class="cards">
-		{#each mos.skills as s (s.id)}
-			<article class="card">
-				<h3>
-					{s.name}
-					{#if s.levels}<span class="lv">{s.levels} lv</span>{/if}
-				</h3>
-				{#if s.tooltip}<p class="card-tip">{s.tooltip}</p>{/if}
-			</article>
+		<h2 class="section">Armament</h2>
+		<p class="note">
+			Standard-issue weapons plus every weapon item this class can pick up and use. Buff-type
+			weapons (no separate stats) modify the equipped weapon instead.
+		</p>
+		<div class="tablewrap">
+			<table class="data" style="min-width: 660px">
+				<thead>
+					<tr>
+						<th>Weapon</th>
+						<th>Source</th>
+						<th class="num">Damage</th>
+						<th class="num">Range</th>
+						<th class="num">Period (s)</th>
+						<th class="num">DPS</th>
+						<th>Notes</th>
+					</tr>
+				</thead>
+				<tbody>
+					{#each mos.weapons as w (w.id)}
+						<tr>
+							<td class="wname">{w.id}</td>
+							<td><span class="tag">standard issue</span></td>
+							<td class="num">{w.dmg ?? '?'}</td>
+							<td class="num">{w.range ?? '?'}</td>
+							<td class="num">{w.period ?? '?'}</td>
+							<td class="num">{dps(w.dmg, w.period)}</td>
+							<td></td>
+						</tr>
+					{/each}
+					{#each weaponItems as item (item.id)}
+						{#if item.grants.length}
+							{#each item.grants as g (g.id)}
+								<tr>
+									<td class="wname namecell">
+										{#if item.icon}<img class="row-icon" src={item.icon} alt="" loading="lazy" />{/if}
+										<a href="/items#{item.id}">{item.name}</a>
+									</td>
+									<td><span class="tag t-item">item</span></td>
+									<td class="num">{g.dmg ?? '?'}</td>
+									<td class="num">{g.range ?? '?'}</td>
+									<td class="num">{g.period ?? '?'}</td>
+									<td class="num">{dps(g.dmg, g.period)}</td>
+									<td class="mono notes">{itemNote(item)}</td>
+								</tr>
+							{/each}
+						{:else}
+							<tr>
+								<td class="wname namecell">
+									{#if item.icon}<img class="row-icon" src={item.icon} alt="" loading="lazy" />{/if}
+									<a href="/items#{item.id}">{item.name}</a>
+								</td>
+								<td><span class="tag t-item">weapon buff</span></td>
+								<td class="num" colspan="4"></td>
+								<td class="mono notes">{itemNote(item)}</td>
+							</tr>
+						{/if}
+					{/each}
+				</tbody>
+			</table>
+		</div>
+
+		{#each gearGroups as group (group.type)}
+			<h2 class="section">{group.label} · {group.items.length}</h2>
+			<div class="tablewrap">
+				<table class="data" style="min-width: 640px">
+					<thead>
+						<tr>
+							<th>Item</th>
+							<th class="num">Charges</th>
+							<th>Effect</th>
+							<th>Who can use it</th>
+							<th>Conflicts</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each group.items as item (item.id)}
+							<tr>
+								<td class="namecell">
+									{#if item.icon}<img class="row-icon" src={item.icon} alt="" loading="lazy" />{/if}
+									<a href="/items#{item.id}">{item.name}</a>
+								</td>
+								<td class="num"
+									>{item.charges ? `${item.charges.start ?? '?'}/${item.charges.max}` : ''}</td
+								>
+								<td class="mono effect">{item.mods.join(', ')}</td>
+								<td>
+									{#if item.allowed !== null}
+										<span class="tag t-mos">{allowedLabel(item)}</span>
+									{:else}
+										<span class="tag">everyone</span>
+									{/if}
+								</td>
+								<td class="mono effect">{item.conflicts.join(' · ')}</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
 		{/each}
-	</div>
-{/if}
 
-{#if mos.common.length}
-	<h2>Standard abilities</h2>
-	<div class="abil-list">
-		{#each mos.common as a (a.id)}
-			{#if a.tooltip}
-				<details>
-					<summary>{a.name}</summary>
-					<p>{a.tooltip}</p>
-				</details>
-			{:else}
-				<span class="abil-plain">{a.name}</span>
+		{#if mos.common.length}
+			<h2 class="section">Standard abilities</h2>
+			<div class="abil-list">
+				{#each mos.common as a (a.id)}
+					{#if a.tooltip}
+						<details>
+							<summary>
+								{#if a.icon}
+									<img class="abil-icon" src={a.icon} alt="" loading="lazy" />
+								{:else}
+									<span class="abil-icon placeholder"></span>
+								{/if}
+								{a.name}
+							</summary>
+							<p>{a.tooltip}</p>
+						</details>
+					{:else}
+						<span class="abil-plain">
+							{#if a.icon}
+								<img class="abil-icon" src={a.icon} alt="" loading="lazy" />
+							{:else}
+								<span class="abil-icon placeholder"></span>
+							{/if}
+							{a.name}
+						</span>
+					{/if}
+				{/each}
+			</div>
+		{/if}
+	</div>
+
+	<aside class="infobox">
+		<div class="card box">
+			{#if mos.icon}
+				<img class="portrait" src={mos.icon} alt="{mos.name} portrait" />
 			{/if}
-		{/each}
-	</div>
-{/if}
-
-<h2>Usable items</h2>
-<p class="note">
-	Derived from item carry-restrictions in the game data: {usable.sure.length} usable{usable
-		.conditional.length
-		? `, ${usable.conditional.length} conditional (restriction shown could not be fully resolved)`
-		: ''}. In-game availability also depends on mission drops and rank.
-</p>
-<div class="tablewrap">
-	<table>
-		<thead>
-			<tr>
-				<th>Item</th>
-				<th>Class</th>
-				<th class="num">Charges</th>
-				<th>Effect</th>
-				<th>Restriction</th>
-			</tr>
-		</thead>
-		<tbody>
-			{#each [...usable.sure, ...usable.conditional] as item (item.id)}
-				<tr class:cond={item.restrictions.some((r) => r.kind === 'raw')}>
-					<td><a href="/items#{item.id}">{item.name}</a></td>
-					<td class="mono">{item.class}</td>
-					<td class="num">{item.charges ? `${item.charges.start ?? '?'}/${item.charges.max}` : ''}</td>
-					<td class="mono effect">{item.mods.join(', ')}</td>
-					<td class="mono restr">{item.restrictions.map(restrictionLabel).join(' · ')}</td>
-				</tr>
-			{/each}
-		</tbody>
-	</table>
+			<div class="box-title">
+				<b>{mos.name}</b>
+				{#if mos.mos}<span>MOS {mos.mos}</span>{/if}
+			</div>
+			<dl class="facts">
+				{#if mos.role}
+					<dt>Role</dt>
+					<dd>{mos.role}</dd>
+				{/if}
+				{#each stats as [label, value] (label)}
+					<dt>{label}</dt>
+					<dd>{value}</dd>
+				{/each}
+				{#if mos.inventory.slots}
+					<dt>Bag slots</dt>
+					<dd>{mos.inventory.slots}</dd>
+				{/if}
+				<dt>Skill trees</dt>
+				<dd>{mos.skills.length}</dd>
+				<dt>Usable items</dt>
+				<dd>{usable.length}</dd>
+			</dl>
+			<a class="unit-link" href="/units/{mos.id}">Unit data →</a>
+		</div>
+		{#if mos.tooltip}
+			<div class="card box desc">
+				<div class="box-label">In-game description</div>
+				<p>{mos.tooltip}</p>
+			</div>
+		{/if}
+		{#if si.length}
+			<div class="card box desc">
+				<div class="box-label">Skill Identifiers</div>
+				{#each si as s (s.num)}
+					<div class="si-row">
+						{#if s.icon}
+							<img class="si-icon" src={s.icon} alt="" loading="lazy" />
+						{:else}
+							<span class="si-code">{s.code}</span>
+						{/if}
+						<b>{s.name}</b>
+					</div>
+					{#if s.desc}<p class="si-desc">{s.desc}</p>{/if}
+				{/each}
+				<a class="si-all" href="/si">All Skill Identifiers →</a>
+			</div>
+		{/if}
+	</aside>
 </div>
 
 <style>
-	.head {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: flex-end;
-		justify-content: space-between;
-		gap: 10px;
-		margin-bottom: 16px;
+	.layout {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) 290px;
+		gap: 0 28px;
+		align-items: start;
 	}
-	.eyebrow {
-		font-family: var(--mono);
-		font-size: 11px;
-		letter-spacing: 0.16em;
-		text-transform: uppercase;
+	.main {
+		min-width: 0;
+	}
+
+	.head {
+		margin-bottom: 4px;
+	}
+	.mos-eyebrow {
 		color: var(--mos);
 	}
-	h1 {
-		margin: 2px 0 0;
-		font-size: clamp(24px, 4vw, 32px);
-		text-transform: uppercase;
-		letter-spacing: 0.02em;
+
+	/* ---------- right infobox ---------- */
+	.infobox {
+		display: flex;
+		flex-direction: column;
+		gap: 14px;
 	}
-	.unit-link {
-		font-family: var(--mono);
+	.si-row {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin-top: 8px;
+	}
+	.si-row b {
+		font-size: 13px;
+		font-weight: 600;
+	}
+	.si-icon {
+		width: 26px;
+		height: 26px;
+		object-fit: cover;
+		border-radius: var(--r-sm);
+		flex-shrink: 0;
+	}
+	.si-desc {
+		margin: 4px 0 0;
 		font-size: 12px;
+		line-height: 1.55;
+		color: var(--ink-2);
+		white-space: pre-line;
+	}
+	.si-all {
+		display: inline-block;
+		margin-top: 10px;
+		font-family: var(--mono);
+		font-size: 10.5px;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
 		text-decoration: none;
-		color: var(--ink-soft);
-		border: 1px solid var(--line);
-		padding: 6px 10px;
+		color: var(--accent);
+	}
+	.si-all:hover {
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+	.box {
+		padding: 0;
+		overflow: hidden;
+	}
+	.portrait {
+		display: block;
+		width: 100%;
+		aspect-ratio: 1;
+		object-fit: cover;
+	}
+	.box-title {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 8px;
+		padding: 12px 14px 4px;
+	}
+	.box-title b {
+		font-size: 15px;
+		font-weight: 650;
+		letter-spacing: -0.01em;
+	}
+	.box-title span {
+		font-family: var(--mono);
+		font-size: 10px;
+		color: var(--mos);
+		letter-spacing: 0.06em;
+	}
+	.facts {
+		margin: 8px 0 0;
+		padding: 0 14px;
+	}
+	.facts dt {
+		float: left;
+		clear: left;
+		font-family: var(--mono);
+		font-size: 10px;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--ink-3);
+		line-height: 2.1;
+	}
+	.facts dd {
+		margin: 0;
+		text-align: right;
+		font-variant-numeric: tabular-nums;
+		font-size: 13px;
+		font-weight: 550;
+		line-height: 2.1;
+		border-bottom: 1px solid var(--border);
+	}
+	.facts dd:last-of-type {
+		border-bottom: none;
+	}
+	.unit-link {
+		display: block;
+		text-align: center;
+		font-family: var(--mono);
+		font-size: 11px;
+		letter-spacing: 0.07em;
+		text-transform: uppercase;
+		text-decoration: none;
+		color: var(--ink-2);
+		border-top: 1px solid var(--border);
+		padding: 10px 12px;
+		margin-top: 10px;
+		transition: all 120ms ease;
 	}
 	.unit-link:hover {
-		color: var(--ink);
-		border-color: var(--ink);
+		color: var(--accent);
+		background: var(--surface-2);
 	}
-
-	.statrow {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 10px;
-		margin-bottom: 16px;
+	.box.desc {
+		padding: 12px 14px;
 	}
-	.stat {
-		background: var(--panel);
-		border: 1px solid var(--line);
-		padding: 8px 14px;
-		min-width: 90px;
-	}
-	.stat b {
-		display: block;
-		font-size: 20px;
-		font-variant-numeric: tabular-nums;
-	}
-	.stat span {
+	.box-label {
 		font-family: var(--mono);
-		font-size: 10.5px;
-		letter-spacing: 0.12em;
-		text-transform: uppercase;
-		color: var(--ink-soft);
-	}
-
-	.tooltip {
-		background: var(--panel);
-		border: 1px solid var(--line);
-		border-left: 3px solid var(--mos);
-		padding: 14px 16px;
-		white-space: pre-wrap;
-		font: 13px/1.55 system-ui, sans-serif;
-		max-width: 78ch;
-		overflow-x: auto;
-		margin: 0 0 8px;
-	}
-
-	h2 {
-		font-size: 14px;
+		font-size: 10px;
 		letter-spacing: 0.14em;
 		text-transform: uppercase;
-		border-bottom: 2px solid var(--ink);
-		padding-bottom: 5px;
-		margin: 30px 0 10px;
+		color: var(--ink-3);
+		margin-bottom: 6px;
 	}
-	.note {
-		color: var(--ink-soft);
-		font-size: 13px;
-		max-width: 75ch;
-		margin: 0 0 12px;
+	.box.desc p {
+		margin: 0;
+		font-size: 12.5px;
+		line-height: 1.6;
+		color: var(--ink-2);
+		white-space: pre-line;
+	}
+
+	@media (max-width: 1080px) {
+		.layout {
+			display: block;
+		}
+		.infobox {
+			position: static;
+			max-height: none;
+			margin: 16px 0 4px;
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+			align-items: start;
+		}
+		.portrait {
+			aspect-ratio: auto;
+			max-height: 220px;
+		}
+	}
+
+	/* ---------- main column ---------- */
+	.wname {
+		font-weight: 550;
+	}
+	td.notes {
+		max-width: 240px;
+		overflow-wrap: anywhere;
 	}
 
 	.cards {
@@ -233,106 +447,137 @@
 		grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
 		gap: 12px;
 	}
-	.card {
-		background: var(--panel);
-		border: 1px solid var(--line);
-		border-top: 3px solid var(--accent);
-		padding: 12px 14px;
-	}
 	.card h3 {
-		margin: 0 0 6px;
-		font-size: 14.5px;
+		margin: 0 0 8px;
+		font-size: 14px;
+		font-weight: 600;
 		display: flex;
-		justify-content: space-between;
-		gap: 8px;
+		align-items: center;
+		gap: 9px;
+	}
+	.skill-icon {
+		width: 28px;
+		height: 28px;
+		object-fit: cover;
+		border-radius: var(--r-sm);
+		flex-shrink: 0;
+	}
+	.skill-icon.placeholder {
+		display: inline-block;
+		background: var(--surface-2);
+	}
+	.skill-name {
+		flex: 1;
+	}
+	.si-code {
+		font-family: var(--mono);
+		font-size: 10px;
+		font-weight: 650;
+		color: var(--accent);
+		background: var(--accent-soft);
+		border-radius: 99px;
+		padding: 3px 8px;
+		flex-shrink: 0;
 	}
 	.lv {
 		font-family: var(--mono);
-		font-size: 10.5px;
+		font-size: 10px;
+		font-weight: 550;
 		color: var(--accent);
+		background: var(--accent-soft);
+		border-radius: 99px;
+		padding: 2px 8px;
 		white-space: nowrap;
 	}
 	.card-tip {
 		margin: 0;
 		font-size: 12.5px;
-		color: var(--ink-soft);
+		color: var(--ink-2);
 		white-space: pre-line;
 	}
 
 	.abil-list {
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
+		gap: 6px;
 		max-width: 78ch;
 	}
-	details {
-		background: var(--panel);
-		border: 1px solid var(--line);
+	details,
+	.abil-plain {
+		background: var(--surface);
+		border: 1px solid var(--border);
+		border-radius: var(--r-sm);
+		box-shadow: var(--shadow-1);
 	}
 	summary {
 		cursor: pointer;
-		padding: 7px 12px;
-		font-size: 13.5px;
+		padding: 8px 14px;
+		font-size: 13px;
+		font-weight: 550;
+		list-style: none;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		transition: color 120ms ease;
+	}
+	summary::before {
+		content: '';
+		width: 5px;
+		height: 5px;
+		border-right: 1.5px solid var(--ink-3);
+		border-bottom: 1.5px solid var(--ink-3);
+		transform: rotate(-45deg);
+		transition: transform 140ms ease;
+		flex-shrink: 0;
+	}
+	details[open] summary::before {
+		transform: rotate(45deg);
+	}
+	summary:hover {
+		color: var(--accent);
 	}
 	details p {
 		margin: 0;
-		padding: 0 12px 10px;
+		padding: 0 14px 12px 27px;
 		font-size: 12.5px;
-		color: var(--ink-soft);
+		color: var(--ink-2);
 		white-space: pre-line;
 	}
 	.abil-plain {
-		padding: 7px 12px;
-		background: var(--panel);
-		border: 1px solid var(--line);
-		font-size: 13.5px;
+		padding: 8px 14px;
+		font-size: 13px;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+	.abil-icon {
+		width: 22px;
+		height: 22px;
+		object-fit: cover;
+		border-radius: 4px;
+		flex-shrink: 0;
+	}
+	.abil-icon.placeholder {
+		display: inline-block;
+		background: var(--surface-2);
+	}
+	details p {
+		padding-left: 44px;
 	}
 
-	.tablewrap {
-		overflow-x: auto;
-		border: 1px solid var(--line);
-	}
-	table {
-		border-collapse: collapse;
-		width: 100%;
-		min-width: 620px;
-		font-size: 13px;
-	}
-	th {
-		font-family: var(--mono);
-		font-size: 10.5px;
-		letter-spacing: 0.1em;
-		text-transform: uppercase;
-		text-align: left;
-		background: var(--panel);
-		border-bottom: 2px solid var(--ink);
-		padding: 8px 10px;
+	td.namecell {
 		white-space: nowrap;
 	}
-	td {
-		border-bottom: 1px solid var(--line);
-		padding: 6px 10px;
-		vertical-align: top;
+	.row-icon {
+		width: 20px;
+		height: 20px;
+		object-fit: cover;
+		border-radius: 4px;
+		vertical-align: -5px;
+		margin-right: 7px;
 	}
-	th.num,
-	td.num {
-		text-align: right;
-	}
-	td.num {
-		font-family: var(--mono);
-		font-variant-numeric: tabular-nums;
-		white-space: nowrap;
-	}
-	.mono {
-		font-family: var(--mono);
-		font-size: 11.5px;
-		color: var(--ink-soft);
-	}
-	td.effect,
-	td.restr {
+	td.effect {
 		overflow-wrap: anywhere;
-	}
-	tr.cond td {
-		opacity: 0.75;
+		min-width: 140px;
 	}
 </style>

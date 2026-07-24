@@ -32,20 +32,23 @@
 	{/if}
 </nav>
 
-<header class="unit-head">
-	<h1>{unit.name || unit.id}</h1>
+<header class="head">
+	{#if unit.icon}<img class="unit-icon" src={unit.icon} alt="{unit.name || unit.id} icon" />{/if}
+	<div>
+		<div class="eyebrow">{unit.id}</div>
+		<h1 class="page-title">{unit.name || unit.id}</h1>
+	</div>
 	<span class="tag {tagClass(unit.category)}">{unit.category}</span>
 </header>
 <div class="meta">
-	<code>{unit.id}</code>
 	{#if unit.mos}<span>MOS {unit.mos}</span>{/if}
 	{#if unit.role}<span>{unit.role}</span>{/if}
 	<span>defined in: {unit.src.replace('+', ' + ')}</span>
 </div>
 
-<div class="statrow">
+<div class="tiles">
 	{#each stats as [label, value] (label)}
-		<div class="stat">
+		<div class="tile">
 			<b>{typeof value === 'number' ? value.toLocaleString('en') : value}</b>
 			<span>{label}</span>
 		</div>
@@ -53,9 +56,9 @@
 </div>
 
 {#if unit.weapons.length}
-	<h2>Weapons</h2>
+	<h2 class="section">Weapons</h2>
 	<div class="tablewrap">
-		<table>
+		<table class="data" style="min-width: 500px">
 			<thead>
 				<tr>
 					<th>Weapon</th>
@@ -78,18 +81,18 @@
 			</tbody>
 		</table>
 	</div>
-	<p class="note">
+	<p class="note footnote">
 		“?” means the weapon fires a multi-stage effect (pellets, splash chains) whose damage lives
 		deeper in the effect tree.
 	</p>
 {/if}
 
 {#if unit.tooltip}
-	<h2>In-game description</h2>
-	<pre class="tooltip">{unit.tooltip}</pre>
+	<h2 class="section">In-game description</h2>
+	<pre class="quote">{unit.tooltip}</pre>
 {/if}
 
-<h2>Lineage</h2>
+<h2 class="section">Lineage</h2>
 <div class="lineage">
 	{#if unit.parent}
 		<p>
@@ -97,7 +100,7 @@
 			{#if unitById.has(unit.parent)}
 				<a href="/units/{unit.parent}"><code>{unit.parent}</code></a>
 			{:else}
-				<code>{unit.parent}</code> <span class="note-inline">(base game / dependency)</span>
+				<code>{unit.parent}</code> <span class="dim">(base game / dependency)</span>
 			{/if}
 		</p>
 	{:else}
@@ -114,165 +117,64 @@
 
 <style>
 	.crumbs {
-		margin-bottom: 16px;
-	}
-	.crumbs {
 		display: flex;
-		gap: 16px;
+		gap: 18px;
+		margin-bottom: 18px;
 	}
 	.crumbs a {
 		font-family: var(--mono);
-		font-size: 12px;
-		letter-spacing: 0.06em;
+		font-size: 11px;
+		letter-spacing: 0.07em;
 		text-transform: uppercase;
 		text-decoration: none;
-		color: var(--ink-soft);
+		color: var(--ink-3);
+		transition: color 120ms ease;
 	}
 	.crumbs a:hover {
-		color: var(--ink);
+		color: var(--accent);
 	}
 
-	.unit-head {
+	.head {
 		display: flex;
 		flex-wrap: wrap;
-		align-items: baseline;
-		gap: 12px;
+		align-items: center;
+		gap: 14px;
 	}
-	h1 {
-		margin: 0;
-		font-size: clamp(22px, 4vw, 30px);
-		text-transform: uppercase;
-		letter-spacing: 0.02em;
+	.unit-icon {
+		width: 54px;
+		height: 54px;
+		object-fit: cover;
+		border-radius: var(--r);
+		box-shadow: var(--shadow-1);
 	}
 	.meta {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 6px 16px;
-		margin: 6px 0 18px;
-		color: var(--ink-soft);
-		font-size: 13px;
-	}
-
-	.statrow {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 10px;
-		margin-bottom: 8px;
-	}
-	.stat {
-		background: var(--panel);
-		border: 1px solid var(--line);
-		padding: 8px 14px;
-		min-width: 90px;
-	}
-	.stat b {
-		display: block;
-		font-size: 20px;
-		font-variant-numeric: tabular-nums;
-	}
-	.stat span {
-		font-family: var(--mono);
-		font-size: 10.5px;
-		letter-spacing: 0.12em;
-		text-transform: uppercase;
-		color: var(--ink-soft);
-	}
-
-	h2 {
-		font-size: 14px;
-		letter-spacing: 0.14em;
-		text-transform: uppercase;
-		border-bottom: 2px solid var(--ink);
-		padding-bottom: 5px;
-		margin: 28px 0 12px;
-	}
-
-	.tablewrap {
-		overflow-x: auto;
-		border: 1px solid var(--line);
-	}
-	table {
-		border-collapse: collapse;
-		width: 100%;
-		min-width: 480px;
-		font-size: 13px;
-	}
-	th {
-		font-family: var(--mono);
-		font-size: 10.5px;
-		letter-spacing: 0.1em;
-		text-transform: uppercase;
-		text-align: left;
-		background: var(--panel);
-		border-bottom: 2px solid var(--ink);
-		padding: 8px 10px;
-		white-space: nowrap;
-	}
-	td {
-		border-bottom: 1px solid var(--line);
-		padding: 6px 10px;
-	}
-	th.num,
-	td.num {
-		text-align: right;
-	}
-	td.num {
-		font-family: var(--mono);
-		font-variant-numeric: tabular-nums;
-	}
-	.mono {
-		font-family: var(--mono);
-		font-size: 11.5px;
-	}
-
-	.note {
-		color: var(--ink-soft);
-		font-size: 12.5px;
-		max-width: 70ch;
-	}
-	.note-inline {
-		color: var(--ink-soft);
+		margin: 8px 0 18px;
+		color: var(--ink-3);
 		font-size: 12.5px;
 	}
 
-	.tooltip {
-		background: var(--panel);
-		border: 1px solid var(--line);
-		border-left: 3px solid var(--accent);
-		padding: 14px 16px;
-		white-space: pre-wrap;
-		font: 13px/1.55 system-ui, sans-serif;
-		max-width: 75ch;
-		overflow-x: auto;
+	.footnote {
+		margin-top: 8px;
+		font-size: 12px;
 	}
 
 	.lineage p {
 		margin: 4px 0;
+		font-size: 13.5px;
 	}
-
-	.tag {
-		display: inline-block;
-		font-family: var(--mono);
-		font-size: 10.5px;
-		letter-spacing: 0.05em;
-		padding: 3px 8px;
-		border: 1px solid;
-		white-space: nowrap;
+	.lineage a {
+		text-decoration: none;
+		color: var(--accent);
 	}
-	.tag.t-mos {
-		color: var(--mos);
-		border-color: var(--mos);
+	.lineage a:hover {
+		text-decoration: underline;
+		text-underline-offset: 3px;
 	}
-	.tag.t-hostile {
-		color: var(--hostile);
-		border-color: var(--hostile);
-	}
-	.tag.t-item {
-		color: var(--item);
-		border-color: var(--item);
-	}
-	.tag.t-other {
-		color: var(--ink-soft);
-		border-color: var(--line);
+	.dim {
+		color: var(--ink-3);
+		font-size: 12px;
 	}
 </style>
