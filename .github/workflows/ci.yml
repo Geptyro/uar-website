@@ -23,3 +23,16 @@ jobs:
       # prerender runs at build time — a broken page/asset link must fail CI,
       # not the deploy (v0.5.1 broke exactly this way)
       - run: npm run build
+
+  # full-stack upload API test: throwaway Mongo + MinIO containers, the real
+  # built server, real HTTP — covers accept/dedupe/replace/download paths
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run test:integration
