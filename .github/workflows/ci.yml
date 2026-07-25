@@ -1,0 +1,22 @@
+name: CI
+
+# Type-check + replay parser/merge tests on every push and PR.
+# The extended golden test (tests/local-golden.test.ts) self-skips here —
+# it needs the full local replay set, which is not in git.
+on:
+  push:
+    branches: ['main']
+  pull_request: {}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm test

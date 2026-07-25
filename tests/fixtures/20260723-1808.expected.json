@@ -1,0 +1,136 @@
+{
+	"file": "20260723-1808.SC2Replay",
+	"playedAt": "2026-07-23T18:08:14Z",
+	"title": "Undead Assault reborn",
+	"baseBuild": 97563,
+	"protocolExact": true,
+	"sightings": [
+		{
+			"name": "KanaxStratz",
+			"clan": "",
+			"toon": "2-S2-1-1809580",
+			"xpEn": 48316,
+			"xpWo": 59101,
+			"xpCo": 220212,
+			"prestige": 0,
+			"gamesPlayed": 194,
+			"revives": 32,
+			"avgGameTime": 2983,
+			"winsByMode": [
+				1,
+				2,
+				25,
+				35,
+				20,
+				1,
+				3,
+				1,
+				1
+			],
+			"camo": 1,
+			"decal": 0,
+			"unlocks": {
+				"camos": [
+					1,
+					2,
+					4,
+					5,
+					6,
+					7,
+					9,
+					10,
+					13,
+					14,
+					15,
+					17,
+					19,
+					20,
+					22,
+					24,
+					25
+				],
+				"decals": [
+					2,
+					3,
+					4,
+					6,
+					8
+				],
+				"sis": [
+					1,
+					2,
+					3,
+					4,
+					5,
+					6,
+					7,
+					8,
+					9,
+					10,
+					11,
+					12,
+					13,
+					14,
+					15,
+					16,
+					17,
+					18,
+					20,
+					21,
+					22,
+					23,
+					25,
+					26,
+					28,
+					29,
+					30
+				],
+				"medals": [
+					2,
+					3,
+					5,
+					6,
+					9
+				],
+				"walker": [
+					false,
+					false,
+					false,
+					false,
+					false,
+					false
+				],
+				"lk19": [
+					false,
+					false,
+					false,
+					false,
+					false,
+					false,
+					false,
+					false,
+					false
+				],
+				"predator": [
+					true,
+					false,
+					false,
+					false,
+					false,
+					false
+				],
+				"robot": [
+					false,
+					false
+				],
+				"medvisor": [
+					true,
+					true
+				]
+			},
+			"mos": [],
+			"playedAt": "2026-07-23T18:08:14Z",
+			"file": "20260723-1808.SC2Replay"
+		}
+	]
+}
