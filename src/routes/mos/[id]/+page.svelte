@@ -47,15 +47,6 @@
 
 <div class="layout">
 	<div class="main">
-		<header class="head">
-			<div>
-				<div class="eyebrow mos-eyebrow">
-					{mos.mos ? `MOS ${mos.mos}` : 'MOS'}{mos.role ? ` · ${mos.role}` : ''}
-				</div>
-				<h1 class="page-title">{mos.name}</h1>
-			</div>
-		</header>
-
 		{#if mos.skills.length}
 			<h2 class="section">Skills · {mos.skills.length} trees</h2>
 			<div class="cards">
@@ -222,6 +213,8 @@
 					<dt>Role</dt>
 					<dd>{mos.role}</dd>
 				{/if}
+				<dt>Type</dt>
+				<dd>{mos.unitType}</dd>
 				{#each stats as [label, value] (label)}
 					<dt>{label}</dt>
 					<dd>{value}</dd>
@@ -274,11 +267,8 @@
 		min-width: 0;
 	}
 
-	.head {
-		margin-bottom: 4px;
-	}
-	.mos-eyebrow {
-		color: var(--mos);
+	.main :global(h2.section:first-child) {
+		margin-top: 4px;
 	}
 
 	/* ---------- right infobox ---------- */

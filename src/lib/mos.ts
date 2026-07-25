@@ -24,6 +24,8 @@ export interface Mos {
 	name: string;
 	mos: string;
 	role: string;
+	/** Biological / Mechanical, from the unit's Attributes flags. */
+	unitType: string;
 	life: number | null;
 	armor: number | null;
 	speed: number | null;
@@ -139,9 +141,22 @@ export function siFor(mosId: string): Si[] {
 	return skillIdentifiers.filter((s) => s.mos === mosId);
 }
 
+// hybrids (Cyborg, Prototype: Biological · Mechanical) group with the infantry;
+// "Mechanical classes" means the pure vehicles
+const BIO_IDS = allMos.filter((m) => m.unitType !== 'Mechanical').map((m) => m.id);
+const MECH_IDS = [
+	...allMos.filter((m) => m.unitType === 'Mechanical').map((m) => m.id),
+	'SiegeTankSieged'
+];
+
 /** Short human label for an item's class restriction. */
 export function allowedLabel(item: Item): string | null {
 	if (item.allowed === null) return null;
+	const set = new Set(item.allowed);
+	if (BIO_IDS.length && BIO_IDS.every((id) => set.has(id)) && !MECH_IDS.some((id) => set.has(id)))
+		return 'Biological classes';
+	if (MECH_IDS.some((id) => set.has(id)) && !BIO_IDS.some((id) => set.has(id)))
+		return 'Mechanical classes';
 	if (item.allowed.length === 1) return `${mosName(item.allowed[0])} only`;
 	if (item.allowed.length <= 4) return item.allowed.map(mosName).join(', ');
 	return `${item.allowed.length} classes`;
