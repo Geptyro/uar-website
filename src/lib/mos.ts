@@ -122,7 +122,7 @@ export const skillIdentifiers: Si[] = rawSi as Si[];
 export const rankTracks: RankTrack[] = rawRanks as RankTrack[];
 
 /** Classes shown in the sidebar / index — the selectable roster. */
-export const mosList = allMos.filter((m) => m.id !== 'TemplateMOS' && m.skills.length > 0);
+export const mosList = allMos.filter((m) => m.id !== 'TemplateMOS');
 
 export const mosById = new Map(allMos.map((m) => [m.id, m]));
 

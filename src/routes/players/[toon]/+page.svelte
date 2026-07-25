@@ -12,7 +12,7 @@
 		type Sighting
 	} from '$lib/players';
 	import { medals, camos } from '$lib/unlocks';
-	import { skillIdentifiers, mosById, mosList } from '$lib/mos';
+	import { skillIdentifiers, mosById } from '$lib/mos';
 
 	let { data } = $props();
 	const p = $derived(data.player);
@@ -48,7 +48,6 @@
 			.sort((a, b) => b.wins - a.wins)
 	);
 
-	const linkableMos = new Set(mosList.map((m) => m.id));
 	const classesPlayed = $derived.by(() => {
 		const counts = new Map<string, number>();
 		for (const h of p.history) {
@@ -155,10 +154,10 @@
 													alt=""
 													loading="lazy"
 												/>{/if}
-											{#if c.info && linkableMos.has(c.id)}
+											{#if c.info}
 												<a href="/mos/{c.id}">{c.info.name}</a>
 											{:else}
-												{c.info?.name ?? c.id}
+												{c.id}
 											{/if}
 										</td>
 										<td class="num">{c.games}</td>
