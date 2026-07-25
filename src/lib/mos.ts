@@ -35,7 +35,7 @@ export interface MosUnlock {
 	en: UnlockReq | null;
 	wo: UnlockReq | null;
 	co: UnlockReq | null;
-	/** Owning this many medals unlocks the class regardless of rank. */
+	/** Medals that must ALSO be earned, on top of the rank requirement. */
 	medals?: number;
 	/** Game modes the class exists in (absent = all). */
 	modes?: string[];

@@ -323,13 +323,13 @@
 					<p class="unlock-note">Needs the XP on all three rank tracks at once.</p>
 				{/if}
 				{#if unlock.medals}
-					<p class="unlock-alt">…or earn <a href="/medals">{unlock.medals} medals</a></p>
+					<p class="unlock-alt">…and earn <a href="/medals">{unlock.medals} medals</a></p>
 				{/if}
 				{#if unlock.modes}
 					<p class="unlock-note">Only in {unlock.modes.join(', ')}</p>
 				{/if}
 				<p class="unlock-note">
-					Max picks per game: {unlock.charges}. Any prestige unlocks every class.
+					Max picks per game: {unlock.charges}. Any prestige unlocks all rank requirements.
 				</p>
 				<a class="si-all" href="/ranks">Rank tracks →</a>
 			</DescCard>
