@@ -30,7 +30,7 @@
 
 <div class="tiles">
 	{#each categories as cat (cat)}
-		<a class="tile" href="/units?cat={encodeURIComponent(cat)}">
+		<a class="tile" href="/entities?cat={encodeURIComponent(cat)}">
 			<b>{categoryCount(cat)}</b>
 			<span>{cat}</span>
 		</a>
@@ -74,7 +74,7 @@
 		<tbody>
 			{#each bosses as u (u.id)}
 				<tr>
-					<td><a href="/units/{u.id}">{u.name || u.id}</a></td>
+					<td><a href="/entities/{u.id}">{u.name || u.id}</a></td>
 					<td class="num">{u.life?.toLocaleString('en')}</td>
 					<td class="num">{u.armor ?? ''}</td>
 					<td class="num">{u.speed ?? ''}</td>

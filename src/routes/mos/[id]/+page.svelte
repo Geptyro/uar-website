@@ -228,7 +228,7 @@
 				<dt>Usable items</dt>
 				<dd>{usable.length}</dd>
 			</dl>
-			<a class="unit-link" href="/units/{mos.id}">Unit data →</a>
+			<a class="unit-link" href="/entities/{mos.id}">Unit data →</a>
 		</div>
 		{#if mos.tooltip}
 			<div class="card box desc">

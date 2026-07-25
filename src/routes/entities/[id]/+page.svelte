@@ -26,7 +26,7 @@
 </svelte:head>
 
 <nav class="crumbs">
-	<a href="/units">← All entities</a>
+	<a href="/entities">← All entities</a>
 	{#if mosById.has(unit.id)}
 		<a href="/mos/{unit.id}">Class page →</a>
 	{/if}
@@ -98,7 +98,7 @@
 		<p>
 			Inherits from
 			{#if unitById.has(unit.parent)}
-				<a href="/units/{unit.parent}"><code>{unit.parent}</code></a>
+				<a href="/entities/{unit.parent}"><code>{unit.parent}</code></a>
 			{:else}
 				<code>{unit.parent}</code> <span class="dim">(base game / dependency)</span>
 			{/if}
@@ -110,7 +110,7 @@
 		<p>
 			Extended by:
 			{#each children as c, i (c.id)}{#if i > 0},
-				{/if}<a href="/units/{c.id}"><code>{c.id}</code></a>{/each}
+				{/if}<a href="/entities/{c.id}"><code>{c.id}</code></a>{/each}
 		</p>
 	{/if}
 </div>

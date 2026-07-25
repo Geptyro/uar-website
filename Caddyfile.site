@@ -9,7 +9,14 @@
 	root * /srv
 	encode zstd gzip
 
-	# SvelteKit adapter-static writes /units as units.html etc.
+	# The entity pages moved from /units to /entities (v0.2.13) — keep the
+	# old URLs working for published links and search indexes.
+	redir /units /entities permanent
+	handle_path /units/* {
+		redir * /entities{uri} permanent
+	}
+
+	# SvelteKit adapter-static writes /entities as entities.html etc.
 	try_files {path} {path}.html {path}/index.html
 
 	# Hashed build assets never change — cache forever.

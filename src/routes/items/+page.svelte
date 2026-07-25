@@ -74,7 +74,7 @@
 			</header>
 			<div class="facts">
 				{#if item.charges}<span>charges {item.charges.start ?? '?'}/{item.charges.max}</span>{/if}
-				{#if item.unit}<a href="/units/{item.unit}">unit data</a>{/if}
+				{#if item.unit}<a href="/entities/{item.unit}">unit data</a>{/if}
 			</div>
 			{#if item.mods.length}
 				<ul class="mods">

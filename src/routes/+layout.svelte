@@ -11,7 +11,7 @@
 
 	const nav = [
 		{ href: '/', label: 'Overview' },
-		{ href: '/units', label: 'Entities' },
+		{ href: '/entities', label: 'Entities' },
 		{ href: '/items', label: 'Items' },
 		{ href: '/si', label: 'Skill IDs' },
 		{ href: '/ranks', label: 'Ranks' },
@@ -27,8 +27,8 @@
 	const pageTitle = $derived.by(() => {
 		const p = page.url.pathname;
 		if (p === '/') return { section: '', title: 'Overview' };
-		if (p === '/units') return { section: '', title: 'All entities' };
-		if (p.startsWith('/units/')) {
+		if (p === '/entities') return { section: '', title: 'All entities' };
+		if (p.startsWith('/entities/')) {
 			const id = decodeURIComponent(p.slice(7));
 			return { section: 'Entities', title: id };
 		}
@@ -67,7 +67,7 @@
 	function quickSearch(e: SubmitEvent) {
 		e.preventDefault();
 		const q = quick.trim();
-		goto(q ? `/units?q=${encodeURIComponent(q)}` : '/units');
+		goto(q ? `/entities?q=${encodeURIComponent(q)}` : '/entities');
 		quick = '';
 	}
 </script>

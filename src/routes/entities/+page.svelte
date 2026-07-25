@@ -102,7 +102,7 @@
 				<tr>
 					<td class="namecell">
 						{#if u.icon}<img class="row-icon" src={u.icon} alt="" loading="lazy" />{/if}
-						<a href="/units/{u.id}">{u.name || '—'}</a>
+						<a href="/entities/{u.id}">{u.name || '—'}</a>
 					</td>
 					<td class="mono">{u.id}</td>
 					<td><span class="tag {tagClass(u.category)}">{u.category}</span></td>
