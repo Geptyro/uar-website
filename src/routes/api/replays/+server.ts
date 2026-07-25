@@ -25,18 +25,31 @@ const MAX_SIZE = 16 * 1024 * 1024;
 
 const mosIds = new Set((rawMos as { id: string }[]).map((m) => m.id));
 
-// crude per-IP rate limit; single always-on machine, so in-memory is fine
-const RATE_LIMIT = 5;
+// crude per-IP rate limits; single always-on machine, so in-memory is fine.
+// Attempts (invalid files, duplicates) get a generous cap; only ACCEPTED
+// ingests consume the strict one — a failed try must not lock players out.
+const ACCEPT_LIMIT = 5;
+const ATTEMPT_LIMIT = 20;
 const RATE_WINDOW_MS = 60 * 60 * 1000;
-const uploadsByIp = new Map<string, number[]>();
+const attemptsByIp = new Map<string, number[]>();
+const acceptsByIp = new Map<string, number[]>();
+
+function recent(map: Map<string, number[]>, ip: string): number[] {
+	const list = (map.get(ip) ?? []).filter((t) => Date.now() - t < RATE_WINDOW_MS);
+	map.set(ip, list);
+	return list;
+}
 
 function rateLimited(ip: string): boolean {
-	const now = Date.now();
-	const recent = (uploadsByIp.get(ip) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
-	uploadsByIp.set(ip, recent);
-	if (recent.length >= RATE_LIMIT) return true;
-	recent.push(now);
+	const attempts = recent(attemptsByIp, ip);
+	if (attempts.length >= ATTEMPT_LIMIT) return true;
+	if (recent(acceptsByIp, ip).length >= ACCEPT_LIMIT) return true;
+	attempts.push(Date.now());
 	return false;
+}
+
+function recordAccept(ip: string): void {
+	recent(acceptsByIp, ip).push(Date.now());
 }
 
 export const POST: RequestHandler = async ({ request, getClientAddress }) => {
@@ -89,6 +102,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 		sightings: parsed.sightings
 	});
 	const playerCount = await rebuildPlayers();
+	recordAccept(getClientAddress());
 	console.log(`upload accepted: ${name} (${parsed.sightings.length} profiles, ${playerCount} players total)`);
 
 	return json({
