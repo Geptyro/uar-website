@@ -293,7 +293,7 @@
 				<dd class="mono">{p.toon}</dd>
 				{#if p.clan}
 					<dt>Clan</dt>
-					<dd>&lt;{p.clan}&gt;</dd>
+					<dd><a href="/clans/{encodeURIComponent(p.clan)}">&lt;{p.clan}&gt;</a></dd>
 				{/if}
 				<dt>Prestige</dt>
 				<dd>{p.prestige}</dd>

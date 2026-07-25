@@ -90,7 +90,9 @@
 				<tr>
 					<td class="num rank-pos">{i + 1}</td>
 					<td class="namecell">
-						{#if p.clan}<span class="clan">&lt;{p.clan}&gt;</span>{/if}
+						{#if p.clan}<a class="clan" href="/clans/{encodeURIComponent(p.clan)}"
+								>&lt;{p.clan}&gt;</a
+							>{/if}
 						<a class="pname" href="/players/{p.toon}">{p.name}</a>
 						<span class="toon mono">{p.toon}</span>
 					</td>

@@ -18,6 +18,7 @@
 		{ href: '/medals', label: 'Medals & decals' },
 		{ href: '/camos', label: 'Camouflages' },
 		{ href: '/players', label: 'Players' },
+		{ href: '/clans', label: 'Clans' },
 		{ href: '/replays', label: 'Replays' },
 		{ href: '/map', label: 'Map & missions' },
 		{ href: '/flow', label: 'Mission flow' }
@@ -42,6 +43,10 @@
 		if (p === '/medals') return { section: '', title: 'Medals & decals' };
 		if (p === '/camos') return { section: '', title: 'Camouflages' };
 		if (p === '/players') return { section: '', title: 'Players' };
+		if (p === '/clans') return { section: '', title: 'Clans' };
+		if (p.startsWith('/clans/')) {
+			return { section: 'Clans', title: `<${decodeURIComponent(p.slice(7))}>` };
+		}
 		if (p === '/replays') return { section: '', title: 'Replays' };
 		if (p.startsWith('/players/')) {
 			const pl = page.data.player as { name?: string } | undefined;

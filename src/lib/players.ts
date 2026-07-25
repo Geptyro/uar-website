@@ -154,22 +154,4 @@ export function nextRank(track: number, xp: number): Rank | null {
 	return null;
 }
 
-export function totalWins(p: PlayerProfile): number {
-	return p.winsByMode.reduce((a, b) => a + b, 0);
-}
-
-export function totalXp(p: PlayerProfile): number {
-	return p.xpEn + p.xpWo + p.xpCo;
-}
-
-/**
- * Lifetime XP including prestige. Prestiging requires all three tracks at
- * 250,000 and resets each to 50,000, so every prestige level represents
- * 600,000 XP earned on top of the current totals — a fresh prestige is
- * worth exactly as much as a just-maxed card.
- */
-export function careerXp(p: PlayerProfile): number {
-	return p.prestige * 600000 + totalXp(p);
-}
-
-export const XP_CAP = 250000;
+export { totalWins, totalXp, careerXp, XP_CAP } from './xp.ts';
