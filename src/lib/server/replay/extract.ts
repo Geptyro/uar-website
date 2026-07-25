@@ -64,7 +64,37 @@ export interface ParsedReplay {
 	baseBuild: number;
 	/** False when we fell back to another protocol version. */
 	protocolExact: boolean;
+	/**
+	 * Lobby-wide 32-bit random value (m_gameDescription.m_randomValue) — the
+	 * closest thing to a game-session id a replay carries. Identical in every
+	 * participant's replay of the same game, so it dedupes cross-player
+	 * uploads even when their clients stamped slightly different times.
+	 */
+	lobbyId: number;
 	sightings: ReplaySighting[];
+}
+
+/**
+ * Cheap header/details-only read — enough for map-title validation and the
+ * canonical (game-time) name, without decoding the multi-MB event streams.
+ * Lets the upload endpoint reject duplicates before doing real work.
+ */
+export function peekReplay(
+	data: Uint8Array
+): Pick<ParsedReplay, 'playedAt' | 'title' | 'baseBuild' | 'protocolExact' | 'lobbyId'> {
+	const archive = new MPQArchive(data);
+	const header = decodeReplayHeader(archive.userDataContent);
+	const baseBuild = header.m_version.m_baseBuild as number;
+	const protocol = getProtocol(baseBuild);
+	const details = decodeReplayDetails(protocol, archive.readFile('replay.details')!);
+	const initdata = decodeReplayInitdata(protocol, archive.readFile('replay.initData')!);
+	return {
+		playedAt: filetimeToIso(details.m_timeUTC as number),
+		title: utf(details.m_title),
+		baseBuild,
+		protocolExact: hasProtocol(baseBuild),
+		lobbyId: initdata.m_syncLobbyState.m_gameDescription.m_randomValue as number
+	};
 }
 
 export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>): ParsedReplay {
@@ -162,6 +192,7 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 		title,
 		baseBuild,
 		protocolExact: hasProtocol(baseBuild),
+		lobbyId: initdata.m_syncLobbyState.m_gameDescription.m_randomValue as number,
 		sightings
 	};
 }

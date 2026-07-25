@@ -23,8 +23,18 @@
 		uploading = true;
 		result = null;
 		try {
+			// skip the upload entirely when the server already has this exact file
+			const buf = await file.arrayBuffer();
+			const digest = await crypto.subtle.digest('SHA-256', buf);
+			const sha256 = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+			const known = await fetch(`/api/replays?sha256=${sha256}`).then((r) => r.json());
+			if (known?.exists) {
+				result = { ok: false, text: 'This replay is already ingested — nothing to upload.' };
+				return;
+			}
+
 			const body = new FormData();
-			body.append('replay', file);
+			body.append('replay', new File([buf], file.name));
 			const res = await fetch('/api/replays', { method: 'POST', body });
 			const payload = await res.json().catch(() => null);
 			if (res.ok && payload?.ok) {

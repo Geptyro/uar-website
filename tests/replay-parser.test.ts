@@ -14,7 +14,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseReplay, buildPlayersData, filetimeToIso, type ReplaySighting } from '../src/lib/server/replay/extract.ts';
+import {
+	parseReplay,
+	peekReplay,
+	buildPlayersData,
+	filetimeToIso,
+	type ReplaySighting
+} from '../src/lib/server/replay/extract.ts';
 import { hx1, hxList, decodeUnlocks } from '../src/lib/server/replay/bank.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -81,6 +87,15 @@ test('fixture 20260723-1808: full bank decode matches snapshot', () => {
 	assert.equal(parsed.playedAt, '2026-07-23T18:08:14Z');
 });
 
+test('peekReplay agrees with the full parse (cheap dedupe path)', () => {
+	const full = parseFixture('20260723-1808');
+	const peeked = peekReplay(readFileSync(join(FIXTURES, '20260723-1808.SC2Replay')));
+	assert.equal(peeked.playedAt, full.playedAt);
+	assert.equal(peeked.title, full.title);
+	assert.equal(peeked.lobbyId, full.lobbyId);
+	assert.equal(peeked.lobbyId, 3148612723); // lobby-wide m_randomValue
+});
+
 test('canonical name stamp from game time', () => {
 	const stamp = '2026-07-23T18:08:14Z'.replace(/[-:]/g, '').slice(0, 13).replace('T', '-');
 	assert.equal(stamp, '20260723-1808');
@@ -111,7 +126,15 @@ function fakeSighting(over: Partial<ReplaySighting>): ReplaySighting {
 
 function fakeReplay(file: string, playedAt: string, sightings: ReplaySighting[]) {
 	return {
-		replay: { file, playedAt, title: 'Undead Assault reborn', baseBuild: 97563, protocolExact: true, sightings },
+		replay: {
+			file,
+			playedAt,
+			title: 'Undead Assault reborn',
+			baseBuild: 97563,
+			protocolExact: true,
+			lobbyId: 42,
+			sightings
+		},
 		size: 1000
 	};
 }

@@ -20,3 +20,6 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test
+      # prerender runs at build time — a broken page/asset link must fail CI,
+      # not the deploy (v0.5.1 broke exactly this way)
+      - run: npm run build

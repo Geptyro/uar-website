@@ -12,9 +12,17 @@
  */
 
 import { json, error } from '@sveltejs/kit';
-import { parseReplay } from '$lib/server/replay/extract';
+import { createHash } from 'node:crypto';
+import { parseReplay, peekReplay } from '$lib/server/replay/extract';
 import { putObject } from '$lib/server/replay/s3';
-import { dbConfigured, replayExists, insertReplayDoc, rebuildPlayers } from '$lib/server/db';
+import {
+	dbConfigured,
+	replayExists,
+	replayExistsBySha,
+	replayExistsByLobby,
+	insertReplayDoc,
+	rebuildPlayers
+} from '$lib/server/db';
 import rawMos from '$lib/data/mos.json';
 import type { RequestHandler } from './$types';
 
@@ -52,6 +60,14 @@ function recordAccept(ip: string): void {
 	recent(acceptsByIp, ip).push(Date.now());
 }
 
+/** Pre-upload dedupe check: GET /api/replays?sha256=<hex> -> { exists }. */
+export const GET: RequestHandler = async ({ url }) => {
+	if (!dbConfigured()) return json({ exists: false });
+	const sha256 = url.searchParams.get('sha256') ?? '';
+	if (!/^[0-9a-f]{64}$/.test(sha256)) error(400, 'Pass sha256=<hex digest>.');
+	return json({ exists: await replayExistsBySha(sha256) });
+};
+
 export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 	if (!dbConfigured()) error(503, 'Uploads are not configured on this deployment.');
 	if (rateLimited(getClientAddress())) error(429, 'Too many uploads — try again later.');
@@ -65,30 +81,46 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 	if (file.size > MAX_SIZE) error(413, 'Replay too large.');
 
 	const data = new Uint8Array(await file.arrayBuffer());
+	const sha256 = createHash('sha256').update(data).digest('hex');
+	if (await replayExistsBySha(sha256)) {
+		error(409, 'This exact replay file is already ingested.');
+	}
+
+	// cheap header/details peek: validate + dedupe before decoding megabytes
+	// of game events
+	let peeked;
+	try {
+		peeked = peekReplay(data);
+	} catch (e) {
+		console.warn('upload peek failed:', e);
+		error(400, 'Not a readable StarCraft II replay.');
+	}
+	if (peeked.title !== MAP_TITLE) {
+		error(400, `Not an Undead Assault Reborn replay (map: "${peeked.title}").`);
+	}
+
+	// identity = lobby id: identical in every participant's recording of a
+	// game, regardless of byte deltas or client clock skew
+	if (await replayExistsByLobby(peeked.lobbyId)) {
+		error(409, `This game (${peeked.playedAt}) is already ingested.`);
+	}
+
+	// file name = game UTC start time (human-friendly); a different game that
+	// happens to share the minute gets a lobby-id suffix instead of a clash
+	const stamp = peeked.playedAt.replace(/[-:]/g, '').slice(0, 13).replace('T', '-');
+	let name = `${stamp}.SC2Replay`;
+	if (await replayExists(name)) name = `${stamp}-${peeked.lobbyId}.SC2Replay`;
 
 	let parsed;
 	try {
-		parsed = parseReplay(file.name || 'upload.SC2Replay', data, mosIds);
+		parsed = parseReplay(name, data, mosIds);
 	} catch (e) {
 		console.warn('upload parse failed:', e);
 		error(400, 'Not a readable StarCraft II replay.');
 	}
-	if (parsed.title !== MAP_TITLE) {
-		error(400, `Not an Undead Assault Reborn replay (map: "${parsed.title}").`);
-	}
 	if (!parsed.sightings.length) {
 		error(400, 'No player save data in this replay (empty or corrupted bank preload).');
 	}
-
-	// canonical name = game UTC start time; also our dedupe key
-	const stamp = parsed.playedAt.replace(/[-:]/g, '').slice(0, 13).replace('T', '-');
-	const name = `${stamp}.SC2Replay`;
-	if (await replayExists(name)) {
-		error(409, `This game (${parsed.playedAt}) is already ingested.`);
-	}
-
-	parsed.file = name;
-	for (const s of parsed.sightings) s.file = name;
 
 	// blob first — an orphaned blob is harmless, a doc without its blob is not
 	await putObject(`replays/${name}`, data, 'application/octet-stream');
@@ -99,6 +131,8 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 		baseBuild: parsed.baseBuild,
 		size: data.length,
 		players: parsed.sightings.length,
+		sha256,
+		lobbyId: parsed.lobbyId,
 		sightings: parsed.sightings
 	});
 	const playerCount = await rebuildPlayers();

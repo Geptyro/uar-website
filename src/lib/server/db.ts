@@ -21,6 +21,10 @@ export interface ReplayDoc {
 	baseBuild: number;
 	size: number;
 	players: number;
+	/** SHA-256 of the replay file — lets clients skip uploading known files. */
+	sha256?: string;
+	/** Lobby-wide random value — same in every participant's replay of a game. */
+	lobbyId?: number;
 	sightings: ReplaySighting[];
 }
 
@@ -95,6 +99,16 @@ export async function replayExists(file: string): Promise<boolean> {
 	return (await d.collection<ReplayDoc>('replays').findOne({ _id: file }, { projection: { _id: 1 } })) !== null;
 }
 
+export async function replayExistsBySha(sha256: string): Promise<boolean> {
+	const d = await db();
+	return (await d.collection<ReplayDoc>('replays').findOne({ sha256 }, { projection: { _id: 1 } })) !== null;
+}
+
+export async function replayExistsByLobby(lobbyId: number): Promise<boolean> {
+	const d = await db();
+	return (await d.collection<ReplayDoc>('replays').findOne({ lobbyId }, { projection: { _id: 1 } })) !== null;
+}
+
 export async function insertReplayDoc(doc: ReplayDoc): Promise<void> {
 	const d = await db();
 	await d.collection<ReplayDoc>('replays').insertOne(doc);
@@ -116,6 +130,7 @@ export async function rebuildPlayers(): Promise<number> {
 				title: r.title,
 				baseBuild: r.baseBuild,
 				protocolExact: true,
+				lobbyId: r.lobbyId ?? 0,
 				sightings: r.sightings
 			},
 			size: r.size

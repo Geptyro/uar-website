@@ -10,7 +10,7 @@ import type { RequestHandler } from './$types';
 
 export const prerender = false;
 
-const NAME = /^\d{8}-\d{4}\.SC2Replay$/;
+const NAME = /^\d{8}-\d{4}(-\d+)?\.SC2Replay$/;
 
 export const GET: RequestHandler = async ({ params }) => {
 	if (!NAME.test(params.file)) error(404, 'Not found');

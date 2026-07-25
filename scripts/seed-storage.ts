@@ -9,6 +9,7 @@
  */
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseReplay } from '../src/lib/server/replay/extract.ts';
@@ -62,6 +63,8 @@ for (const file of files) {
 			baseBuild: parsed.baseBuild,
 			size: statSync(path).size,
 			players: parsed.sightings.length,
+			sha256: createHash('sha256').update(data).digest('hex'),
+			lobbyId: parsed.lobbyId,
 			sightings: parsed.sightings
 		});
 		console.log(`  doc     ${name} inserted (${parsed.sightings.length} profiles)`);
