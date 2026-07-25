@@ -45,6 +45,10 @@ export interface Item {
 	class: string;
 	kind: string;
 	type: ItemType;
+	/** false = NPC-only gear (e.g. UT Army armor), never carried by players. */
+	playable: boolean;
+	/** Trigger names that spawn this item — mission scripts or item-cache tables. */
+	sources: string[];
 	charges: { start: string | null; max: string } | null;
 	mods: string[];
 	/** Weapons this item grants when carried, with resolved stats. */
@@ -119,7 +123,16 @@ export function mosPageId(id: string): string | null {
 }
 
 export function usableItemsFor(mosId: string): Item[] {
-	return items.filter((i) => i.allowed === null || i.allowed.includes(mosId));
+	return items.filter((i) => i.playable && (i.allowed === null || i.allowed.includes(mosId)));
+}
+
+/** Short availability label: mission-specific items name their mission. */
+export function sourceLabel(item: Item): string | null {
+	const missionSources = item.sources.filter((s) => !/^item spawn|^game start/i.test(s));
+	const cacheSources = item.sources.length !== missionSources.length;
+	if (!missionSources.length) return null;
+	if (cacheSources) return null; // also in the generic caches — not mission-locked
+	return missionSources[0].split(' - ')[0];
 }
 
 export function siFor(mosId: string): Si[] {

@@ -6,6 +6,7 @@
 		mosPageId,
 		itemTypeLabels,
 		itemTypeOrder,
+		sourceLabel,
 		type ItemType
 	} from '$lib/mos';
 
@@ -64,6 +65,11 @@
 					<span class="item-icon placeholder"></span>
 				{/if}
 				<h3>{item.name}</h3>
+				{#if !item.playable}
+					<span class="tag t-hostile">NPC only</span>
+				{:else if sourceLabel(item)}
+					<span class="tag t-mos">{sourceLabel(item)}</span>
+				{/if}
 				<span class="tag t-item">{item.type}</span>
 			</header>
 			<div class="facts">
