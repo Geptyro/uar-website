@@ -83,7 +83,7 @@
 					<td class="num rank-pos">{i + 1}</td>
 					<td class="namecell">
 						{#if p.clan}<span class="clan">&lt;{p.clan}&gt;</span>{/if}
-						<span class="pname">{p.name}</span>
+						<a class="pname" href="/players/{p.toon}">{p.name}</a>
 						<span class="toon mono">{p.toon}</span>
 					</td>
 					{#each [rankFor(1, p.xpEn), rankFor(2, p.xpWo), rankFor(3, p.xpCo)] as rank, t (t)}

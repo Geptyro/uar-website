@@ -12,6 +12,15 @@ Bank cipher (reversed from the map's MapScript.galaxy):
 - key names are decoys: nbe/nbw/nbc hold EN/WO/CO experience (cap 250000),
   "xp" holds games won per mode (12 modes, space-separated), "m" holds
   gamesPlayed, revives, avgGameTime + 2 UI offsets, "pb" holds prestige.
+- "o" is a positional bool string: camos 2-20, 1 separator char,
+  decals 1-10, sep, Skill Identifiers 1-23, sep, medals 1-13.
+  Patch keys extend it: "o3" camos 21-25, "o2" SIs 24-30, "qpo" decal 14.
+- class gear unlocks: "p" walker gear x6, "r" LK19 skills x9,
+  "s" Predator x6, "jo" robot Rjx-73 x2, "adz" medical visor x2.
+- CurrentCamo / CurrentDecal are plain ints.
+
+Every replay a player appears in becomes a history entry; the newest
+sighting is the player's current profile.
 
 Usage:
     python3 -m venv .venv && .venv/bin/pip install mpyq s2protocol
@@ -59,6 +68,8 @@ REPLAY_GLOB = os.path.join(ROOT, "replays", "*.SC2Replay")
 OUT = os.path.join(ROOT, "src", "lib", "data", "players.json")
 
 DIGITS = "tjchwyo"  # base-7 digit alphabet, index = digit value
+TRUE_CHARS = set("howfk")
+XP_CAP = 250000
 
 
 def hx1(s):
@@ -71,6 +82,75 @@ def hx1(s):
 
 def hx_list(s):
     return [hx1(part) for part in s.split(" ")]
+
+
+class Bits:
+    """Positional bool-string reader; past-the-end reads are False
+    (mirrors gf_recup_nxt in the map script)."""
+
+    def __init__(self, s):
+        self.s = s
+        self.i = 0
+
+    def next(self):
+        if self.i >= len(self.s):
+            return False
+        ch = self.s[self.i]
+        self.i += 1
+        return ch in TRUE_CHARS
+
+
+def decode_unlocks(bank):
+    o = Bits(bank.get("o", ""))
+    camos = {1: True}
+    for i in range(2, 21):
+        camos[i] = o.next()
+    camos[19] = True  # load code forces it
+    o.next()  # separator
+    decals = {}
+    for i in range(1, 11):
+        decals[i] = o.next()
+    o.next()
+    sis = {}
+    for i in range(1, 24):
+        sis[i] = o.next()
+    o.next()
+    medals = {}
+    for i in range(1, 14):
+        medals[i] = o.next()
+
+    o3 = Bits(bank.get("o3", ""))
+    for i in range(21, 26):
+        camos[i] = o3.next()
+    o2 = Bits(bank.get("o2", ""))
+    for i in range(24, 31):
+        sis[i] = o2.next()
+    decals[14] = Bits(bank.get("qpo", "")).next()
+
+    p = Bits(bank.get("p", ""))
+    walker = [p.next() for _ in range(6)]
+    r = Bits(bank.get("r", ""))
+    lk19 = [r.next() for _ in range(9)]
+    s = Bits(bank.get("s", ""))
+    predator = [s.next() for _ in range(6)]
+    jo = Bits(bank.get("jo", ""))
+    robot = [jo.next() for _ in range(2)]
+    adz = Bits(bank.get("adz", ""))
+    medvisor = [adz.next() for _ in range(2)]
+
+    decals[11] = walker[5]  # cluster rockets grant decal 11 (load code)
+
+    return {
+        "camos": sorted(k for k, v in camos.items() if v),
+        "decals": sorted(k for k, v in decals.items() if v),
+        "sis": sorted(k for k, v in sis.items() if v),
+        "medals": sorted(k for k, v in medals.items() if v),
+        "walker": walker,
+        "lk19": lk19,
+        "predator": predator,
+        "robot": robot,
+        "medvisor": medvisor,
+    }
 
 
 def utf(b):
@@ -124,27 +204,31 @@ def parse_replay(path):
         elif t.endswith("SBankSignatureEvent"):
             toons[uid] = utf(ev.get("m_toonHandle", ""))
 
-    players = []
+    sightings = []
     for uid, bank in banks.items():
         u = users[uid]
         m = hx_list(bank.get("m", ""))
-        players.append(
+        sightings.append(
             {
                 "name": utf(u["m_name"]),
                 "clan": utf(u.get("m_clanTag") or b""),
                 "toon": toons.get(uid, ""),
-                "xpEn": hx1(bank.get("nbe", "")),
-                "xpWo": hx1(bank.get("nbw", "")),
-                "xpCo": hx1(bank.get("nbc", "")),
+                "xpEn": min(hx1(bank.get("nbe", "")), XP_CAP),
+                "xpWo": min(hx1(bank.get("nbw", "")), XP_CAP),
+                "xpCo": min(hx1(bank.get("nbc", "")), XP_CAP),
                 "prestige": hx1(bank.get("pb", "")),
                 "gamesPlayed": m[0] if len(m) > 0 else 0,
                 "revives": m[1] if len(m) > 1 else 0,
                 "avgGameTime": m[2] if len(m) > 2 else 0,
                 "winsByMode": hx_list(bank.get("xp", "").rstrip()),
-                "lastSeen": played_at,
+                "camo": int(bank.get("CurrentCamo", "0") or 0),
+                "decal": int(bank.get("CurrentDecal", "0") or 0),
+                "unlocks": decode_unlocks(bank),
+                "playedAt": played_at,
+                "file": os.path.basename(path),
             }
         )
-    return played_at, players
+    return played_at, sightings
 
 
 def main():
@@ -152,22 +236,44 @@ def main():
     if not paths:
         sys.exit(f"no replays found at {REPLAY_GLOB}")
 
-    merged = {}  # toon -> profile, newest sighting wins
+    by_toon = {}  # toon -> list of sightings
     replays_meta = []
     for path in paths:
-        played_at, players = parse_replay(path)
+        played_at, sightings = parse_replay(path)
         replays_meta.append(
-            {"file": os.path.basename(path), "playedAt": played_at, "players": len(players)}
+            {"file": os.path.basename(path), "playedAt": played_at, "players": len(sightings)}
         )
-        print(f"{os.path.basename(path)}: {played_at}, {len(players)} profiles")
-        for p in players:
-            key = p["toon"] or p["name"]
-            if key not in merged or p["lastSeen"] >= merged[key]["lastSeen"]:
-                merged[key] = p
+        print(f"{os.path.basename(path)}: {played_at}, {len(sightings)} profiles")
+        for s in sightings:
+            by_toon.setdefault(s["toon"] or s["name"], []).append(s)
 
-    players = sorted(
-        merged.values(), key=lambda p: -(p["xpEn"] + p["xpWo"] + p["xpCo"])
-    )
+    players = []
+    for sightings in by_toon.values():
+        sightings.sort(key=lambda s: s["playedAt"])
+        cur = sightings[-1]
+        history = [
+            {
+                k: s[k]
+                for k in (
+                    "playedAt",
+                    "file",
+                    "xpEn",
+                    "xpWo",
+                    "xpCo",
+                    "prestige",
+                    "gamesPlayed",
+                    "revives",
+                    "avgGameTime",
+                )
+            }
+            | {"wins": sum(s["winsByMode"])}
+            for s in sightings
+        ]
+        players.append({**{k: v for k, v in cur.items() if k != "file"}, "lastSeen": cur["playedAt"], "history": history})
+    for p in players:
+        del p["playedAt"]
+
+    players.sort(key=lambda p: -(p["xpEn"] + p["xpWo"] + p["xpCo"]))
     out = {
         "replays": sorted(replays_meta, key=lambda r: r["playedAt"]),
         "players": players,

@@ -1,0 +1,16 @@
+{
+	"modes": [
+		"Recruit",
+		"Normal",
+		"Hard",
+		"Insane",
+		"Nightmare",
+		"Competitive",
+		"Survival",
+		"PMC",
+		"Invasion",
+		"Infested",
+		"PMC+",
+		"Apocalypse"
+	]
+}
