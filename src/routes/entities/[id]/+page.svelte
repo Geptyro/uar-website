@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { unitById, tagClass } from '$lib/units';
+	import { unitById, tagClass, applyText } from '$lib/units';
 	import { mosById } from '$lib/mos';
 
 	let { data } = $props();
@@ -66,6 +66,7 @@
 					<th class="num">Range</th>
 					<th class="num">Period (s)</th>
 					<th class="num">DPS</th>
+					<th>On hit</th>
 				</tr>
 			</thead>
 			<tbody>
@@ -76,6 +77,7 @@
 						<td class="num">{w.range ?? '?'}</td>
 						<td class="num">{w.period ?? '?'}</td>
 						<td class="num">{w.dmg && w.period ? Math.round(w.dmg / w.period) : '?'}</td>
+						<td class="mono applies">{(w.applies ?? []).map(applyText).join(' · ')}</td>
 					</tr>
 				{/each}
 			</tbody>
@@ -116,6 +118,11 @@
 </div>
 
 <style>
+	.applies {
+		font-size: 11px;
+		color: var(--ink-2);
+		max-width: 340px;
+	}
 	.crumbs {
 		display: flex;
 		gap: 18px;

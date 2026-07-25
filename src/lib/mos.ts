@@ -40,6 +40,20 @@ export interface Mos {
 
 export type ItemType = 'weapon' | 'armor' | 'equipment' | 'consumable' | 'supply';
 
+/** A stat modification from one of an item's carry buffs. */
+export interface ItemMod {
+	text: string;
+	/** MOS unit ids the buff actually applies to; absent = every carrier. */
+	scope?: string[];
+	/** Annotation for class-free views, e.g. "bio carriers only". */
+	note?: string;
+}
+
+/** Mod texts that actually apply to the given class (for class-scoped views). */
+export function modsFor(item: Item, mosId: string): string[] {
+	return item.mods.filter((m) => !m.scope || m.scope.includes(mosId)).map((m) => m.text);
+}
+
 export interface Item {
 	id: string;
 	name: string;
@@ -52,7 +66,7 @@ export interface Item {
 	/** Trigger names that spawn this item — mission scripts or item-cache tables. */
 	sources: string[];
 	charges: { start: string | null; max: string } | null;
-	mods: string[];
+	mods: ItemMod[];
 	/** Weapons this item grants when carried, with resolved stats. */
 	grants: Weapon[];
 	/** MOS unit ids that can use this item; null = everyone. Derived from carry-buff validators. */

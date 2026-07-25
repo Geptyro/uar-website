@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { allowedLabel, itemTypeLabels, itemTypeOrder, type Item } from '$lib/mos';
+	import { allowedLabel, itemTypeLabels, itemTypeOrder, modsFor, type Item } from '$lib/mos';
+	import { applyText } from '$lib/units';
 	import StatIcon from '$lib/components/StatIcon.svelte';
 
 	let { data } = $props();
@@ -33,7 +34,7 @@
 	}
 
 	function itemNote(item: Item): string {
-		const parts = [...item.mods];
+		const parts = modsFor(item, mos.id);
 		if (item.allowed !== null) {
 			const label = allowedLabel(item);
 			if (label && item.allowed.length > 1) parts.push(label);
@@ -95,7 +96,7 @@
 							<td class="num">{w.range ?? '?'}</td>
 							<td class="num">{w.period ?? '?'}</td>
 							<td class="num">{dps(w.dmg, w.period)}</td>
-							<td></td>
+							<td class="mono notes">{(w.applies ?? []).map(applyText).join(' · ')}</td>
 						</tr>
 					{/each}
 					{#each weaponItems as item (item.id)}
@@ -111,7 +112,11 @@
 									<td class="num">{g.range ?? '?'}</td>
 									<td class="num">{g.period ?? '?'}</td>
 									<td class="num">{dps(g.dmg, g.period)}</td>
-									<td class="mono notes">{itemNote(item)}</td>
+									<td class="mono notes"
+										>{[itemNote(item), ...(g.applies ?? []).map(applyText)]
+											.filter(Boolean)
+											.join(' · ')}</td
+									>
 								</tr>
 							{/each}
 						{:else}
@@ -153,7 +158,7 @@
 								<td class="num"
 									>{item.charges ? `${item.charges.start ?? '?'}/${item.charges.max}` : ''}</td
 								>
-								<td class="mono effect">{item.mods.join(', ')}</td>
+								<td class="mono effect">{modsFor(item, mos.id).join(', ')}</td>
 								<td>
 									{#if item.allowed !== null}
 										<span class="tag t-mos">{allowedLabel(item)}</span>

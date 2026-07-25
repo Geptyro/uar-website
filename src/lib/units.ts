@@ -1,10 +1,32 @@
 import rawUnits from '$lib/data/units.json';
 
+/** A buff/debuff a weapon applies on hit, from its effect tree. */
+export interface WeaponApply {
+	name: string;
+	effects: string[];
+	/** Duration in seconds; absent = permanent/instant. */
+	dur?: string;
+	/** Only procs when this validator passes (upgrade tier, weapon variant…). */
+	cond?: string;
+	/** Applied to the shooter, not the target (e.g. reload slows). */
+	self?: boolean;
+}
+
 export interface Weapon {
 	id: string;
 	dmg: number | null;
 	range: number | null;
 	period: number | null;
+	applies?: WeaponApply[];
+}
+
+/** One-line rendering of an on-hit apply, e.g. "Napalm Burn: 3 dmg every 0.2s — 6s (if Napalm1)". */
+export function applyText(a: WeaponApply): string {
+	let s = `${a.name}: ${a.effects.join(', ')}`;
+	if (a.dur) s += ` — ${a.dur}s`;
+	if (a.cond) s += ` (if ${a.cond})`;
+	if (a.self) s += ' (self)';
+	return s;
 }
 
 export interface Unit {

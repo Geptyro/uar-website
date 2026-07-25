@@ -20,7 +20,7 @@
 			if (typeFilter && i.type !== typeFilter) return false;
 			if (mosFilter && i.allowed !== null && !i.allowed.includes(mosFilter)) return false;
 			if (!needle) return true;
-			const hay = `${i.name} ${i.id} ${i.mods.join(' ')} ${i.tooltip}`.toLowerCase();
+			const hay = `${i.name} ${i.id} ${i.mods.map((m) => m.text).join(' ')} ${i.tooltip}`.toLowerCase();
 			return hay.includes(needle);
 		});
 	});
@@ -78,7 +78,9 @@
 			</div>
 			{#if item.mods.length}
 				<ul class="mods">
-					{#each item.mods as m (m)}<li>{m}</li>{/each}
+					{#each item.mods as m (m.text + (m.note ?? ''))}
+						<li>{m.text}{#if m.note}<span class="scope">({m.note})</span>{/if}</li>
+					{/each}
 				</ul>
 			{/if}
 			{#if item.allowed !== null || item.conflicts.length}
@@ -184,6 +186,10 @@
 		font-family: var(--mono);
 		font-size: 11.5px;
 		color: var(--ink-2);
+	}
+	.mods .scope {
+		color: var(--ink-3);
+		margin-left: 0.4em;
 	}
 	.restr {
 		display: flex;
