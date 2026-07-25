@@ -66,7 +66,7 @@ from s2protocol import versions  # noqa: E402
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # replays live in static/ so the built site serves them for download
 REPLAY_GLOB = os.path.join(ROOT, "static", "replays", "*.SC2Replay")
-OUT = os.path.join(ROOT, "src", "lib", "data", "players.json")
+OUT = os.path.join(ROOT, "tests", "fixtures", "players.golden.json")
 
 # hero unit ids = MOS classes; used to spot class picks in tracker events
 with open(os.path.join(ROOT, "src", "lib", "data", "mos.json")) as f:

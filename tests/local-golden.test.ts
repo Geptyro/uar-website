@@ -2,7 +2,7 @@
  * Extended golden test — only runs when the full local replay set is present
  * (static/replays/ is gitignored; CI skips this). Rebuilds players data from
  * every local replay and compares it against the committed golden
- * src/lib/data/players.json, which was verified byte-identical against the
+ * tests/fixtures/players.golden.json, which was verified byte-identical against the
  * reference Python pipeline. Covers the multi-sector MPQ path and full
  * multi-player banks that the small committed fixtures can't.
  */
@@ -16,7 +16,7 @@ import { parseReplay, buildPlayersData } from '../src/lib/server/replay/extract.
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DIR = join(ROOT, 'static', 'replays');
-const GOLDEN = join(ROOT, 'src', 'lib', 'data', 'players.json');
+const GOLDEN = join(ROOT, 'tests', 'fixtures', 'players.golden.json');
 
 const files = existsSync(DIR) ? readdirSync(DIR).filter((f) => f.endsWith('.SC2Replay')).sort() : [];
 const golden = JSON.parse(readFileSync(GOLDEN, 'utf8'));

@@ -1,5 +1,6 @@
 /**
- * Build src/lib/data/players.json from static/replays/ — pure Node/TS,
+ * Rebuild the golden fixture (tests/fixtures/players.golden.json) from
+ * static/replays/ — pure Node/TS,
  * no Python needed. Same output, byte for byte, as scripts/extract_players.py.
  *
  * Usage: node scripts/extract-players.ts [--out <path>]
@@ -13,7 +14,7 @@ import { parseReplay, buildPlayersData } from '../src/lib/server/replay/extract.
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const REPLAY_DIR = join(ROOT, 'static', 'replays');
 const outFlag = process.argv.indexOf('--out');
-const OUT = outFlag > -1 ? process.argv[outFlag + 1] : join(ROOT, 'src', 'lib', 'data', 'players.json');
+const OUT = outFlag > -1 ? process.argv[outFlag + 1] : join(ROOT, 'tests', 'fixtures', 'players.golden.json');
 
 const mosIds = new Set<string>(
 	(JSON.parse(readFileSync(join(ROOT, 'src', 'lib', 'data', 'mos.json'), 'utf8')) as { id: string }[]).map(
