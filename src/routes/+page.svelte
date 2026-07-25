@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { units, categories, categoryCount, weaponLabel } from '$lib/units';
+	import StatIcon from '$lib/components/StatIcon.svelte';
 
 	const mosUnits = units
 		.filter(
@@ -50,9 +51,9 @@
 				<h3>{u.name || u.id}</h3>
 				<div class="code">{u.mos ? `MOS ${u.mos}` : u.id}{u.role ? ` · ${u.role}` : ''}</div>
 				<div class="kv">
-					<span>HP <b>{u.life ?? '–'}</b></span>
-					<span>ARM <b>{u.armor ?? '–'}</b></span>
-					<span>SPD <b>{u.speed ?? '–'}</b></span>
+					<span><StatIcon name="life" size={12} /><b>{u.life ?? '–'}</b></span>
+					<span><StatIcon name="armor" size={12} /><b>{u.armor ?? '–'}</b></span>
+					<span><StatIcon name="speed" size={12} /><b>{u.speed ?? '–'}</b></span>
 				</div>
 			</div>
 		</a>
@@ -133,6 +134,11 @@
 		font-size: 10.5px;
 		color: var(--ink-3);
 		font-variant-numeric: tabular-nums;
+	}
+	.kv span {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
 	}
 	.kv b {
 		font-weight: 600;
