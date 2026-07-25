@@ -4,7 +4,8 @@
 	let { data } = $props();
 
 	const mos = $derived(data.mos);
-	const usable = $derived(data.items);
+	// mission items (supply) are objective props, not class gear — keep them off class pages
+	const usable = $derived(data.items.filter((i) => i.type !== 'supply'));
 	const si = $derived(data.si);
 
 	const stats = $derived(
@@ -21,7 +22,7 @@
 	const weaponItems = $derived(usable.filter((i) => i.type === 'weapon'));
 	const gearGroups = $derived(
 		itemTypeOrder
-			.filter((t) => t !== 'weapon')
+			.filter((t) => t !== 'weapon' && t !== 'supply')
 			.map((t) => ({ type: t, label: itemTypeLabels[t], items: usable.filter((i) => i.type === t) }))
 			.filter((g) => g.items.length)
 	);
