@@ -19,6 +19,28 @@ export interface CommonAbility {
 	tooltip: string;
 }
 
+/** Requirement to pick a class while playing one rank track. */
+export interface UnlockReq {
+	/** XP needed on that track (0 = from the start); null = unresolved. */
+	xp: number | null;
+	/** Rank reached at that XP, when the gate is a regular rank. */
+	rank?: string;
+	/** Robot: the XP is needed on every track at once, not just this one. */
+	everyTrack?: boolean;
+}
+
+export interface MosUnlock {
+	/** How many players can pick this class per game. */
+	charges: number;
+	en: UnlockReq | null;
+	wo: UnlockReq | null;
+	co: UnlockReq | null;
+	/** Owning this many medals unlocks the class regardless of rank. */
+	medals?: number;
+	/** Game modes the class exists in (absent = all). */
+	modes?: string[];
+}
+
 export interface Mos {
 	id: string;
 	name: string;
@@ -36,6 +58,8 @@ export interface Mos {
 	skills: Skill[];
 	common: CommonAbility[];
 	inventory: { abil: string | null; slots: number; classes: string[] };
+	/** Absent for classes outside the selection dialog (Sushi transformations). */
+	unlock?: MosUnlock;
 }
 
 export type ItemType = 'weapon' | 'armor' | 'equipment' | 'consumable' | 'supply';
@@ -113,6 +137,8 @@ export interface Rank {
 export interface RankTrack {
 	track: number;
 	name: string;
+	/** Track wireframe portrait from the in-game rank-set choice dialog. */
+	icon: string | null;
 	ranks: Rank[];
 }
 

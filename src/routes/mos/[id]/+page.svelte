@@ -1,5 +1,13 @@
 <script lang="ts">
-	import { allowedLabel, itemTypeLabels, itemTypeOrder, modsFor, type Item } from '$lib/mos';
+	import {
+		allowedLabel,
+		itemTypeLabels,
+		itemTypeOrder,
+		modsFor,
+		rankTracks,
+		type Item,
+		type UnlockReq
+	} from '$lib/mos';
 	import { applyText } from '$lib/units';
 	import type { MosTopPlayer } from '$lib/players';
 	import FactsCard, { type Fact } from '$lib/components/FactsCard.svelte';
@@ -73,6 +81,45 @@
 			stale = true;
 		};
 	});
+
+	const unlock = $derived(mos.unlock ?? null);
+	// Robot: one threshold across all three tracks instead of per-track ranks
+	const everyTrackXp = $derived(unlock?.en?.everyTrack ? unlock.en.xp : null);
+
+	function fmtXpShort(xp: number): string {
+		return xp >= 1000
+			? `${(xp / 1000).toLocaleString('en-US', { maximumFractionDigits: 1 })}k`
+			: String(xp);
+	}
+
+	function unlockTitle(req: UnlockReq | null, rank: { name: string } | null): string {
+		if (!req) return 'Cannot be picked on this rank track';
+		if (req.xp === 0) return 'Available from the start';
+		const xp = `${(req.xp ?? 0).toLocaleString('en-US')} XP`;
+		return rank ? `${rank.name} · ${xp}` : xp;
+	}
+
+	const unlockCells = $derived(
+		unlock
+			? rankTracks.map((t, i) => {
+					const req = unlock[(['en', 'wo', 'co'] as const)[t.track - 1]];
+					const rank = req?.rank ? (t.ranks.find((r) => r.prefix === req.rank) ?? null) : null;
+					return {
+						short: ['Enlisted', 'Warrant', 'Commissioned'][i],
+						wf: t.icon,
+						off: !req,
+						rankIcon: rank?.icon ?? null,
+						main: !req
+							? '—'
+							: req.xp === 0
+								? 'Start'
+								: (req.rank ?? `${fmtXpShort(req.xp ?? 0)} XP`),
+						sub: req && req.xp && req.rank ? `${fmtXpShort(req.xp)} XP` : null,
+						title: unlockTitle(req, rank)
+					};
+				})
+			: []
+	);
 
 	function fmtPlaytime(seconds: number): string {
 		if (seconds >= 3600) {
@@ -253,6 +300,40 @@
 			{facts}
 			link={{ href: `/entities/${mos.id}`, label: 'Unit data →' }}
 		/>
+		{#if unlock}
+			<DescCard label="Unlock requirements">
+				<div class="unlock-grid">
+					{#each unlockCells as c (c.short)}
+						<div class="unlock-cell" class:off={c.off} title={c.title}>
+							{#if c.wf}
+								<span class="unlock-wf" style="--wf: url('{c.wf}')"></span>
+							{/if}
+							<span class="unlock-tracklabel">{c.short}</span>
+							<span class="unlock-rankslot">
+								{#if c.rankIcon}
+									<img class="unlock-rank" src={c.rankIcon} alt="" loading="lazy" />
+								{/if}
+							</span>
+							<b class="unlock-main">{c.main}</b>
+							<span class="unlock-sub">{c.sub ?? ' '}</span>
+						</div>
+					{/each}
+				</div>
+				{#if everyTrackXp}
+					<p class="unlock-note">Needs the XP on all three rank tracks at once.</p>
+				{/if}
+				{#if unlock.medals}
+					<p class="unlock-alt">…or earn <a href="/medals">{unlock.medals} medals</a></p>
+				{/if}
+				{#if unlock.modes}
+					<p class="unlock-note">Only in {unlock.modes.join(', ')}</p>
+				{/if}
+				<p class="unlock-note">
+					Max picks per game: {unlock.charges}. Any prestige unlocks every class.
+				</p>
+				<a class="si-all" href="/ranks">Rank tracks →</a>
+			</DescCard>
+		{/if}
 		{#if modelUrl}
 			<ModelCard src={modelUrl} alt="3D model of {mos.name}" />
 		{/if}
@@ -331,6 +412,76 @@
 		flex-direction: column;
 		gap: 14px;
 	}
+	.unlock-grid {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 6px;
+		margin-top: 4px;
+	}
+	.unlock-cell {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 3px;
+		padding: 8px 2px 6px;
+		border: 1px solid var(--border);
+		border-radius: var(--r-sm);
+		text-align: center;
+		min-width: 0;
+	}
+	.unlock-cell.off {
+		opacity: 0.35;
+		border-style: dashed;
+	}
+	.unlock-wf {
+		width: 30px;
+		height: 30px;
+		background: var(--ink-2);
+		-webkit-mask: var(--wf) center / contain no-repeat;
+		mask: var(--wf) center / contain no-repeat;
+	}
+	.unlock-tracklabel {
+		font-family: var(--mono);
+		font-size: 8.5px;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--ink-3);
+		white-space: nowrap;
+	}
+	.unlock-rankslot {
+		height: 22px;
+		display: flex;
+		align-items: center;
+	}
+	.unlock-rank {
+		width: 22px;
+		height: 22px;
+		object-fit: contain;
+	}
+	.unlock-main {
+		font-size: 12.5px;
+		font-weight: 600;
+		line-height: 1.2;
+	}
+	.unlock-sub {
+		font-family: var(--mono);
+		font-size: 10px;
+		color: var(--ink-2);
+		min-height: 12px;
+		white-space: pre;
+	}
+	.unlock-alt {
+		margin: 8px 0 0;
+		font-size: 12.5px;
+		color: var(--ink-2);
+	}
+	.unlock-note {
+		margin: 8px 0 0;
+		font-size: 11.5px;
+		line-height: 1.5;
+		color: var(--ink-3);
+	}
+
 	.si-row {
 		display: flex;
 		align-items: center;
