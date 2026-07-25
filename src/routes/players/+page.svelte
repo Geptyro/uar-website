@@ -128,29 +128,10 @@
 	on.
 </p>
 
-<h2 class="section">Ingested replays</h2>
-<div class="tablewrap">
-	<table class="data" style="max-width: 560px">
-		<thead>
-			<tr>
-				<th>Game date</th>
-				<th class="num">Profiles</th>
-				<th class="num">Size</th>
-				<th></th>
-			</tr>
-		</thead>
-		<tbody>
-			{#each [...replays].reverse() as r (r.file)}
-				<tr>
-					<td class="mono">{r.playedAt.slice(0, 16).replace('T', ' ')} UTC</td>
-					<td class="num">{r.players}</td>
-					<td class="num">{fmtSize(r.size)}</td>
-					<td><a href="/replays/{r.file}" download rel="external">Download ⬇</a></td>
-				</tr>
-			{/each}
-		</tbody>
-	</table>
-</div>
+<p class="note">
+	Data comes from {replays.filter((r) => r.players > 0).length} ingested replays —
+	<a href="/replays">browse, download or upload replays →</a>
+</p>
 
 <style>
 	.rank-pos {

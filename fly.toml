@@ -1,7 +1,8 @@
 # Private backend app: UAR (Undead Assault Reborn) unit database — prerendered
-# static site served by Caddy. No public IP (the deploy workflow's bootstrap
-# creates the app with a private Flycast IP) — reachable only as
-# uar-website.flycast:80 from the cdd-gateway, which terminates TLS and routes
+# pages served by a small node server (adapter-node) that also hosts the
+# replay upload API. No public IP (the deploy workflow's bootstrap creates the
+# app with a private Flycast IP) — reachable only as uar-website.flycast:80
+# from the cdd-gateway, which terminates TLS and routes
 # uar.cedricdessalles.dev here.
 
 app = 'uar-website'
@@ -10,13 +11,19 @@ primary_region = 'cdg'
 [build]
   dockerfile = 'Dockerfile'
 
+[env]
+  # rate limiting must see the real client IP forwarded by the cdd-gateway
+  ADDRESS_HEADER = 'x-forwarded-for'
+  # replay uploads are up to ~16MB; adapter-node defaults to 512K
+  BODY_SIZE_LIMIT = '16M'
+
 [http_service]
   internal_port = 8080
   # The gateway already forces HTTPS at the edge; no point redirecting again on
   # the private hop (and a redirect here would break the plain-HTTP proxy).
   force_https = false
   # Always-on like the other backends: Flycast does not reliably wake a fully
-  # idled machine on a proxied request. Static Caddy is tiny — this is cheap.
+  # idled machine on a proxied request.
   auto_stop_machines = false
   auto_start_machines = true
   min_machines_running = 1
@@ -28,8 +35,9 @@ primary_region = 'cdg'
     method = 'GET'
     path = '/'
 
-# Just Caddy + static files — the smallest VM is plenty.
+# 512mb: replay uploads are parsed in-process (bzip2 decompression + full
+# game-event decode of ~10MB replays spikes well past what 256mb allows).
 [[vm]]
-  memory = '256mb'
+  memory = '512mb'
   cpu_kind = 'shared'
   cpus = 1

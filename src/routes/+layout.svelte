@@ -19,6 +19,7 @@
 		{ href: '/medals', label: 'Medals & decals' },
 		{ href: '/camos', label: 'Camouflages' },
 		{ href: '/players', label: 'Players' },
+		{ href: '/replays', label: 'Replays' },
 		{ href: '/map', label: 'Map & missions' },
 		{ href: '/flow', label: 'Mission flow' }
 	];
@@ -42,6 +43,7 @@
 		if (p === '/medals') return { section: '', title: 'Medals & decals' };
 		if (p === '/camos') return { section: '', title: 'Camouflages' };
 		if (p === '/players') return { section: '', title: 'Players' };
+		if (p === '/replays') return { section: '', title: 'Replays' };
 		if (p.startsWith('/players/')) {
 			const pl = playerByToon.get(decodeURIComponent(p.slice(9)));
 			return { section: 'Players', title: pl?.name ?? p.slice(9) };

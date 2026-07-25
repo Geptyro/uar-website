@@ -1,4 +1,4 @@
-import adapter from '@sveltejs/adapter-static';
+import adapter from '@sveltejs/adapter-node';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
@@ -19,7 +19,9 @@ export default defineConfig({
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
 
-			// Fully prerendered site (see src/routes/+layout.ts), so static output works everywhere.
+			// All pages stay prerendered (see src/routes/+layout.ts); the node server
+			// exists for the replay upload API (src/routes/api/replays), which needs
+			// to parse uploads in-process and commit them to GitHub.
 			adapter: adapter()
 		})
 	]
