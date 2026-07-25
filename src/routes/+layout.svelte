@@ -15,6 +15,8 @@
 		{ href: '/items', label: 'Items' },
 		{ href: '/si', label: 'Skill IDs' },
 		{ href: '/ranks', label: 'Ranks' },
+		{ href: '/medals', label: 'Medals & decals' },
+		{ href: '/camos', label: 'Camouflages' },
 		{ href: '/players', label: 'Players' },
 		{ href: '/map', label: 'Map & missions' },
 		{ href: '/flow', label: 'Mission flow' }
@@ -36,6 +38,8 @@
 		if (p === '/items') return { section: '', title: 'Items & equipment' };
 		if (p === '/si') return { section: '', title: 'Skill Identifiers' };
 		if (p === '/ranks') return { section: '', title: 'Rank sets' };
+		if (p === '/medals') return { section: '', title: 'Medals & decals' };
+		if (p === '/camos') return { section: '', title: 'Camouflages' };
 		if (p === '/players') return { section: '', title: 'Players' };
 		if (p === '/map') return { section: '', title: 'Map & missions' };
 		if (p === '/flow') return { section: '', title: 'Mission flow' };
