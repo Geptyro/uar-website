@@ -3,927 +3,29 @@
 		{
 			"file": "20260723-1802.SC2Replay",
 			"playedAt": "2026-07-23T18:02:17Z",
-			"players": 0
+			"players": 0,
+			"size": 46452
 		},
 		{
 			"file": "20260723-1808.SC2Replay",
 			"playedAt": "2026-07-23T18:08:14Z",
-			"players": 1
+			"players": 1,
+			"size": 43410
 		},
 		{
 			"file": "20260723-2002.SC2Replay",
 			"playedAt": "2026-07-23T20:02:09Z",
-			"players": 11
+			"players": 11,
+			"size": 8860342
 		},
 		{
 			"file": "20260725-1159.SC2Replay",
 			"playedAt": "2026-07-25T11:59:05Z",
-			"players": 11
+			"players": 11,
+			"size": 2680471
 		}
 	],
 	"players": [
-		{
-			"name": "Brenos",
-			"clan": "iSAR",
-			"toon": "2-S2-1-1800200",
-			"xpEn": 246080,
-			"xpWo": 236311,
-			"xpCo": 250000,
-			"prestige": 1,
-			"gamesPlayed": 1913,
-			"revives": 1740,
-			"avgGameTime": 3736,
-			"winsByMode": [
-				48,
-				93,
-				156,
-				112,
-				127,
-				78,
-				274,
-				107,
-				3,
-				1,
-				1,
-				1
-			],
-			"camo": -1,
-			"decal": -4,
-			"unlocks": {
-				"camos": [
-					1,
-					2,
-					3,
-					4,
-					5,
-					6,
-					7,
-					8,
-					9,
-					10,
-					11,
-					12,
-					13,
-					14,
-					15,
-					16,
-					17,
-					18,
-					19,
-					20,
-					21,
-					22,
-					23,
-					24,
-					25
-				],
-				"decals": [
-					1,
-					2,
-					3,
-					4,
-					5,
-					6,
-					7,
-					8,
-					9,
-					10,
-					11,
-					14
-				],
-				"sis": [
-					1,
-					2,
-					3,
-					4,
-					5,
-					6,
-					7,
-					8,
-					9,
-					10,
-					11,
-					12,
-					13,
-					14,
-					15,
-					16,
-					17,
-					18,
-					19,
-					20,
-					21,
-					22,
-					23,
-					24,
-					25,
-					26,
-					27,
-					28,
-					29,
-					30
-				],
-				"medals": [
-					1,
-					2,
-					3,
-					4,
-					5,
-					6,
-					7,
-					8,
-					9,
-					10,
-					11,
-					12,
-					13
-				],
-				"walker": [
-					true,
-					true,
-					true,
-					true,
-					true,
-					true
-				],
-				"lk19": [
-					true,
-					true,
-					true,
-					true,
-					true,
-					true,
-					true,
-					true,
-					true
-				],
-				"predator": [
-					true,
-					true,
-					true,
-					true,
-					true,
-					true
-				],
-				"robot": [
-					true,
-					false
-				],
-				"medvisor": [
-					true,
-					false
-				]
-			},
-			"lastSeen": "2026-07-25T11:59:05Z",
-			"history": [
-				{
-					"playedAt": "2026-07-25T11:59:05Z",
-					"file": "20260725-1159.SC2Replay",
-					"xpEn": 246080,
-					"xpWo": 236311,
-					"xpCo": 250000,
-					"prestige": 1,
-					"gamesPlayed": 1913,
-					"revives": 1740,
-					"avgGameTime": 3736,
-					"wins": 1001
-				}
-			]
-		},
-		{
-			"name": "Hugga",
-			"clan": "iSAR",
-			"toon": "2-S2-1-2362152",
-			"xpEn": 250000,
-			"xpWo": 237474,
-			"xpCo": 208892,
-			"prestige": 3,
-			"gamesPlayed": 1732,
-			"revives": 767,
-			"avgGameTime": 1190,
-			"winsByMode": [
-				5,
-				35,
-				237,
-				194,
-				79,
-				13,
-				37,
-				76,
-				7,
-				2,
-				2,
-				1
-			],
-			"camo": 5,
-			"decal": 4,
-			"unlocks": {
-				"camos": [
-					1,
-					2,
-					3,
-					4,
-					5,
-					6,
-					7,
-					9,
-					12,
-					13,
-					14,
-					15,
-					16,
-					17,
-					18,
-					19,
-					20,
-					21,
-					22,
-					23,
-					24,
-					25
-				],
-				"decals": [
-					2,
-					3,
-					4,
-					6,
-					7,
-					8,
-					10,
-					11,
-					14
-				],
-				"sis": [
-					1,
-					2,
-					3,
-					4,
-					5,
-					6,
-					7,
-					8,
-					9,
-					10,
-					11,
-					12,
-					13,
-					14,
-					15,
-					16,
-					17,
-					18,
-					19,
-					20,
-					21,
-					22,
-					23,
-					24,
-					25,
-					26,
-					27,
-					29,
-					30
-				],
-				"medals": [
-					1,
-					2,
-					3,
-					4,
-					5,
-					6,
-					8,
-					9,
-					10,
-					11,
-					13
-				],
-				"walker": [
-					true,
-					true,
-					true,
-					true,
-					true,
-					true
-				],
-				"lk19": [
-					true,
-					true,
-					true,
-					true,
-					true,
-					true,
-					true,
-					true,
-					true
-				],
-				"predator": [
-					true,
-					true,
-					true,
-					true,
-					true,
-					false
-				],
-				"robot": [
-					true,
-					true
-				],
-				"medvisor": [
-					true,
-					true
-				]
-			},
-			"lastSeen": "2026-07-23T20:02:09Z",
-			"history": [
-				{
-					"playedAt": "2026-07-23T20:02:09Z",
-					"file": "20260723-2002.SC2Replay",
-					"xpEn": 250000,
-					"xpWo": 237474,
-					"xpCo": 208892,
-					"prestige": 3,
-					"gamesPlayed": 1732,
-					"revives": 767,
-					"avgGameTime": 1190,
-					"wins": 688
-				}
-			]
-		},
-		{
-			"name": "Kasztan",
-			"clan": "iSAR",
-			"toon": "2-S2-1-1377376",
-			"xpEn": 250000,
-			"xpWo": 169408,
-			"xpCo": 176326,
-			"prestige": 1,
-			"gamesPlayed": 683,
-			"revives": 2003,
-			"avgGameTime": 2928,
-			"winsByMode": [
-				1,
-				14,
-				101,
-				144,
-				57,
-				1,
-				8,
-				21,
-				2,
-				1,
-				9,
-				2
-			],
-			"camo": 24,
-			"decal": 14,
-			"unlocks": {
-				"camos": [
-					1,
-					2,
-					4,
-					5,
-					6,
-					7,
-					9,
-					13,
-					15,
-					16,
-					17,
-					19,
-					20,
-					22,
-					23,
-					24,
-					25
-				],
-				"decals": [
-					2,
-					3,
-					4,
-					6,
-					7,
-					14
-				],
-				"sis": [
-					1,
-					2,
-					3,
-					4,
-					5,
-					6,
-					7,
-					8,
-					9,
-					10,
-					11,
-					12,
-					13,
-					14,
-					15,
-					16,
-					17,
-					18,
-					19,
-					20,
-					21,
-					22,
-					23,
-					24,
-					25,
-					26,
-					27,
-					28,
-					29
-				],
-				"medals": [
-					1,
-					2,
-					3,
-					4,
-					5,
-					9,
-					10
-				],
-				"walker": [
-					false,
-					false,
-					false,
-					false,
-					false,
-					false
-				],
-				"lk19": [
-					false,
-					false,
-					false,
-					false,
-					false,
-					false,
-					false,
-					false,
-					false
-				],
-				"predator": [
-					true,
-					false,
-					false,
-					false,
-					false,
-					false
-				],
-				"robot": [
-					false,
-					false
-				],
-				"medvisor": [
-					true,
-					true
-				]
-			},
-			"lastSeen": "2026-07-25T11:59:05Z",
-			"history": [
-				{
-					"playedAt": "2026-07-25T11:59:05Z",
-					"file": "20260725-1159.SC2Replay",
-					"xpEn": 250000,
-					"xpWo": 169408,
-					"xpCo": 176326,
-					"prestige": 1,
-					"gamesPlayed": 683,
-					"revives": 2003,
-					"avgGameTime": 2928,
-					"wins": 361
-				}
-			]
-		},
-		{
-			"name": "LLL",
-			"clan": "",
-			"toon": "2-S2-1-9076476",
-			"xpEn": 177660,
-			"xpWo": 175796,
-			"xpCo": 202342,
-			"prestige": 0,
-			"gamesPlayed": 379,
-			"revives": 2524,
-			"avgGameTime": 2625,
-			"winsByMode": [
-				3,
-				12,
-				41,
-				39,
-				17,
-				27,
-				5,
-				12,
-				3,
-				1,
-				2
-			],
-			"camo": 24,
-			"decal": 14,
-			"unlocks": {
-				"camos": [
-					1,
-					2,
-					3,
-					4,
-					5,
-					6,
-					7,
-					8,
-					9,
-					12,
-					13,
-					15,
-					16,
-					17,
-					18,
-					19,
-					20,
-					21,
-					22,
-					24,
-					25
-				],
-				"decals": [
-					2,
-					4,
-					6,
-					7,
-					8,
-					14
-				],
-				"sis": [
-					1,
-					2,
-					3,
-					4,
-					5,
-					6,
-					7,
-					8,
-					9,
-					10,
-					11,
-					12,
-					13,
-					15,
-					16,
-					17,
-					18,
-					19,
-					20,
-					21,
-					22,
-					23,
-					24,
-					25,
-					26,
-					28,
-					29,
-					30
-				],
-				"medals": [
-					1,
-					2,
-					3,
-					4,
-					5,
-					7,
-					9,
-					10,
-					11,
-					12,
-					13
-				],
-				"walker": [
-					true,
-					true,
-					true,
-					true,
-					true,
-					false
-				],
-				"lk19": [
-					true,
-					false,
-					false,
-					false,
-					false,
-					false,
-					false,
-					false,
-					false
-				],
-				"predator": [
-					true,
-					true,
-					false,
-					false,
-					false,
-					false
-				],
-				"robot": [
-					false,
-					false
-				],
-				"medvisor": [
-					true,
-					true
-				]
-			},
-			"lastSeen": "2026-07-25T11:59:05Z",
-			"history": [
-				{
-					"playedAt": "2026-07-25T11:59:05Z",
-					"file": "20260725-1159.SC2Replay",
-					"xpEn": 177660,
-					"xpWo": 175796,
-					"xpCo": 202342,
-					"prestige": 0,
-					"gamesPlayed": 379,
-					"revives": 2524,
-					"avgGameTime": 2625,
-					"wins": 162
-				}
-			]
-		},
-		{
-			"name": "Niels",
-			"clan": "",
-			"toon": "2-S2-1-483826",
-			"xpEn": 111681,
-			"xpWo": 250000,
-			"xpCo": 174545,
-			"prestige": 0,
-			"gamesPlayed": 285,
-			"revives": 753,
-			"avgGameTime": 3838,
-			"winsByMode": [
-				1,
-				24,
-				44,
-				36,
-				22,
-				1,
-				2,
-				5,
-				2
-			],
-			"camo": 17,
-			"decal": 0,
-			"unlocks": {
-				"camos": [
-					1,
-					2,
-					4,
-					5,
-					6,
-					8,
-					9,
-					13,
-					15,
-					17,
-					19,
-					20,
-					22,
-					25
-				],
-				"decals": [
-					2,
-					4,
-					6,
-					7,
-					14
-				],
-				"sis": [
-					1,
-					2,
-					3,
-					4,
-					5,
-					6,
-					7,
-					8,
-					9,
-					10,
-					11,
-					12,
-					13,
-					15,
-					16,
-					17,
-					18,
-					19,
-					20,
-					21,
-					22,
-					23,
-					24,
-					25,
-					26,
-					29
-				],
-				"medals": [
-					1,
-					2,
-					3,
-					9,
-					10
-				],
-				"walker": [
-					false,
-					false,
-					false,
-					false,
-					false,
-					false
-				],
-				"lk19": [
-					false,
-					false,
-					false,
-					false,
-					false,
-					false,
-					false,
-					false,
-					false
-				],
-				"predator": [
-					false,
-					false,
-					false,
-					false,
-					false,
-					false
-				],
-				"robot": [
-					false,
-					false
-				],
-				"medvisor": [
-					true,
-					true
-				]
-			},
-			"lastSeen": "2026-07-23T20:02:09Z",
-			"history": [
-				{
-					"playedAt": "2026-07-23T20:02:09Z",
-					"file": "20260723-2002.SC2Replay",
-					"xpEn": 111681,
-					"xpWo": 250000,
-					"xpCo": 174545,
-					"prestige": 0,
-					"gamesPlayed": 285,
-					"revives": 753,
-					"avgGameTime": 3838,
-					"wins": 137
-				}
-			]
-		},
-		{
-			"name": "SPG",
-			"clan": "iSAR",
-			"toon": "2-S2-2-1743905",
-			"xpEn": 115349,
-			"xpWo": 250000,
-			"xpCo": 141359,
-			"prestige": 0,
-			"gamesPlayed": 348,
-			"revives": 2616,
-			"avgGameTime": 1406,
-			"winsByMode": [
-				25,
-				3,
-				44,
-				62,
-				20,
-				4,
-				18,
-				2,
-				3,
-				1
-			],
-			"camo": 17,
-			"decal": 6,
-			"unlocks": {
-				"camos": [
-					1,
-					2,
-					4,
-					5,
-					6,
-					7,
-					9,
-					13,
-					15,
-					17,
-					19,
-					20,
-					22,
-					24,
-					25
-				],
-				"decals": [
-					2,
-					4,
-					6,
-					7,
-					8
-				],
-				"sis": [
-					1,
-					2,
-					3,
-					4,
-					5,
-					6,
-					7,
-					8,
-					9,
-					10,
-					11,
-					12,
-					13,
-					15,
-					16,
-					17,
-					18,
-					19,
-					20,
-					21,
-					22,
-					23,
-					24,
-					25,
-					26,
-					27,
-					29,
-					30
-				],
-				"medals": [
-					1,
-					2,
-					3,
-					9,
-					10,
-					12
-				],
-				"walker": [
-					true,
-					false,
-					false,
-					true,
-					false,
-					false
-				],
-				"lk19": [
-					false,
-					false,
-					false,
-					false,
-					false,
-					false,
-					false,
-					false,
-					false
-				],
-				"predator": [
-					false,
-					false,
-					false,
-					false,
-					false,
-					false
-				],
-				"robot": [
-					false,
-					false
-				],
-				"medvisor": [
-					true,
-					true
-				]
-			},
-			"lastSeen": "2026-07-23T20:02:09Z",
-			"history": [
-				{
-					"playedAt": "2026-07-23T20:02:09Z",
-					"file": "20260723-2002.SC2Replay",
-					"xpEn": 115349,
-					"xpWo": 250000,
-					"xpCo": 141359,
-					"prestige": 0,
-					"gamesPlayed": 348,
-					"revives": 2616,
-					"avgGameTime": 1406,
-					"wins": 182
-				}
-			]
-		},
 		{
 			"name": "Reconix",
 			"clan": "ƖIıIƖ",
@@ -1076,6 +178,9 @@
 					true
 				]
 			},
+			"mos": [
+				"CombatEngineer"
+			],
 			"lastSeen": "2026-07-23T20:02:09Z",
 			"history": [
 				{
@@ -1088,1034 +193,10 @@
 					"gamesPlayed": 2962,
 					"revives": 1870,
 					"avgGameTime": 1918,
+					"mos": [
+						"CombatEngineer"
+					],
 					"wins": 1277
-				}
-			]
-		},
-		{
-			"name": "Chehov",
-			"clan": "",
-			"toon": "2-S2-1-8948360",
-			"xpEn": 250000,
-			"xpWo": 175204,
-			"xpCo": 1,
-			"prestige": 0,
-			"gamesPlayed": 215,
-			"revives": 1147,
-			"avgGameTime": 2109,
-			"winsByMode": [
-				1,
-				8,
-				39,
-				46,
-				24,
-				1,
-				2,
-				4,
-				2,
-				3,
-				2,
-				1
-			],
-			"camo": 13,
-			"decal": 7,
-			"unlocks": {
-				"camos": [
-					1,
-					2,
-					4,
-					5,
-					6,
-					9,
-					13,
-					17,
-					19,
-					22,
-					23,
-					24,
-					25
-				],
-				"decals": [
-					2,
-					4,
-					6,
-					7,
-					8,
-					14
-				],
-				"sis": [
-					1,
-					2,
-					3,
-					4,
-					5,
-					6,
-					7,
-					8,
-					9,
-					11,
-					13,
-					15,
-					16,
-					17,
-					18,
-					19,
-					20,
-					21,
-					22,
-					23,
-					25,
-					26,
-					29
-				],
-				"medals": [
-					2,
-					3,
-					9,
-					10
-				],
-				"walker": [
-					false,
-					false,
-					false,
-					false,
-					false,
-					false
-				],
-				"lk19": [
-					true,
-					true,
-					true,
-					false,
-					false,
-					false,
-					false,
-					false,
-					false
-				],
-				"predator": [
-					false,
-					false,
-					false,
-					false,
-					false,
-					false
-				],
-				"robot": [
-					false,
-					false
-				],
-				"medvisor": [
-					true,
-					true
-				]
-			},
-			"lastSeen": "2026-07-23T20:02:09Z",
-			"history": [
-				{
-					"playedAt": "2026-07-23T20:02:09Z",
-					"file": "20260723-2002.SC2Replay",
-					"xpEn": 250000,
-					"xpWo": 175204,
-					"xpCo": 1,
-					"prestige": 0,
-					"gamesPlayed": 215,
-					"revives": 1147,
-					"avgGameTime": 2109,
-					"wins": 133
-				}
-			]
-		},
-		{
-			"name": "Daniveneno",
-			"clan": "iSARS",
-			"toon": "2-S2-1-7076909",
-			"xpEn": 250000,
-			"xpWo": 122737,
-			"xpCo": 1,
-			"prestige": 0,
-			"gamesPlayed": 169,
-			"revives": 186,
-			"avgGameTime": 5716,
-			"winsByMode": [
-				1,
-				3,
-				21,
-				44,
-				26,
-				1,
-				3,
-				1,
-				1
-			],
-			"camo": 25,
-			"decal": 4,
-			"unlocks": {
-				"camos": [
-					1,
-					2,
-					4,
-					5,
-					6,
-					7,
-					9,
-					13,
-					15,
-					17,
-					19,
-					20,
-					21,
-					23,
-					24,
-					25
-				],
-				"decals": [
-					2,
-					4,
-					6,
-					7,
-					8,
-					10
-				],
-				"sis": [
-					1,
-					2,
-					3,
-					4,
-					5,
-					6,
-					7,
-					8,
-					9,
-					11,
-					13,
-					15,
-					16,
-					17,
-					18,
-					20,
-					21,
-					22,
-					23,
-					24,
-					25,
-					26,
-					29,
-					30
-				],
-				"medals": [
-					2,
-					3,
-					4,
-					9,
-					10
-				],
-				"walker": [
-					false,
-					false,
-					false,
-					true,
-					false,
-					false
-				],
-				"lk19": [
-					true,
-					true,
-					true,
-					false,
-					false,
-					false,
-					false,
-					false,
-					false
-				],
-				"predator": [
-					false,
-					false,
-					false,
-					false,
-					false,
-					false
-				],
-				"robot": [
-					false,
-					false
-				],
-				"medvisor": [
-					true,
-					true
-				]
-			},
-			"lastSeen": "2026-07-25T11:59:05Z",
-			"history": [
-				{
-					"playedAt": "2026-07-25T11:59:05Z",
-					"file": "20260725-1159.SC2Replay",
-					"xpEn": 250000,
-					"xpWo": 122737,
-					"xpCo": 1,
-					"prestige": 0,
-					"gamesPlayed": 169,
-					"revives": 186,
-					"avgGameTime": 5716,
-					"wins": 101
-				}
-			]
-		},
-		{
-			"name": "Ice",
-			"clan": "",
-			"toon": "2-S2-1-10908775",
-			"xpEn": 215638,
-			"xpWo": 90552,
-			"xpCo": 61114,
-			"prestige": 1,
-			"gamesPlayed": 824,
-			"revives": 24,
-			"avgGameTime": 1564,
-			"winsByMode": [
-				3,
-				12,
-				66,
-				90,
-				59,
-				45,
-				130,
-				10,
-				2,
-				5,
-				3,
-				21
-			],
-			"camo": 15,
-			"decal": 8,
-			"unlocks": {
-				"camos": [
-					1,
-					2,
-					3,
-					4,
-					5,
-					6,
-					7,
-					8,
-					9,
-					10,
-					11,
-					13,
-					14,
-					15,
-					16,
-					17,
-					19,
-					20,
-					21,
-					22,
-					23,
-					24,
-					25
-				],
-				"decals": [
-					2,
-					3,
-					4,
-					6,
-					8,
-					9,
-					11,
-					14
-				],
-				"sis": [
-					1,
-					2,
-					3,
-					4,
-					5,
-					6,
-					7,
-					8,
-					9,
-					10,
-					11,
-					12,
-					13,
-					14,
-					15,
-					16,
-					17,
-					18,
-					19,
-					20,
-					21,
-					22,
-					23,
-					24,
-					25,
-					26,
-					27,
-					28,
-					29,
-					30
-				],
-				"medals": [
-					1,
-					2,
-					3,
-					4,
-					5,
-					6,
-					7,
-					8,
-					9,
-					10,
-					11,
-					12
-				],
-				"walker": [
-					true,
-					true,
-					true,
-					true,
-					true,
-					true
-				],
-				"lk19": [
-					true,
-					true,
-					true,
-					true,
-					true,
-					true,
-					true,
-					true,
-					true
-				],
-				"predator": [
-					true,
-					true,
-					true,
-					true,
-					true,
-					true
-				],
-				"robot": [
-					true,
-					true
-				],
-				"medvisor": [
-					false,
-					false
-				]
-			},
-			"lastSeen": "2026-07-23T20:02:09Z",
-			"history": [
-				{
-					"playedAt": "2026-07-23T20:02:09Z",
-					"file": "20260723-2002.SC2Replay",
-					"xpEn": 215638,
-					"xpWo": 90552,
-					"xpCo": 61114,
-					"prestige": 1,
-					"gamesPlayed": 824,
-					"revives": 24,
-					"avgGameTime": 1564,
-					"wins": 446
-				}
-			]
-		},
-		{
-			"name": "StarTurd",
-			"clan": "",
-			"toon": "2-S2-1-10066092",
-			"xpEn": 58571,
-			"xpWo": 127273,
-			"xpCo": 168218,
-			"prestige": 1,
-			"gamesPlayed": 737,
-			"revives": 666,
-			"avgGameTime": 2176,
-			"winsByMode": [
-				5,
-				12,
-				111,
-				70,
-				24,
-				21,
-				4,
-				14
-			],
-			"camo": 9,
-			"decal": 0,
-			"unlocks": {
-				"camos": [
-					1,
-					2,
-					3,
-					4,
-					5,
-					6,
-					7,
-					9,
-					10,
-					13,
-					15,
-					17,
-					19,
-					20,
-					23,
-					25
-				],
-				"decals": [
-					2,
-					4,
-					6,
-					7,
-					8,
-					10
-				],
-				"sis": [
-					1,
-					2,
-					3,
-					4,
-					5,
-					6,
-					7,
-					8,
-					9,
-					10,
-					11,
-					12,
-					13,
-					15,
-					16,
-					17,
-					18,
-					19,
-					20,
-					21,
-					22,
-					23,
-					25,
-					26,
-					27,
-					29
-				],
-				"medals": [
-					1,
-					2,
-					3,
-					4,
-					5,
-					9,
-					10,
-					11
-				],
-				"walker": [
-					false,
-					false,
-					false,
-					false,
-					false,
-					false
-				],
-				"lk19": [
-					true,
-					false,
-					false,
-					false,
-					false,
-					false,
-					false,
-					false,
-					false
-				],
-				"predator": [
-					true,
-					true,
-					false,
-					false,
-					false,
-					false
-				],
-				"robot": [
-					true,
-					false
-				],
-				"medvisor": [
-					true,
-					true
-				]
-			},
-			"lastSeen": "2026-07-23T20:02:09Z",
-			"history": [
-				{
-					"playedAt": "2026-07-23T20:02:09Z",
-					"file": "20260723-2002.SC2Replay",
-					"xpEn": 58571,
-					"xpWo": 127273,
-					"xpCo": 168218,
-					"prestige": 1,
-					"gamesPlayed": 737,
-					"revives": 666,
-					"avgGameTime": 2176,
-					"wins": 261
-				}
-			]
-		},
-		{
-			"name": "Brykiet",
-			"clan": "",
-			"toon": "2-S2-1-6873031",
-			"xpEn": 108572,
-			"xpWo": 114919,
-			"xpCo": 128615,
-			"prestige": 2,
-			"gamesPlayed": 794,
-			"revives": 300,
-			"avgGameTime": 4812,
-			"winsByMode": [
-				10,
-				17,
-				137,
-				120,
-				55,
-				1,
-				10,
-				34,
-				1,
-				1,
-				2
-			],
-			"camo": 21,
-			"decal": 6,
-			"unlocks": {
-				"camos": [
-					1,
-					2,
-					4,
-					5,
-					6,
-					9,
-					10,
-					13,
-					15,
-					17,
-					19,
-					20,
-					21,
-					23,
-					24,
-					25
-				],
-				"decals": [
-					2,
-					3,
-					4,
-					6,
-					7,
-					8,
-					10,
-					11,
-					14
-				],
-				"sis": [
-					1,
-					2,
-					3,
-					4,
-					5,
-					6,
-					7,
-					8,
-					9,
-					10,
-					11,
-					12,
-					13,
-					14,
-					15,
-					16,
-					17,
-					18,
-					19,
-					20,
-					21,
-					22,
-					23,
-					24,
-					25,
-					26,
-					27,
-					28,
-					29,
-					30
-				],
-				"medals": [
-					1,
-					2,
-					3,
-					4,
-					5,
-					6,
-					9,
-					10,
-					11,
-					12
-				],
-				"walker": [
-					true,
-					true,
-					true,
-					true,
-					true,
-					true
-				],
-				"lk19": [
-					true,
-					true,
-					true,
-					true,
-					true,
-					true,
-					false,
-					false,
-					false
-				],
-				"predator": [
-					true,
-					true,
-					true,
-					true,
-					false,
-					false
-				],
-				"robot": [
-					true,
-					true
-				],
-				"medvisor": [
-					true,
-					true
-				]
-			},
-			"lastSeen": "2026-07-25T11:59:05Z",
-			"history": [
-				{
-					"playedAt": "2026-07-25T11:59:05Z",
-					"file": "20260725-1159.SC2Replay",
-					"xpEn": 108572,
-					"xpWo": 114919,
-					"xpCo": 128615,
-					"prestige": 2,
-					"gamesPlayed": 794,
-					"revives": 300,
-					"avgGameTime": 4812,
-					"wins": 388
-				}
-			]
-		},
-		{
-			"name": "KanaxStratz",
-			"clan": "",
-			"toon": "2-S2-1-1809580",
-			"xpEn": 48316,
-			"xpWo": 59101,
-			"xpCo": 223161,
-			"prestige": 0,
-			"gamesPlayed": 195,
-			"revives": 32,
-			"avgGameTime": 2983,
-			"winsByMode": [
-				1,
-				2,
-				25,
-				36,
-				20,
-				1,
-				3,
-				1,
-				1
-			],
-			"camo": 1,
-			"decal": 0,
-			"unlocks": {
-				"camos": [
-					1,
-					2,
-					4,
-					5,
-					6,
-					7,
-					9,
-					10,
-					13,
-					14,
-					15,
-					17,
-					19,
-					20,
-					22,
-					24,
-					25
-				],
-				"decals": [
-					2,
-					3,
-					4,
-					6,
-					8
-				],
-				"sis": [
-					1,
-					2,
-					3,
-					4,
-					5,
-					6,
-					7,
-					8,
-					9,
-					10,
-					11,
-					12,
-					13,
-					14,
-					15,
-					16,
-					17,
-					18,
-					20,
-					21,
-					22,
-					23,
-					25,
-					26,
-					28,
-					29,
-					30
-				],
-				"medals": [
-					2,
-					3,
-					5,
-					6,
-					9
-				],
-				"walker": [
-					false,
-					false,
-					false,
-					false,
-					false,
-					false
-				],
-				"lk19": [
-					false,
-					false,
-					false,
-					false,
-					false,
-					false,
-					false,
-					false,
-					false
-				],
-				"predator": [
-					true,
-					false,
-					false,
-					false,
-					false,
-					false
-				],
-				"robot": [
-					false,
-					false
-				],
-				"medvisor": [
-					true,
-					true
-				]
-			},
-			"lastSeen": "2026-07-25T11:59:05Z",
-			"history": [
-				{
-					"playedAt": "2026-07-23T18:08:14Z",
-					"file": "20260723-1808.SC2Replay",
-					"xpEn": 48316,
-					"xpWo": 59101,
-					"xpCo": 220212,
-					"prestige": 0,
-					"gamesPlayed": 194,
-					"revives": 32,
-					"avgGameTime": 2983,
-					"wins": 89
-				},
-				{
-					"playedAt": "2026-07-23T20:02:09Z",
-					"file": "20260723-2002.SC2Replay",
-					"xpEn": 48316,
-					"xpWo": 59101,
-					"xpCo": 220212,
-					"prestige": 0,
-					"gamesPlayed": 194,
-					"revives": 32,
-					"avgGameTime": 2983,
-					"wins": 89
-				},
-				{
-					"playedAt": "2026-07-25T11:59:05Z",
-					"file": "20260725-1159.SC2Replay",
-					"xpEn": 48316,
-					"xpWo": 59101,
-					"xpCo": 223161,
-					"prestige": 0,
-					"gamesPlayed": 195,
-					"revives": 32,
-					"avgGameTime": 2983,
-					"wins": 90
-				}
-			]
-		},
-		{
-			"name": "BloodBorn",
-			"clan": "",
-			"toon": "2-S2-1-5313279",
-			"xpEn": 159009,
-			"xpWo": 17214,
-			"xpCo": 58936,
-			"prestige": 0,
-			"gamesPlayed": 151,
-			"revives": 298,
-			"avgGameTime": 4588,
-			"winsByMode": [
-				1,
-				3,
-				6,
-				28,
-				11,
-				1,
-				2,
-				3
-			],
-			"camo": 1,
-			"decal": 4,
-			"unlocks": {
-				"camos": [
-					1,
-					2,
-					4,
-					5,
-					6,
-					8,
-					9,
-					11,
-					13,
-					17,
-					19,
-					20,
-					25
-				],
-				"decals": [
-					2,
-					4,
-					6,
-					7,
-					8
-				],
-				"sis": [
-					1,
-					2,
-					3,
-					4,
-					5,
-					6,
-					7,
-					8,
-					9,
-					10,
-					11,
-					12,
-					13,
-					15,
-					16,
-					17,
-					18,
-					19,
-					21,
-					22,
-					23,
-					24,
-					26
-				],
-				"medals": [
-					2,
-					3,
-					9,
-					10
-				],
-				"walker": [
-					false,
-					false,
-					false,
-					false,
-					false,
-					false
-				],
-				"lk19": [
-					true,
-					true,
-					true,
-					true,
-					false,
-					false,
-					false,
-					false,
-					false
-				],
-				"predator": [
-					false,
-					false,
-					false,
-					false,
-					false,
-					false
-				],
-				"robot": [
-					false,
-					false
-				],
-				"medvisor": [
-					true,
-					true
-				]
-			},
-			"lastSeen": "2026-07-25T11:59:05Z",
-			"history": [
-				{
-					"playedAt": "2026-07-23T20:02:09Z",
-					"file": "20260723-2002.SC2Replay",
-					"xpEn": 158946,
-					"xpWo": 17214,
-					"xpCo": 51039,
-					"prestige": 0,
-					"gamesPlayed": 143,
-					"revives": 291,
-					"avgGameTime": 4588,
-					"wins": 53
-				},
-				{
-					"playedAt": "2026-07-25T11:59:05Z",
-					"file": "20260725-1159.SC2Replay",
-					"xpEn": 159009,
-					"xpWo": 17214,
-					"xpCo": 58936,
-					"prestige": 0,
-					"gamesPlayed": 151,
-					"revives": 298,
-					"avgGameTime": 4588,
-					"wins": 55
 				}
 			]
 		},
@@ -2265,6 +346,9 @@
 					true
 				]
 			},
+			"mos": [
+				"Flamethrower"
+			],
 			"lastSeen": "2026-07-23T20:02:09Z",
 			"history": [
 				{
@@ -2277,7 +361,973 @@
 					"gamesPlayed": 3325,
 					"revives": 3382,
 					"avgGameTime": 3141,
+					"mos": [
+						"Flamethrower"
+					],
 					"wins": 1355
+				}
+			]
+		},
+		{
+			"name": "Hugga",
+			"clan": "iSAR",
+			"toon": "2-S2-1-2362152",
+			"xpEn": 250000,
+			"xpWo": 237474,
+			"xpCo": 208892,
+			"prestige": 3,
+			"gamesPlayed": 1732,
+			"revives": 767,
+			"avgGameTime": 1190,
+			"winsByMode": [
+				5,
+				35,
+				237,
+				194,
+				79,
+				13,
+				37,
+				76,
+				7,
+				2,
+				2,
+				1
+			],
+			"camo": 5,
+			"decal": 4,
+			"unlocks": {
+				"camos": [
+					1,
+					2,
+					3,
+					4,
+					5,
+					6,
+					7,
+					9,
+					12,
+					13,
+					14,
+					15,
+					16,
+					17,
+					18,
+					19,
+					20,
+					21,
+					22,
+					23,
+					24,
+					25
+				],
+				"decals": [
+					2,
+					3,
+					4,
+					6,
+					7,
+					8,
+					10,
+					11,
+					14
+				],
+				"sis": [
+					1,
+					2,
+					3,
+					4,
+					5,
+					6,
+					7,
+					8,
+					9,
+					10,
+					11,
+					12,
+					13,
+					14,
+					15,
+					16,
+					17,
+					18,
+					19,
+					20,
+					21,
+					22,
+					23,
+					24,
+					25,
+					26,
+					27,
+					29,
+					30
+				],
+				"medals": [
+					1,
+					2,
+					3,
+					4,
+					5,
+					6,
+					8,
+					9,
+					10,
+					11,
+					13
+				],
+				"walker": [
+					true,
+					true,
+					true,
+					true,
+					true,
+					true
+				],
+				"lk19": [
+					true,
+					true,
+					true,
+					true,
+					true,
+					true,
+					true,
+					true,
+					true
+				],
+				"predator": [
+					true,
+					true,
+					true,
+					true,
+					true,
+					false
+				],
+				"robot": [
+					true,
+					true
+				],
+				"medvisor": [
+					true,
+					true
+				]
+			},
+			"mos": [
+				"FP500CombatWalker"
+			],
+			"lastSeen": "2026-07-23T20:02:09Z",
+			"history": [
+				{
+					"playedAt": "2026-07-23T20:02:09Z",
+					"file": "20260723-2002.SC2Replay",
+					"xpEn": 250000,
+					"xpWo": 237474,
+					"xpCo": 208892,
+					"prestige": 3,
+					"gamesPlayed": 1732,
+					"revives": 767,
+					"avgGameTime": 1190,
+					"mos": [
+						"FP500CombatWalker"
+					],
+					"wins": 688
+				}
+			]
+		},
+		{
+			"name": "Brykiet",
+			"clan": "",
+			"toon": "2-S2-1-6873031",
+			"xpEn": 108572,
+			"xpWo": 114919,
+			"xpCo": 128615,
+			"prestige": 2,
+			"gamesPlayed": 794,
+			"revives": 300,
+			"avgGameTime": 4812,
+			"winsByMode": [
+				10,
+				17,
+				137,
+				120,
+				55,
+				1,
+				10,
+				34,
+				1,
+				1,
+				2
+			],
+			"camo": 21,
+			"decal": 6,
+			"unlocks": {
+				"camos": [
+					1,
+					2,
+					4,
+					5,
+					6,
+					9,
+					10,
+					13,
+					15,
+					17,
+					19,
+					20,
+					21,
+					23,
+					24,
+					25
+				],
+				"decals": [
+					2,
+					3,
+					4,
+					6,
+					7,
+					8,
+					10,
+					11,
+					14
+				],
+				"sis": [
+					1,
+					2,
+					3,
+					4,
+					5,
+					6,
+					7,
+					8,
+					9,
+					10,
+					11,
+					12,
+					13,
+					14,
+					15,
+					16,
+					17,
+					18,
+					19,
+					20,
+					21,
+					22,
+					23,
+					24,
+					25,
+					26,
+					27,
+					28,
+					29,
+					30
+				],
+				"medals": [
+					1,
+					2,
+					3,
+					4,
+					5,
+					6,
+					9,
+					10,
+					11,
+					12
+				],
+				"walker": [
+					true,
+					true,
+					true,
+					true,
+					true,
+					true
+				],
+				"lk19": [
+					true,
+					true,
+					true,
+					true,
+					true,
+					true,
+					false,
+					false,
+					false
+				],
+				"predator": [
+					true,
+					true,
+					true,
+					true,
+					false,
+					false
+				],
+				"robot": [
+					true,
+					true
+				],
+				"medvisor": [
+					true,
+					true
+				]
+			},
+			"mos": [
+				"SFAAT"
+			],
+			"lastSeen": "2026-07-25T11:59:05Z",
+			"history": [
+				{
+					"playedAt": "2026-07-25T11:59:05Z",
+					"file": "20260725-1159.SC2Replay",
+					"xpEn": 108572,
+					"xpWo": 114919,
+					"xpCo": 128615,
+					"prestige": 2,
+					"gamesPlayed": 794,
+					"revives": 300,
+					"avgGameTime": 4812,
+					"mos": [
+						"SFAAT"
+					],
+					"wins": 388
+				}
+			]
+		},
+		{
+			"name": "Brenos",
+			"clan": "iSAR",
+			"toon": "2-S2-1-1800200",
+			"xpEn": 246080,
+			"xpWo": 236311,
+			"xpCo": 250000,
+			"prestige": 1,
+			"gamesPlayed": 1913,
+			"revives": 1740,
+			"avgGameTime": 3736,
+			"winsByMode": [
+				48,
+				93,
+				156,
+				112,
+				127,
+				78,
+				274,
+				107,
+				3,
+				1,
+				1,
+				1
+			],
+			"camo": -1,
+			"decal": -4,
+			"unlocks": {
+				"camos": [
+					1,
+					2,
+					3,
+					4,
+					5,
+					6,
+					7,
+					8,
+					9,
+					10,
+					11,
+					12,
+					13,
+					14,
+					15,
+					16,
+					17,
+					18,
+					19,
+					20,
+					21,
+					22,
+					23,
+					24,
+					25
+				],
+				"decals": [
+					1,
+					2,
+					3,
+					4,
+					5,
+					6,
+					7,
+					8,
+					9,
+					10,
+					11,
+					14
+				],
+				"sis": [
+					1,
+					2,
+					3,
+					4,
+					5,
+					6,
+					7,
+					8,
+					9,
+					10,
+					11,
+					12,
+					13,
+					14,
+					15,
+					16,
+					17,
+					18,
+					19,
+					20,
+					21,
+					22,
+					23,
+					24,
+					25,
+					26,
+					27,
+					28,
+					29,
+					30
+				],
+				"medals": [
+					1,
+					2,
+					3,
+					4,
+					5,
+					6,
+					7,
+					8,
+					9,
+					10,
+					11,
+					12,
+					13
+				],
+				"walker": [
+					true,
+					true,
+					true,
+					true,
+					true,
+					true
+				],
+				"lk19": [
+					true,
+					true,
+					true,
+					true,
+					true,
+					true,
+					true,
+					true,
+					true
+				],
+				"predator": [
+					true,
+					true,
+					true,
+					true,
+					true,
+					true
+				],
+				"robot": [
+					true,
+					false
+				],
+				"medvisor": [
+					true,
+					false
+				]
+			},
+			"mos": [
+				"PhoenixMedic"
+			],
+			"lastSeen": "2026-07-25T11:59:05Z",
+			"history": [
+				{
+					"playedAt": "2026-07-25T11:59:05Z",
+					"file": "20260725-1159.SC2Replay",
+					"xpEn": 246080,
+					"xpWo": 236311,
+					"xpCo": 250000,
+					"prestige": 1,
+					"gamesPlayed": 1913,
+					"revives": 1740,
+					"avgGameTime": 3736,
+					"mos": [
+						"PhoenixMedic"
+					],
+					"wins": 1001
+				}
+			]
+		},
+		{
+			"name": "Kasztan",
+			"clan": "iSAR",
+			"toon": "2-S2-1-1377376",
+			"xpEn": 250000,
+			"xpWo": 169408,
+			"xpCo": 176326,
+			"prestige": 1,
+			"gamesPlayed": 683,
+			"revives": 2003,
+			"avgGameTime": 2928,
+			"winsByMode": [
+				1,
+				14,
+				101,
+				144,
+				57,
+				1,
+				8,
+				21,
+				2,
+				1,
+				9,
+				2
+			],
+			"camo": 24,
+			"decal": 14,
+			"unlocks": {
+				"camos": [
+					1,
+					2,
+					4,
+					5,
+					6,
+					7,
+					9,
+					13,
+					15,
+					16,
+					17,
+					19,
+					20,
+					22,
+					23,
+					24,
+					25
+				],
+				"decals": [
+					2,
+					3,
+					4,
+					6,
+					7,
+					14
+				],
+				"sis": [
+					1,
+					2,
+					3,
+					4,
+					5,
+					6,
+					7,
+					8,
+					9,
+					10,
+					11,
+					12,
+					13,
+					14,
+					15,
+					16,
+					17,
+					18,
+					19,
+					20,
+					21,
+					22,
+					23,
+					24,
+					25,
+					26,
+					27,
+					28,
+					29
+				],
+				"medals": [
+					1,
+					2,
+					3,
+					4,
+					5,
+					9,
+					10
+				],
+				"walker": [
+					false,
+					false,
+					false,
+					false,
+					false,
+					false
+				],
+				"lk19": [
+					false,
+					false,
+					false,
+					false,
+					false,
+					false,
+					false,
+					false,
+					false
+				],
+				"predator": [
+					true,
+					false,
+					false,
+					false,
+					false,
+					false
+				],
+				"robot": [
+					false,
+					false
+				],
+				"medvisor": [
+					true,
+					true
+				]
+			},
+			"mos": [
+				"JavelinGunner2"
+			],
+			"lastSeen": "2026-07-25T11:59:05Z",
+			"history": [
+				{
+					"playedAt": "2026-07-25T11:59:05Z",
+					"file": "20260725-1159.SC2Replay",
+					"xpEn": 250000,
+					"xpWo": 169408,
+					"xpCo": 176326,
+					"prestige": 1,
+					"gamesPlayed": 683,
+					"revives": 2003,
+					"avgGameTime": 2928,
+					"mos": [
+						"JavelinGunner2"
+					],
+					"wins": 361
+				}
+			]
+		},
+		{
+			"name": "Ice",
+			"clan": "",
+			"toon": "2-S2-1-10908775",
+			"xpEn": 215638,
+			"xpWo": 90552,
+			"xpCo": 61114,
+			"prestige": 1,
+			"gamesPlayed": 824,
+			"revives": 24,
+			"avgGameTime": 1564,
+			"winsByMode": [
+				3,
+				12,
+				66,
+				90,
+				59,
+				45,
+				130,
+				10,
+				2,
+				5,
+				3,
+				21
+			],
+			"camo": 15,
+			"decal": 8,
+			"unlocks": {
+				"camos": [
+					1,
+					2,
+					3,
+					4,
+					5,
+					6,
+					7,
+					8,
+					9,
+					10,
+					11,
+					13,
+					14,
+					15,
+					16,
+					17,
+					19,
+					20,
+					21,
+					22,
+					23,
+					24,
+					25
+				],
+				"decals": [
+					2,
+					3,
+					4,
+					6,
+					8,
+					9,
+					11,
+					14
+				],
+				"sis": [
+					1,
+					2,
+					3,
+					4,
+					5,
+					6,
+					7,
+					8,
+					9,
+					10,
+					11,
+					12,
+					13,
+					14,
+					15,
+					16,
+					17,
+					18,
+					19,
+					20,
+					21,
+					22,
+					23,
+					24,
+					25,
+					26,
+					27,
+					28,
+					29,
+					30
+				],
+				"medals": [
+					1,
+					2,
+					3,
+					4,
+					5,
+					6,
+					7,
+					8,
+					9,
+					10,
+					11,
+					12
+				],
+				"walker": [
+					true,
+					true,
+					true,
+					true,
+					true,
+					true
+				],
+				"lk19": [
+					true,
+					true,
+					true,
+					true,
+					true,
+					true,
+					true,
+					true,
+					true
+				],
+				"predator": [
+					true,
+					true,
+					true,
+					true,
+					true,
+					true
+				],
+				"robot": [
+					true,
+					true
+				],
+				"medvisor": [
+					false,
+					false
+				]
+			},
+			"mos": [
+				"AutomaticRifleman"
+			],
+			"lastSeen": "2026-07-23T20:02:09Z",
+			"history": [
+				{
+					"playedAt": "2026-07-23T20:02:09Z",
+					"file": "20260723-2002.SC2Replay",
+					"xpEn": 215638,
+					"xpWo": 90552,
+					"xpCo": 61114,
+					"prestige": 1,
+					"gamesPlayed": 824,
+					"revives": 24,
+					"avgGameTime": 1564,
+					"mos": [
+						"AutomaticRifleman"
+					],
+					"wins": 446
+				}
+			]
+		},
+		{
+			"name": "StarTurd",
+			"clan": "",
+			"toon": "2-S2-1-10066092",
+			"xpEn": 58571,
+			"xpWo": 127273,
+			"xpCo": 168218,
+			"prestige": 1,
+			"gamesPlayed": 737,
+			"revives": 666,
+			"avgGameTime": 2176,
+			"winsByMode": [
+				5,
+				12,
+				111,
+				70,
+				24,
+				21,
+				4,
+				14
+			],
+			"camo": 9,
+			"decal": 0,
+			"unlocks": {
+				"camos": [
+					1,
+					2,
+					3,
+					4,
+					5,
+					6,
+					7,
+					9,
+					10,
+					13,
+					15,
+					17,
+					19,
+					20,
+					23,
+					25
+				],
+				"decals": [
+					2,
+					4,
+					6,
+					7,
+					8,
+					10
+				],
+				"sis": [
+					1,
+					2,
+					3,
+					4,
+					5,
+					6,
+					7,
+					8,
+					9,
+					10,
+					11,
+					12,
+					13,
+					15,
+					16,
+					17,
+					18,
+					19,
+					20,
+					21,
+					22,
+					23,
+					25,
+					26,
+					27,
+					29
+				],
+				"medals": [
+					1,
+					2,
+					3,
+					4,
+					5,
+					9,
+					10,
+					11
+				],
+				"walker": [
+					false,
+					false,
+					false,
+					false,
+					false,
+					false
+				],
+				"lk19": [
+					true,
+					false,
+					false,
+					false,
+					false,
+					false,
+					false,
+					false,
+					false
+				],
+				"predator": [
+					true,
+					true,
+					false,
+					false,
+					false,
+					false
+				],
+				"robot": [
+					true,
+					false
+				],
+				"medvisor": [
+					true,
+					true
+				]
+			},
+			"mos": [
+				"SFAAT"
+			],
+			"lastSeen": "2026-07-23T20:02:09Z",
+			"history": [
+				{
+					"playedAt": "2026-07-23T20:02:09Z",
+					"file": "20260723-2002.SC2Replay",
+					"xpEn": 58571,
+					"xpWo": 127273,
+					"xpCo": 168218,
+					"prestige": 1,
+					"gamesPlayed": 737,
+					"revives": 666,
+					"avgGameTime": 2176,
+					"mos": [
+						"SFAAT"
+					],
+					"wins": 261
 				}
 			]
 		},
@@ -2415,6 +1465,9 @@
 					true
 				]
 			},
+			"mos": [
+				"FireSupportSpecialist"
+			],
 			"lastSeen": "2026-07-25T11:59:05Z",
 			"history": [
 				{
@@ -2427,7 +1480,1061 @@
 					"gamesPlayed": 515,
 					"revives": 724,
 					"avgGameTime": 4913,
+					"mos": [
+						"FireSupportSpecialist"
+					],
 					"wins": 225
+				}
+			]
+		},
+		{
+			"name": "LLL",
+			"clan": "",
+			"toon": "2-S2-1-9076476",
+			"xpEn": 177660,
+			"xpWo": 175796,
+			"xpCo": 202342,
+			"prestige": 0,
+			"gamesPlayed": 379,
+			"revives": 2524,
+			"avgGameTime": 2625,
+			"winsByMode": [
+				3,
+				12,
+				41,
+				39,
+				17,
+				27,
+				5,
+				12,
+				3,
+				1,
+				2
+			],
+			"camo": 24,
+			"decal": 14,
+			"unlocks": {
+				"camos": [
+					1,
+					2,
+					3,
+					4,
+					5,
+					6,
+					7,
+					8,
+					9,
+					12,
+					13,
+					15,
+					16,
+					17,
+					18,
+					19,
+					20,
+					21,
+					22,
+					24,
+					25
+				],
+				"decals": [
+					2,
+					4,
+					6,
+					7,
+					8,
+					14
+				],
+				"sis": [
+					1,
+					2,
+					3,
+					4,
+					5,
+					6,
+					7,
+					8,
+					9,
+					10,
+					11,
+					12,
+					13,
+					15,
+					16,
+					17,
+					18,
+					19,
+					20,
+					21,
+					22,
+					23,
+					24,
+					25,
+					26,
+					28,
+					29,
+					30
+				],
+				"medals": [
+					1,
+					2,
+					3,
+					4,
+					5,
+					7,
+					9,
+					10,
+					11,
+					12,
+					13
+				],
+				"walker": [
+					true,
+					true,
+					true,
+					true,
+					true,
+					false
+				],
+				"lk19": [
+					true,
+					false,
+					false,
+					false,
+					false,
+					false,
+					false,
+					false,
+					false
+				],
+				"predator": [
+					true,
+					true,
+					false,
+					false,
+					false,
+					false
+				],
+				"robot": [
+					false,
+					false
+				],
+				"medvisor": [
+					true,
+					true
+				]
+			},
+			"mos": [
+				"Rjx73"
+			],
+			"lastSeen": "2026-07-25T11:59:05Z",
+			"history": [
+				{
+					"playedAt": "2026-07-25T11:59:05Z",
+					"file": "20260725-1159.SC2Replay",
+					"xpEn": 177660,
+					"xpWo": 175796,
+					"xpCo": 202342,
+					"prestige": 0,
+					"gamesPlayed": 379,
+					"revives": 2524,
+					"avgGameTime": 2625,
+					"mos": [
+						"Rjx73"
+					],
+					"wins": 162
+				}
+			]
+		},
+		{
+			"name": "Niels",
+			"clan": "",
+			"toon": "2-S2-1-483826",
+			"xpEn": 111681,
+			"xpWo": 250000,
+			"xpCo": 174545,
+			"prestige": 0,
+			"gamesPlayed": 285,
+			"revives": 753,
+			"avgGameTime": 3838,
+			"winsByMode": [
+				1,
+				24,
+				44,
+				36,
+				22,
+				1,
+				2,
+				5,
+				2
+			],
+			"camo": 17,
+			"decal": 0,
+			"unlocks": {
+				"camos": [
+					1,
+					2,
+					4,
+					5,
+					6,
+					8,
+					9,
+					13,
+					15,
+					17,
+					19,
+					20,
+					22,
+					25
+				],
+				"decals": [
+					2,
+					4,
+					6,
+					7,
+					14
+				],
+				"sis": [
+					1,
+					2,
+					3,
+					4,
+					5,
+					6,
+					7,
+					8,
+					9,
+					10,
+					11,
+					12,
+					13,
+					15,
+					16,
+					17,
+					18,
+					19,
+					20,
+					21,
+					22,
+					23,
+					24,
+					25,
+					26,
+					29
+				],
+				"medals": [
+					1,
+					2,
+					3,
+					9,
+					10
+				],
+				"walker": [
+					false,
+					false,
+					false,
+					false,
+					false,
+					false
+				],
+				"lk19": [
+					false,
+					false,
+					false,
+					false,
+					false,
+					false,
+					false,
+					false,
+					false
+				],
+				"predator": [
+					false,
+					false,
+					false,
+					false,
+					false,
+					false
+				],
+				"robot": [
+					false,
+					false
+				],
+				"medvisor": [
+					true,
+					true
+				]
+			},
+			"mos": [
+				"CombatEngineer"
+			],
+			"lastSeen": "2026-07-23T20:02:09Z",
+			"history": [
+				{
+					"playedAt": "2026-07-23T20:02:09Z",
+					"file": "20260723-2002.SC2Replay",
+					"xpEn": 111681,
+					"xpWo": 250000,
+					"xpCo": 174545,
+					"prestige": 0,
+					"gamesPlayed": 285,
+					"revives": 753,
+					"avgGameTime": 3838,
+					"mos": [
+						"CombatEngineer"
+					],
+					"wins": 137
+				}
+			]
+		},
+		{
+			"name": "SPG",
+			"clan": "iSAR",
+			"toon": "2-S2-2-1743905",
+			"xpEn": 115349,
+			"xpWo": 250000,
+			"xpCo": 141359,
+			"prestige": 0,
+			"gamesPlayed": 348,
+			"revives": 2616,
+			"avgGameTime": 1406,
+			"winsByMode": [
+				25,
+				3,
+				44,
+				62,
+				20,
+				4,
+				18,
+				2,
+				3,
+				1
+			],
+			"camo": 17,
+			"decal": 6,
+			"unlocks": {
+				"camos": [
+					1,
+					2,
+					4,
+					5,
+					6,
+					7,
+					9,
+					13,
+					15,
+					17,
+					19,
+					20,
+					22,
+					24,
+					25
+				],
+				"decals": [
+					2,
+					4,
+					6,
+					7,
+					8
+				],
+				"sis": [
+					1,
+					2,
+					3,
+					4,
+					5,
+					6,
+					7,
+					8,
+					9,
+					10,
+					11,
+					12,
+					13,
+					15,
+					16,
+					17,
+					18,
+					19,
+					20,
+					21,
+					22,
+					23,
+					24,
+					25,
+					26,
+					27,
+					29,
+					30
+				],
+				"medals": [
+					1,
+					2,
+					3,
+					9,
+					10,
+					12
+				],
+				"walker": [
+					true,
+					false,
+					false,
+					true,
+					false,
+					false
+				],
+				"lk19": [
+					false,
+					false,
+					false,
+					false,
+					false,
+					false,
+					false,
+					false,
+					false
+				],
+				"predator": [
+					false,
+					false,
+					false,
+					false,
+					false,
+					false
+				],
+				"robot": [
+					false,
+					false
+				],
+				"medvisor": [
+					true,
+					true
+				]
+			},
+			"mos": [
+				"Reaper2"
+			],
+			"lastSeen": "2026-07-23T20:02:09Z",
+			"history": [
+				{
+					"playedAt": "2026-07-23T20:02:09Z",
+					"file": "20260723-2002.SC2Replay",
+					"xpEn": 115349,
+					"xpWo": 250000,
+					"xpCo": 141359,
+					"prestige": 0,
+					"gamesPlayed": 348,
+					"revives": 2616,
+					"avgGameTime": 1406,
+					"mos": [
+						"Reaper2"
+					],
+					"wins": 182
+				}
+			]
+		},
+		{
+			"name": "Chehov",
+			"clan": "",
+			"toon": "2-S2-1-8948360",
+			"xpEn": 250000,
+			"xpWo": 175204,
+			"xpCo": 1,
+			"prestige": 0,
+			"gamesPlayed": 215,
+			"revives": 1147,
+			"avgGameTime": 2109,
+			"winsByMode": [
+				1,
+				8,
+				39,
+				46,
+				24,
+				1,
+				2,
+				4,
+				2,
+				3,
+				2,
+				1
+			],
+			"camo": 13,
+			"decal": 7,
+			"unlocks": {
+				"camos": [
+					1,
+					2,
+					4,
+					5,
+					6,
+					9,
+					13,
+					17,
+					19,
+					22,
+					23,
+					24,
+					25
+				],
+				"decals": [
+					2,
+					4,
+					6,
+					7,
+					8,
+					14
+				],
+				"sis": [
+					1,
+					2,
+					3,
+					4,
+					5,
+					6,
+					7,
+					8,
+					9,
+					11,
+					13,
+					15,
+					16,
+					17,
+					18,
+					19,
+					20,
+					21,
+					22,
+					23,
+					25,
+					26,
+					29
+				],
+				"medals": [
+					2,
+					3,
+					9,
+					10
+				],
+				"walker": [
+					false,
+					false,
+					false,
+					false,
+					false,
+					false
+				],
+				"lk19": [
+					true,
+					true,
+					true,
+					false,
+					false,
+					false,
+					false,
+					false,
+					false
+				],
+				"predator": [
+					false,
+					false,
+					false,
+					false,
+					false,
+					false
+				],
+				"robot": [
+					false,
+					false
+				],
+				"medvisor": [
+					true,
+					true
+				]
+			},
+			"mos": [
+				"PhoenixMedic"
+			],
+			"lastSeen": "2026-07-23T20:02:09Z",
+			"history": [
+				{
+					"playedAt": "2026-07-23T20:02:09Z",
+					"file": "20260723-2002.SC2Replay",
+					"xpEn": 250000,
+					"xpWo": 175204,
+					"xpCo": 1,
+					"prestige": 0,
+					"gamesPlayed": 215,
+					"revives": 1147,
+					"avgGameTime": 2109,
+					"mos": [
+						"PhoenixMedic"
+					],
+					"wins": 133
+				}
+			]
+		},
+		{
+			"name": "Daniveneno",
+			"clan": "iSARS",
+			"toon": "2-S2-1-7076909",
+			"xpEn": 250000,
+			"xpWo": 122737,
+			"xpCo": 1,
+			"prestige": 0,
+			"gamesPlayed": 169,
+			"revives": 186,
+			"avgGameTime": 5716,
+			"winsByMode": [
+				1,
+				3,
+				21,
+				44,
+				26,
+				1,
+				3,
+				1,
+				1
+			],
+			"camo": 25,
+			"decal": 4,
+			"unlocks": {
+				"camos": [
+					1,
+					2,
+					4,
+					5,
+					6,
+					7,
+					9,
+					13,
+					15,
+					17,
+					19,
+					20,
+					21,
+					23,
+					24,
+					25
+				],
+				"decals": [
+					2,
+					4,
+					6,
+					7,
+					8,
+					10
+				],
+				"sis": [
+					1,
+					2,
+					3,
+					4,
+					5,
+					6,
+					7,
+					8,
+					9,
+					11,
+					13,
+					15,
+					16,
+					17,
+					18,
+					20,
+					21,
+					22,
+					23,
+					24,
+					25,
+					26,
+					29,
+					30
+				],
+				"medals": [
+					2,
+					3,
+					4,
+					9,
+					10
+				],
+				"walker": [
+					false,
+					false,
+					false,
+					true,
+					false,
+					false
+				],
+				"lk19": [
+					true,
+					true,
+					true,
+					false,
+					false,
+					false,
+					false,
+					false,
+					false
+				],
+				"predator": [
+					false,
+					false,
+					false,
+					false,
+					false,
+					false
+				],
+				"robot": [
+					false,
+					false
+				],
+				"medvisor": [
+					true,
+					true
+				]
+			},
+			"mos": [
+				"CombatEngineer"
+			],
+			"lastSeen": "2026-07-25T11:59:05Z",
+			"history": [
+				{
+					"playedAt": "2026-07-25T11:59:05Z",
+					"file": "20260725-1159.SC2Replay",
+					"xpEn": 250000,
+					"xpWo": 122737,
+					"xpCo": 1,
+					"prestige": 0,
+					"gamesPlayed": 169,
+					"revives": 186,
+					"avgGameTime": 5716,
+					"mos": [
+						"CombatEngineer"
+					],
+					"wins": 101
+				}
+			]
+		},
+		{
+			"name": "KanaxStratz",
+			"clan": "",
+			"toon": "2-S2-1-1809580",
+			"xpEn": 48316,
+			"xpWo": 59101,
+			"xpCo": 223161,
+			"prestige": 0,
+			"gamesPlayed": 195,
+			"revives": 32,
+			"avgGameTime": 2983,
+			"winsByMode": [
+				1,
+				2,
+				25,
+				36,
+				20,
+				1,
+				3,
+				1,
+				1
+			],
+			"camo": 1,
+			"decal": 0,
+			"unlocks": {
+				"camos": [
+					1,
+					2,
+					4,
+					5,
+					6,
+					7,
+					9,
+					10,
+					13,
+					14,
+					15,
+					17,
+					19,
+					20,
+					22,
+					24,
+					25
+				],
+				"decals": [
+					2,
+					3,
+					4,
+					6,
+					8
+				],
+				"sis": [
+					1,
+					2,
+					3,
+					4,
+					5,
+					6,
+					7,
+					8,
+					9,
+					10,
+					11,
+					12,
+					13,
+					14,
+					15,
+					16,
+					17,
+					18,
+					20,
+					21,
+					22,
+					23,
+					25,
+					26,
+					28,
+					29,
+					30
+				],
+				"medals": [
+					2,
+					3,
+					5,
+					6,
+					9
+				],
+				"walker": [
+					false,
+					false,
+					false,
+					false,
+					false,
+					false
+				],
+				"lk19": [
+					false,
+					false,
+					false,
+					false,
+					false,
+					false,
+					false,
+					false,
+					false
+				],
+				"predator": [
+					true,
+					false,
+					false,
+					false,
+					false,
+					false
+				],
+				"robot": [
+					false,
+					false
+				],
+				"medvisor": [
+					true,
+					true
+				]
+			},
+			"mos": [
+				"MilitarizedColonistTransportNova"
+			],
+			"lastSeen": "2026-07-25T11:59:05Z",
+			"history": [
+				{
+					"playedAt": "2026-07-23T18:08:14Z",
+					"file": "20260723-1808.SC2Replay",
+					"xpEn": 48316,
+					"xpWo": 59101,
+					"xpCo": 220212,
+					"prestige": 0,
+					"gamesPlayed": 194,
+					"revives": 32,
+					"avgGameTime": 2983,
+					"mos": [],
+					"wins": 89
+				},
+				{
+					"playedAt": "2026-07-23T20:02:09Z",
+					"file": "20260723-2002.SC2Replay",
+					"xpEn": 48316,
+					"xpWo": 59101,
+					"xpCo": 220212,
+					"prestige": 0,
+					"gamesPlayed": 194,
+					"revives": 32,
+					"avgGameTime": 2983,
+					"mos": [
+						"MilitarizedColonistTransportNova"
+					],
+					"wins": 89
+				},
+				{
+					"playedAt": "2026-07-25T11:59:05Z",
+					"file": "20260725-1159.SC2Replay",
+					"xpEn": 48316,
+					"xpWo": 59101,
+					"xpCo": 223161,
+					"prestige": 0,
+					"gamesPlayed": 195,
+					"revives": 32,
+					"avgGameTime": 2983,
+					"mos": [
+						"MilitarizedColonistTransportNova"
+					],
+					"wins": 90
+				}
+			]
+		},
+		{
+			"name": "BloodBorn",
+			"clan": "",
+			"toon": "2-S2-1-5313279",
+			"xpEn": 159009,
+			"xpWo": 17214,
+			"xpCo": 58936,
+			"prestige": 0,
+			"gamesPlayed": 151,
+			"revives": 298,
+			"avgGameTime": 4588,
+			"winsByMode": [
+				1,
+				3,
+				6,
+				28,
+				11,
+				1,
+				2,
+				3
+			],
+			"camo": 1,
+			"decal": 4,
+			"unlocks": {
+				"camos": [
+					1,
+					2,
+					4,
+					5,
+					6,
+					8,
+					9,
+					11,
+					13,
+					17,
+					19,
+					20,
+					25
+				],
+				"decals": [
+					2,
+					4,
+					6,
+					7,
+					8
+				],
+				"sis": [
+					1,
+					2,
+					3,
+					4,
+					5,
+					6,
+					7,
+					8,
+					9,
+					10,
+					11,
+					12,
+					13,
+					15,
+					16,
+					17,
+					18,
+					19,
+					21,
+					22,
+					23,
+					24,
+					26
+				],
+				"medals": [
+					2,
+					3,
+					9,
+					10
+				],
+				"walker": [
+					false,
+					false,
+					false,
+					false,
+					false,
+					false
+				],
+				"lk19": [
+					true,
+					true,
+					true,
+					true,
+					false,
+					false,
+					false,
+					false,
+					false
+				],
+				"predator": [
+					false,
+					false,
+					false,
+					false,
+					false,
+					false
+				],
+				"robot": [
+					false,
+					false
+				],
+				"medvisor": [
+					true,
+					true
+				]
+			},
+			"mos": [
+				"CombatEngineer"
+			],
+			"lastSeen": "2026-07-25T11:59:05Z",
+			"history": [
+				{
+					"playedAt": "2026-07-23T20:02:09Z",
+					"file": "20260723-2002.SC2Replay",
+					"xpEn": 158946,
+					"xpWo": 17214,
+					"xpCo": 51039,
+					"prestige": 0,
+					"gamesPlayed": 143,
+					"revives": 291,
+					"avgGameTime": 4588,
+					"mos": [
+						"Sniper2"
+					],
+					"wins": 53
+				},
+				{
+					"playedAt": "2026-07-25T11:59:05Z",
+					"file": "20260725-1159.SC2Replay",
+					"xpEn": 159009,
+					"xpWo": 17214,
+					"xpCo": 58936,
+					"prestige": 0,
+					"gamesPlayed": 151,
+					"revives": 298,
+					"avgGameTime": 4588,
+					"mos": [
+						"CombatEngineer"
+					],
+					"wins": 55
 				}
 			]
 		},
@@ -2541,6 +2648,9 @@
 					true
 				]
 			},
+			"mos": [
+				"GhostHero"
+			],
 			"lastSeen": "2026-07-23T20:02:09Z",
 			"history": [
 				{
@@ -2553,6 +2663,9 @@
 					"gamesPlayed": 82,
 					"revives": 42,
 					"avgGameTime": 0,
+					"mos": [
+						"GhostHero"
+					],
 					"wins": 40
 				}
 			]
@@ -2664,6 +2777,9 @@
 					true
 				]
 			},
+			"mos": [
+				"Cyborg"
+			],
 			"lastSeen": "2026-07-25T11:59:05Z",
 			"history": [
 				{
@@ -2676,6 +2792,9 @@
 					"gamesPlayed": 52,
 					"revives": 2375,
 					"avgGameTime": 5331,
+					"mos": [
+						"Cyborg"
+					],
 					"wins": 40
 				}
 			]
@@ -2779,6 +2898,9 @@
 					false
 				]
 			},
+			"mos": [
+				"GhostHero"
+			],
 			"lastSeen": "2026-07-25T11:59:05Z",
 			"history": [
 				{
@@ -2791,6 +2913,9 @@
 					"gamesPlayed": 69,
 					"revives": 1469,
 					"avgGameTime": 4226,
+					"mos": [
+						"GhostHero"
+					],
 					"wins": 36
 				}
 			]
@@ -2887,6 +3012,9 @@
 					true
 				]
 			},
+			"mos": [
+				"Prototype"
+			],
 			"lastSeen": "2026-07-25T11:59:05Z",
 			"history": [
 				{
@@ -2899,6 +3027,9 @@
 					"gamesPlayed": 27,
 					"revives": 5,
 					"avgGameTime": 3764,
+					"mos": [
+						"Prototype"
+					],
 					"wins": 9
 				}
 			]

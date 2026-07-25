@@ -7,11 +7,12 @@
 		gearGroups,
 		camoName,
 		decalName,
+		careerXp,
 		XP_CAP,
 		type Sighting
 	} from '$lib/players';
-	import { medals } from '$lib/unlocks';
-	import { skillIdentifiers } from '$lib/mos';
+	import { medals, camos } from '$lib/unlocks';
+	import { skillIdentifiers, mosById, mosList } from '$lib/mos';
 
 	let { data } = $props();
 	const p = $derived(data.player);
@@ -37,6 +38,7 @@
 
 	const sisUnlocked = $derived(new Set(p.unlocks.sis));
 	const medalsUnlocked = $derived(new Set(p.unlocks.medals));
+	const camosUnlocked = $derived(new Set(p.unlocks.camos));
 	const sisSorted = [...skillIdentifiers].sort((a, b) => a.num - b.num);
 
 	const modes = $derived(
@@ -45,6 +47,17 @@
 			.filter((m) => m.wins > 0)
 			.sort((a, b) => b.wins - a.wins)
 	);
+
+	const linkableMos = new Set(mosList.map((m) => m.id));
+	const classesPlayed = $derived.by(() => {
+		const counts = new Map<string, number>();
+		for (const h of p.history) {
+			for (const id of h.mos) counts.set(id, (counts.get(id) ?? 0) + 1);
+		}
+		return [...counts.entries()]
+			.sort((a, b) => b[1] - a[1])
+			.map(([id, games]) => ({ id, games, info: mosById.get(id) }));
+	});
 
 	function delta(h: Sighting[], i: number, key: keyof Sighting): number | null {
 		if (i === 0) return null;
@@ -91,6 +104,28 @@
 				</div>
 			{/each}
 		</div>
+
+		{#if classesPlayed.length}
+			<h2 class="section">Classes played <span class="counthint">across ingested replays</span></h2>
+			<div class="classlist">
+				{#each classesPlayed as c (c.id)}
+					{@const chip = c.info}
+					{#if chip && linkableMos.has(c.id)}
+						<a class="classchip" href="/mos/{c.id}">
+							{#if chip.icon}<img class="class-icon" src={chip.icon} alt="" loading="lazy" />{/if}
+							<span>{chip.name}</span>
+							<span class="class-count mono">×{c.games}</span>
+						</a>
+					{:else}
+						<span class="classchip">
+							{#if chip?.icon}<img class="class-icon" src={chip.icon} alt="" loading="lazy" />{/if}
+							<span>{chip?.name ?? c.id}</span>
+							<span class="class-count mono">×{c.games}</span>
+						</span>
+					{/if}
+				{/each}
+			</div>
+		{/if}
 
 		{#if modes.length}
 			<h2 class="section">Wins by mode</h2>
@@ -154,12 +189,35 @@
 			{/each}
 		</div>
 
+		<h2 class="section">
+			Camouflages <span class="counthint">{p.unlocks.camos.length} / {camos.length}</span>
+		</h2>
+		<div class="camogrid">
+			{#each camos as c (c.num)}
+				<a
+					class="camo"
+					class:locked={!camosUnlocked.has(c.num)}
+					class:worn={p.camo === c.num}
+					href="/camos"
+					title="{c.name}{c.req ? ` — ${c.req}` : ''}{p.camo === c.num ? ' (equipped)' : ''}"
+				>
+					{#if c.swatch}
+						<img class="camo-img" src={c.swatch} alt="{c.name} camo" loading="lazy" />
+					{:else}
+						<span class="camo-img camo-placeholder"></span>
+					{/if}
+					<span class="camo-name">{c.name}</span>
+				</a>
+			{/each}
+		</div>
+
 		<h2 class="section">Replay history</h2>
 		<div class="tablewrap">
 			<table class="data">
 				<thead>
 					<tr>
 						<th>Game date</th>
+						<th>Class</th>
 						<th class="num">Enlisted</th>
 						<th class="num">Warrant</th>
 						<th class="num">Commissioned</th>
@@ -171,7 +229,23 @@
 				<tbody>
 					{#each p.history as h, i (h.file)}
 						<tr>
-							<td class="mono">{fmtDate(h.playedAt)}</td>
+							<td class="mono">
+								<a href="/replays/{h.file}" download rel="external" title="Download replay"
+									>{fmtDate(h.playedAt)} ⬇</a
+								>
+							</td>
+							<td class="histclass">
+								{#each h.mos as id (id)}
+									{@const chip = mosById.get(id)}
+									{#if chip?.icon}<img
+											class="class-icon"
+											src={chip.icon}
+											alt={chip.name}
+											title={chip.name}
+											loading="lazy"
+										/>{:else}{chip?.name ?? id}{/if}
+								{/each}
+							</td>
 							{#each ['xpEn', 'xpWo', 'xpCo', 'gamesPlayed', 'wins', 'revives'] as const as key (key)}
 								{@const d = delta(p.history, i, key)}
 								<td class="num">
@@ -201,6 +275,8 @@
 				{/if}
 				<dt>Prestige</dt>
 				<dd>{p.prestige}</dd>
+				<dt>Career XP</dt>
+				<dd>{careerXp(p).toLocaleString('en')}</dd>
 				<dt>Games played</dt>
 				<dd>{p.gamesPlayed.toLocaleString('en')}</dd>
 				<dt>Wins</dt>
@@ -415,6 +491,85 @@
 	.si-code {
 		font-size: 10px;
 		color: var(--ink-3);
+	}
+
+	/* ---------- classes played ---------- */
+	.classlist {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+	.classchip {
+		display: inline-flex;
+		align-items: center;
+		gap: 7px;
+		padding: 5px 10px 5px 6px;
+		border: 1px solid var(--border);
+		border-radius: var(--r-sm);
+		background: var(--surface);
+		font-size: 12.5px;
+		font-weight: 600;
+		text-decoration: none;
+		color: var(--ink);
+	}
+	a.classchip:hover {
+		border-color: var(--border-strong);
+	}
+	.class-icon {
+		width: 22px;
+		height: 22px;
+		object-fit: cover;
+		border-radius: 3px;
+	}
+	.class-count {
+		color: var(--ink-3);
+		font-size: 11px;
+	}
+	.histclass .class-icon {
+		vertical-align: middle;
+		margin-right: 3px;
+	}
+
+	/* ---------- camo grid ---------- */
+	.camogrid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+		gap: 10px;
+	}
+	.camo {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 4px;
+		text-decoration: none;
+		color: var(--ink-2);
+	}
+	.camo.locked {
+		opacity: 0.3;
+	}
+	.camo.locked .camo-img {
+		filter: grayscale(1);
+	}
+	.camo.worn .camo-img {
+		outline: 2px solid var(--accent);
+		outline-offset: 1px;
+	}
+	.camo-img {
+		width: 64px;
+		height: 64px;
+		object-fit: cover;
+		border-radius: var(--r-sm);
+		border: 1px solid var(--border);
+		background: #101010;
+	}
+	.camo-placeholder {
+		display: inline-block;
+		background: var(--surface-2);
+	}
+	.camo-name {
+		font-size: 10.5px;
+		text-align: center;
+		line-height: 1.2;
 	}
 
 	/* ---------- history ---------- */

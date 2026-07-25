@@ -53,7 +53,7 @@ def main():
     src = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_SRC
     if not os.path.isdir(src):
         sys.exit(f"replay folder not found: {src}")
-    dest = os.path.join(ROOT, "replays")
+    dest = os.path.join(ROOT, "static", "replays")
 
     imported = 0
     for path in sorted(glob.glob(os.path.join(src, "*.SC2Replay"))):

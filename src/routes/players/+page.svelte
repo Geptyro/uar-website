@@ -1,5 +1,13 @@
 <script lang="ts">
-	import { players, replays, rankFor, totalWins, totalXp, type PlayerProfile } from '$lib/players';
+	import {
+		players,
+		replays,
+		rankFor,
+		totalWins,
+		totalXp,
+		careerXp,
+		type PlayerProfile
+	} from '$lib/players';
 
 	type Col = {
 		key: string;
@@ -10,6 +18,7 @@
 
 	const columns: Col[] = [
 		{ key: 'name', label: 'Player', value: (p) => p.name.toLowerCase() },
+		{ key: 'career', label: 'Career XP', num: true, value: (p) => careerXp(p) },
 		{ key: 'xpEn', label: 'Enlisted', num: true, value: (p) => p.xpEn },
 		{ key: 'xpWo', label: 'Warrant Officer', num: true, value: (p) => p.xpWo },
 		{ key: 'xpCo', label: 'Commissioned Officer', num: true, value: (p) => p.xpCo },
@@ -20,7 +29,7 @@
 		{ key: 'avg', label: 'Avg game', num: true, value: (p) => p.avgGameTime }
 	];
 
-	let sortKey = $state('total');
+	let sortKey = $state('career');
 	let sortDir = $state(-1);
 
 	function setSort(key: string) {
@@ -34,16 +43,20 @@
 
 	const sorted = $derived.by(() => {
 		const col = columns.find((c) => c.key === sortKey);
-		const value = col?.value ?? totalXp;
+		const value = col?.value ?? careerXp;
 		const out = [...players];
 		out.sort((a, b) => {
 			const x = value(a);
 			const y = value(b);
 			const cmp = typeof x === 'number' ? x - (y as number) : String(x).localeCompare(String(y));
-			return cmp * sortDir || totalXp(b) - totalXp(a);
+			return cmp * sortDir || careerXp(b) - careerXp(a);
 		});
 		return out;
 	});
+
+	function fmtSize(bytes: number): string {
+		return bytes >= 1e6 ? `${(bytes / 1e6).toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`;
+	}
 
 	function fmtMinutes(seconds: number): string {
 		return seconds ? `${Math.round(seconds / 60)} min` : '—';
@@ -86,6 +99,7 @@
 						<a class="pname" href="/players/{p.toon}">{p.name}</a>
 						<span class="toon mono">{p.toon}</span>
 					</td>
+					<td class="num career">{careerXp(p).toLocaleString('en')}</td>
 					{#each [rankFor(1, p.xpEn), rankFor(2, p.xpWo), rankFor(3, p.xpCo)] as rank, t (t)}
 						{@const xp = t === 0 ? p.xpEn : t === 1 ? p.xpWo : p.xpCo}
 						<td class="num">
@@ -108,13 +122,42 @@
 </div>
 
 <p class="note">
-	Experience caps at 250,000 per track. Profiles appear once a player shows up in an ingested
-	replay with existing save data — brand-new players are recorded from their second game on.
+	Experience caps at 250,000 per track; Career XP adds 600,000 per prestige (prestiging requires
+	all three tracks maxed and resets each to 50,000). Profiles appear once a player shows up in an
+	ingested replay with existing save data — brand-new players are recorded from their second game
+	on.
 </p>
+
+<h2 class="section">Ingested replays</h2>
+<div class="tablewrap">
+	<table class="data" style="max-width: 560px">
+		<thead>
+			<tr>
+				<th>Game date</th>
+				<th class="num">Profiles</th>
+				<th class="num">Size</th>
+				<th></th>
+			</tr>
+		</thead>
+		<tbody>
+			{#each [...replays].reverse() as r (r.file)}
+				<tr>
+					<td class="mono">{r.playedAt.slice(0, 16).replace('T', ' ')} UTC</td>
+					<td class="num">{r.players}</td>
+					<td class="num">{fmtSize(r.size)}</td>
+					<td><a href="/replays/{r.file}" download rel="external">Download ⬇</a></td>
+				</tr>
+			{/each}
+		</tbody>
+	</table>
+</div>
 
 <style>
 	.rank-pos {
 		color: var(--ink-3);
+	}
+	.career {
+		font-weight: 650;
 	}
 	.namecell {
 		white-space: nowrap;

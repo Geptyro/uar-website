@@ -31,6 +31,8 @@ export interface Sighting {
 	revives: number;
 	avgGameTime: number;
 	wins: number;
+	/** MOS class(es) the player picked in that game (hero units born). */
+	mos: string[];
 }
 
 export interface PlayerProfile {
@@ -52,6 +54,8 @@ export interface PlayerProfile {
 	camo: number;
 	decal: number;
 	unlocks: Unlocks;
+	/** Classes picked in the newest sighting. */
+	mos: string[];
 	lastSeen: string;
 	/** One entry per ingested replay this player appears in, oldest first. */
 	history: Sighting[];
@@ -64,6 +68,8 @@ export interface ReplayMeta {
 	file: string;
 	playedAt: string;
 	players: number;
+	/** File size in bytes; served for download at /replays/<file>. */
+	size: number;
 }
 
 export const players: PlayerProfile[] = data.players;
@@ -146,6 +152,16 @@ export function totalWins(p: PlayerProfile): number {
 
 export function totalXp(p: PlayerProfile): number {
 	return p.xpEn + p.xpWo + p.xpCo;
+}
+
+/**
+ * Lifetime XP including prestige. Prestiging requires all three tracks at
+ * 250,000 and resets each to 50,000, so every prestige level represents
+ * 600,000 XP earned on top of the current totals — a fresh prestige is
+ * worth exactly as much as a just-maxed card.
+ */
+export function careerXp(p: PlayerProfile): number {
+	return p.prestige * 600000 + totalXp(p);
 }
 
 export const XP_CAP = 250000;

@@ -64,8 +64,13 @@ import mpyq  # noqa: E402
 from s2protocol import versions  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-REPLAY_GLOB = os.path.join(ROOT, "replays", "*.SC2Replay")
+# replays live in static/ so the built site serves them for download
+REPLAY_GLOB = os.path.join(ROOT, "static", "replays", "*.SC2Replay")
 OUT = os.path.join(ROOT, "src", "lib", "data", "players.json")
+
+# hero unit ids = MOS classes; used to spot class picks in tracker events
+with open(os.path.join(ROOT, "src", "lib", "data", "mos.json")) as f:
+    MOS_IDS = {m["id"] for m in json.load(f)}
 
 DIGITS = "tjchwyo"  # base-7 digit alphabet, index = digit value
 TRUE_CHARS = set("howfk")
@@ -204,6 +209,24 @@ def parse_replay(path):
         elif t.endswith("SBankSignatureEvent"):
             toons[uid] = utf(ev.get("m_toonHandle", ""))
 
+    # class picks: each player's hero unit(s) born, from tracker events
+    player_to_user = {}
+    mos_played = {}  # userId -> [class ids in pick order]
+    for ev in protocol.decode_replay_tracker_events(
+        archive.read_file("replay.tracker.events")
+    ):
+        t = ev["_event"]
+        if t.endswith("SPlayerSetupEvent"):
+            if ev.get("m_userId") is not None:
+                player_to_user[ev["m_playerId"]] = ev["m_userId"]
+        elif t.endswith("SUnitBornEvent"):
+            unit = utf(ev["m_unitTypeName"])
+            uid = player_to_user.get(ev["m_controlPlayerId"])
+            if unit in MOS_IDS and uid is not None:
+                mos_played.setdefault(uid, [])
+                if unit not in mos_played[uid]:
+                    mos_played[uid].append(unit)
+
     sightings = []
     for uid, bank in banks.items():
         u = users[uid]
@@ -224,6 +247,7 @@ def parse_replay(path):
                 "camo": int(bank.get("CurrentCamo", "0") or 0),
                 "decal": int(bank.get("CurrentDecal", "0") or 0),
                 "unlocks": decode_unlocks(bank),
+                "mos": mos_played.get(uid, []),
                 "playedAt": played_at,
                 "file": os.path.basename(path),
             }
@@ -241,7 +265,12 @@ def main():
     for path in paths:
         played_at, sightings = parse_replay(path)
         replays_meta.append(
-            {"file": os.path.basename(path), "playedAt": played_at, "players": len(sightings)}
+            {
+                "file": os.path.basename(path),
+                "playedAt": played_at,
+                "players": len(sightings),
+                "size": os.path.getsize(path),
+            }
         )
         print(f"{os.path.basename(path)}: {played_at}, {len(sightings)} profiles")
         for s in sightings:
@@ -264,6 +293,7 @@ def main():
                     "gamesPlayed",
                     "revives",
                     "avgGameTime",
+                    "mos",
                 )
             }
             | {"wins": sum(s["winsByMode"])}
@@ -273,7 +303,11 @@ def main():
     for p in players:
         del p["playedAt"]
 
-    players.sort(key=lambda p: -(p["xpEn"] + p["xpWo"] + p["xpCo"]))
+    # career XP: prestige requires 3x250k and resets each track to 50k,
+    # so every prestige level represents 600k earned on top of current XP
+    players.sort(
+        key=lambda p: -(p["prestige"] * 600000 + p["xpEn"] + p["xpWo"] + p["xpCo"])
+    )
     out = {
         "replays": sorted(replays_meta, key=lambda r: r["playedAt"]),
         "players": players,
