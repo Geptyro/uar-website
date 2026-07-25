@@ -1,13 +1,8 @@
 <script lang="ts">
-	import {
-		players,
-		replays,
-		rankFor,
-		totalWins,
-		totalXp,
-		careerXp,
-		type PlayerProfile
-	} from '$lib/players';
+	import { rankFor, totalWins, totalXp, careerXp, type PlayerProfile } from '$lib/players';
+
+	let { data } = $props();
+	const players = $derived(data.players);
 
 	type Col = {
 		key: string;
@@ -62,8 +57,8 @@
 		return seconds ? `${Math.round(seconds / 60)} min` : '—';
 	}
 
-	const latest = replays.at(-1)?.playedAt?.slice(0, 10) ?? '';
-	const ingested = replays.filter((r) => r.players > 0).length;
+	const latest = $derived(data.latest);
+	const ingested = $derived(data.replayCount);
 </script>
 
 <svelte:head>
@@ -129,7 +124,7 @@
 </p>
 
 <p class="note">
-	Data comes from {replays.filter((r) => r.players > 0).length} ingested replays —
+	Data comes from {data.replayCount} ingested replays —
 	<a href="/replays">browse, download or upload replays →</a>
 </p>
 

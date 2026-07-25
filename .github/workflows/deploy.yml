@@ -10,12 +10,6 @@ name: Deploy
 on:
   push:
     tags: ['v*']
-    # Replay ingests (web uploads commit replay + players.json to main) go
-    # live automatically; code changes still deploy tag-only.
-    branches: ['main']
-    paths:
-      - 'static/replays/**'
-      - 'src/lib/data/players.json'
   workflow_dispatch: {}
 
 concurrency:

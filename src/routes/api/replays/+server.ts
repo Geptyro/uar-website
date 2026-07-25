@@ -2,23 +2,19 @@
  * Replay upload endpoint.
  *
  * Accepts an .SC2Replay (multipart form, field "replay"), parses and
- * validates it in-process (UAR map title, player save data present), then
- * regenerates players.json from all known replays + the new one and commits
- * both files to GitHub in a single commit — the deploy workflow picks that
- * up, so the upload goes live with the next automatic deploy. The Fly
- * machine's own filesystem is ephemeral; git is the storage.
+ * validates it in-process (UAR map title, player save data present), then:
+ * - stores the replay blob in the Tigris bucket (replays/<name>)
+ * - inserts a replay doc (with parsed sightings) into MongoDB
+ * - rebuilds the players collection from all stored sightings
  *
- * Without GITHUB_TOKEN the endpoint writes locally instead when UPLOAD_LOCAL
- * is set (dev/tests) and otherwise reports uploads as unconfigured.
+ * Player pages are server-rendered from Mongo, so accepted uploads are
+ * visible immediately — no deploy cycle involved.
  */
 
 import { json, error } from '@sveltejs/kit';
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { dev } from '$app/environment';
-import { env } from '$env/dynamic/private';
-import { parseReplay, buildPlayersData } from '$lib/server/replay/extract';
-import { commitFiles } from '$lib/server/replay/github';
+import { parseReplay } from '$lib/server/replay/extract';
+import { putObject } from '$lib/server/replay/s3';
+import { dbConfigured, replayExists, insertReplayDoc, rebuildPlayers } from '$lib/server/db';
 import rawMos from '$lib/data/mos.json';
 import type { RequestHandler } from './$types';
 
@@ -26,7 +22,6 @@ export const prerender = false;
 
 const MAP_TITLE = 'Undead Assault reborn';
 const MAX_SIZE = 16 * 1024 * 1024;
-const PLAYERS_JSON_REPO_PATH = 'src/lib/data/players.json';
 
 const mosIds = new Set((rawMos as { id: string }[]).map((m) => m.id));
 
@@ -44,18 +39,9 @@ function rateLimited(ip: string): boolean {
 	return false;
 }
 
-function replaysDir(): string {
-	const candidates = [env.REPLAYS_DIR, 'static/replays', 'build/client/replays'];
-	for (const c of candidates) {
-		if (c && existsSync(c)) return c;
-	}
-	throw new Error('replays directory not found');
-}
-
 export const POST: RequestHandler = async ({ request, getClientAddress }) => {
-	if (rateLimited(getClientAddress())) {
-		error(429, 'Too many uploads — try again later.');
-	}
+	if (!dbConfigured()) error(503, 'Uploads are not configured on this deployment.');
+	if (rateLimited(getClientAddress())) error(429, 'Too many uploads — try again later.');
 
 	const contentLength = Number(request.headers.get('content-length') ?? 0);
 	if (contentLength > MAX_SIZE + 4096) error(413, 'Replay too large.');
@@ -84,44 +70,26 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 	// canonical name = game UTC start time; also our dedupe key
 	const stamp = parsed.playedAt.replace(/[-:]/g, '').slice(0, 13).replace('T', '-');
 	const name = `${stamp}.SC2Replay`;
-	const dir = replaysDir();
-	const existing = readdirSync(dir)
-		.filter((f) => f.endsWith('.SC2Replay'))
-		.sort();
-	if (existing.includes(name)) {
+	if (await replayExists(name)) {
 		error(409, `This game (${parsed.playedAt}) is already ingested.`);
 	}
 
-	// rebuild players.json from every known replay + the new one
 	parsed.file = name;
 	for (const s of parsed.sightings) s.file = name;
-	const all = existing.map((f) => {
-		const path = join(dir, f);
-		return { replay: parseReplay(f, readFileSync(path), mosIds), size: statSync(path).size };
-	});
-	all.push({ replay: parsed, size: data.length });
-	const playersJson = JSON.stringify(buildPlayersData(all), null, '\t') + '\n';
 
-	if (env.GITHUB_TOKEN) {
-		const repo = env.GITHUB_REPO || 'Geptyro/uar-website';
-		const sha = await commitFiles(
-			env.GITHUB_TOKEN,
-			repo,
-			env.GITHUB_BRANCH || 'main',
-			[
-				{ path: `static/replays/${name}`, content: data },
-				{ path: PLAYERS_JSON_REPO_PATH, content: playersJson }
-			],
-			`Ingest replay ${name} (web upload, ${parsed.sightings.length} profiles)`
-		);
-		console.log(`upload accepted: ${name} -> ${repo}@${sha.slice(0, 7)}`);
-	} else if (env.UPLOAD_LOCAL || dev) {
-		writeFileSync(join(dir, name), data);
-		writeFileSync(env.PLAYERS_JSON || PLAYERS_JSON_REPO_PATH, playersJson);
-		console.log(`upload accepted (local mode): ${name}`);
-	} else {
-		error(503, 'Uploads are not configured on this deployment.');
-	}
+	// blob first — an orphaned blob is harmless, a doc without its blob is not
+	await putObject(`replays/${name}`, data, 'application/octet-stream');
+	await insertReplayDoc({
+		_id: name,
+		playedAt: parsed.playedAt,
+		title: parsed.title,
+		baseBuild: parsed.baseBuild,
+		size: data.length,
+		players: parsed.sightings.length,
+		sightings: parsed.sightings
+	});
+	const playerCount = await rebuildPlayers();
+	console.log(`upload accepted: ${name} (${parsed.sightings.length} profiles, ${playerCount} players total)`);
 
 	return json({
 		ok: true,
@@ -129,6 +97,6 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 		playedAt: parsed.playedAt,
 		profiles: parsed.sightings.length,
 		protocolExact: parsed.protocolExact,
-		message: 'Replay accepted — it will appear on the site after the next deploy (a few minutes).'
+		message: 'Replay accepted — profiles are live now.'
 	});
 };

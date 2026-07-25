@@ -1,5 +1,8 @@
 <script lang="ts">
-	import { replays } from '$lib/players';
+	import { invalidateAll } from '$app/navigation';
+
+	let { data } = $props();
+	const replays = $derived(data.replays);
 
 	function fmtSize(bytes: number): string {
 		return bytes >= 1e6 ? `${(bytes / 1e6).toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`;
@@ -30,6 +33,7 @@
 					text: `Accepted: game from ${payload.playedAt.replace('T', ' ').replace('Z', ' UTC')} with ${payload.profiles} player profiles. ${payload.message}`
 				};
 				if (fileInput) fileInput.value = '';
+				await invalidateAll(); // refresh the ingested-replays list
 			} else {
 				result = { ok: false, text: payload?.message ?? `Upload failed (${res.status}).` };
 			}
@@ -65,7 +69,7 @@
 	<p class="hint">
 		Your replays are in
 		<span class="mono">Documents\StarCraft II\Accounts\…\Replays\Multiplayer</span>. The game is
-		validated server-side; accepted replays go live with the next site deploy (a few minutes).
+		validated server-side; accepted replays and player profiles go live immediately.
 	</p>
 	{#if result}
 		<p class="result" class:err={!result.ok}>{result.text}</p>

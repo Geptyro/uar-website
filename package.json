@@ -29,7 +29,9 @@
 	},
 	"dependencies": {
 		"@google/model-viewer": "^4.3.1",
+		"aws4fetch": "^1.0.20",
 		"grid-router": "github:Geptyro/grid-router",
+		"mongodb": "^7.5.0",
 		"seek-bzip": "^2.0.0"
 	}
 }

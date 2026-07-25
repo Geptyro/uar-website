@@ -1,4 +1,6 @@
-import rawPlayers from './data/players.json';
+// Player/replay data lives in MongoDB (see $lib/server/db.ts) and is
+// server-loaded by the /players and /replays routes; this module holds the
+// shared types and pure helpers.
 import rawProgression from './data/progression.json';
 import { rankTracks, type Rank } from './mos';
 import { camos, decals } from './unlocks';
@@ -61,7 +63,6 @@ export interface PlayerProfile {
 	history: Sighting[];
 }
 
-const data = rawPlayers as { replays: ReplayMeta[]; players: PlayerProfile[] };
 const progression = rawProgression as { modes: string[] };
 
 export interface ReplayMeta {
@@ -71,10 +72,6 @@ export interface ReplayMeta {
 	/** File size in bytes; served for download at /replays/<file>. */
 	size: number;
 }
-
-export const players: PlayerProfile[] = data.players;
-export const replays: ReplayMeta[] = data.replays;
-export const playerByToon = new Map(players.map((p) => [p.toon, p]));
 
 /** Game mode names; winsByMode[i] is the mode modeNames[i]. */
 export const modeNames: string[] = progression.modes;

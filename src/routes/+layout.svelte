@@ -6,7 +6,6 @@
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import { mosList, mosById } from '$lib/mos';
-	import { playerByToon } from '$lib/players';
 
 	let { children } = $props();
 
@@ -45,7 +44,7 @@
 		if (p === '/players') return { section: '', title: 'Players' };
 		if (p === '/replays') return { section: '', title: 'Replays' };
 		if (p.startsWith('/players/')) {
-			const pl = playerByToon.get(decodeURIComponent(p.slice(9)));
+			const pl = page.data.player as { name?: string } | undefined;
 			return { section: 'Players', title: pl?.name ?? p.slice(9) };
 		}
 		if (p === '/map') return { section: '', title: 'Map & missions' };
