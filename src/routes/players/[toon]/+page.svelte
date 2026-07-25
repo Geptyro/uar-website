@@ -105,54 +105,77 @@
 			{/each}
 		</div>
 
-		{#if classesPlayed.length}
-			<h2 class="section">Classes played <span class="counthint">across ingested replays</span></h2>
-			<div class="classlist">
-				{#each classesPlayed as c (c.id)}
-					{@const chip = c.info}
-					{#if chip && linkableMos.has(c.id)}
-						<a class="classchip" href="/mos/{c.id}">
-							{#if chip.icon}<img class="class-icon" src={chip.icon} alt="" loading="lazy" />{/if}
-							<span>{chip.name}</span>
-							<span class="class-count mono">×{c.games}</span>
-						</a>
-					{:else}
-						<span class="classchip">
-							{#if chip?.icon}<img class="class-icon" src={chip.icon} alt="" loading="lazy" />{/if}
-							<span>{chip?.name ?? c.id}</span>
-							<span class="class-count mono">×{c.games}</span>
-						</span>
-					{/if}
-				{/each}
-			</div>
-		{/if}
+		<div class="duo">
+			{#if modes.length}
+				<section>
+					<h2 class="section">Wins by mode</h2>
+					<div class="tablewrap">
+						<table class="data modes">
+							<thead>
+								<tr><th>Mode</th><th class="num">Wins</th><th></th></tr>
+							</thead>
+							<tbody>
+								{#each modes as m (m.name)}
+									<tr>
+										<td>{m.name}</td>
+										<td class="num">{m.wins.toLocaleString('en')}</td>
+										<td class="barcell">
+											<div class="modebar" style="width: {(m.wins / modes[0].wins) * 100}%"></div>
+										</td>
+									</tr>
+								{/each}
+								<tr class="total">
+									<td>Total</td>
+									<td class="num">{totalWins(p).toLocaleString('en')}</td>
+									<td></td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</section>
+			{/if}
 
-		{#if modes.length}
-			<h2 class="section">Wins by mode</h2>
-			<div class="tablewrap">
-				<table class="data modes">
-					<thead>
-						<tr><th>Mode</th><th class="num">Wins</th><th></th></tr>
-					</thead>
-					<tbody>
-						{#each modes as m (m.name)}
-							<tr>
-								<td>{m.name}</td>
-								<td class="num">{m.wins.toLocaleString('en')}</td>
-								<td class="barcell">
-									<div class="modebar" style="width: {(m.wins / modes[0].wins) * 100}%"></div>
-								</td>
-							</tr>
-						{/each}
-						<tr class="total">
-							<td>Total</td>
-							<td class="num">{totalWins(p).toLocaleString('en')}</td>
-							<td></td>
-						</tr>
-					</tbody>
-				</table>
-			</div>
-		{/if}
+			{#if classesPlayed.length}
+				<section>
+					<h2 class="section">
+						Classes played <span class="counthint">in ingested replays</span>
+					</h2>
+					<div class="tablewrap">
+						<table class="data modes">
+							<thead>
+								<tr><th>Class</th><th class="num">Games</th><th></th></tr>
+							</thead>
+							<tbody>
+								{#each classesPlayed as c (c.id)}
+									<tr>
+										<td class="classcell">
+											{#if c.info?.icon}<img
+													class="class-icon"
+													src={c.info.icon}
+													alt=""
+													loading="lazy"
+												/>{/if}
+											{#if c.info && linkableMos.has(c.id)}
+												<a href="/mos/{c.id}">{c.info.name}</a>
+											{:else}
+												{c.info?.name ?? c.id}
+											{/if}
+										</td>
+										<td class="num">{c.games}</td>
+										<td class="barcell">
+											<div
+												class="modebar"
+												style="width: {(c.games / classesPlayed[0].games) * 100}%"
+											></div>
+										</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
+				</section>
+			{/if}
+		</div>
 
 		<h2 class="section">Medals <span class="counthint">{p.unlocks.medals.length} / {medals.length}</span></h2>
 		<div class="medals">
@@ -398,9 +421,21 @@
 		color: var(--ink-3);
 	}
 
-	/* ---------- wins by mode ---------- */
+	/* ---------- wins by mode + classes played ---------- */
+	.duo {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+		gap: 0 24px;
+		align-items: start;
+	}
 	table.modes {
-		max-width: 480px;
+		width: 100%;
+	}
+	.classcell {
+		white-space: nowrap;
+	}
+	.classcell a {
+		font-weight: 600;
 	}
 	.barcell {
 		width: 160px;
@@ -493,40 +528,16 @@
 		color: var(--ink-3);
 	}
 
-	/* ---------- classes played ---------- */
-	.classlist {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 8px;
-	}
-	.classchip {
-		display: inline-flex;
-		align-items: center;
-		gap: 7px;
-		padding: 5px 10px 5px 6px;
-		border: 1px solid var(--border);
-		border-radius: var(--r-sm);
-		background: var(--surface);
-		font-size: 12.5px;
-		font-weight: 600;
-		text-decoration: none;
-		color: var(--ink);
-	}
-	a.classchip:hover {
-		border-color: var(--border-strong);
-	}
+	/* ---------- class icons ---------- */
 	.class-icon {
 		width: 22px;
 		height: 22px;
 		object-fit: cover;
 		border-radius: 3px;
-	}
-	.class-count {
-		color: var(--ink-3);
-		font-size: 11px;
+		vertical-align: middle;
+		margin-right: 4px;
 	}
 	.histclass .class-icon {
-		vertical-align: middle;
 		margin-right: 3px;
 	}
 
