@@ -66,14 +66,14 @@
 </script>
 
 <svelte:head>
-	<title>All units — UAR Unit Database</title>
+	<title>All entities — UAR Unit Database</title>
 </svelte:head>
 
 <div class="controls">
 	<input
 		type="search"
 		placeholder="Search name, id, weapon…"
-		aria-label="Search units"
+		aria-label="Search entities"
 		bind:value={query}
 	/>
 	{#each categories as cat (cat)}

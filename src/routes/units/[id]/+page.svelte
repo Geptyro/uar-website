@@ -26,7 +26,7 @@
 </svelte:head>
 
 <nav class="crumbs">
-	<a href="/units">← All units</a>
+	<a href="/units">← All entities</a>
 	{#if mosById.has(unit.id)}
 		<a href="/mos/{unit.id}">Class page →</a>
 	{/if}

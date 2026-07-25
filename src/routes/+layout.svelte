@@ -11,7 +11,7 @@
 
 	const nav = [
 		{ href: '/', label: 'Overview' },
-		{ href: '/units', label: 'Units' },
+		{ href: '/units', label: 'Entities' },
 		{ href: '/items', label: 'Items' },
 		{ href: '/si', label: 'Skill IDs' },
 		{ href: '/ranks', label: 'Ranks' },
@@ -27,10 +27,10 @@
 	const pageTitle = $derived.by(() => {
 		const p = page.url.pathname;
 		if (p === '/') return { section: '', title: 'Overview' };
-		if (p === '/units') return { section: '', title: 'All units' };
+		if (p === '/units') return { section: '', title: 'All entities' };
 		if (p.startsWith('/units/')) {
 			const id = decodeURIComponent(p.slice(7));
-			return { section: 'Units', title: id };
+			return { section: 'Entities', title: id };
 		}
 		if (p === '/items') return { section: '', title: 'Items & equipment' };
 		if (p === '/si') return { section: '', title: 'Skill Identifiers' };
@@ -92,8 +92,8 @@
 		<form class="quick" onsubmit={quickSearch}>
 			<input
 				type="search"
-				placeholder="Quick search units…"
-				aria-label="Quick search units"
+				placeholder="Quick search entities…"
+				aria-label="Quick search entities"
 				bind:value={quick}
 			/>
 		</form>
