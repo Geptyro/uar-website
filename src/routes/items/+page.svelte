@@ -2,17 +2,18 @@
 	import {
 		items,
 		mosList,
-		mosName,
-		mosPageId,
+		allowedLabel,
 		itemTypeLabels,
 		itemTypeOrder,
 		sourceLabel,
 		type ItemType
 	} from '$lib/mos';
+	import { applyText } from '$lib/units';
 
 	let query = $state('');
 	let mosFilter = $state('');
 	let typeFilter = $state<ItemType | ''>('');
+	let expanded = $state<string | null>(null);
 
 	const filtered = $derived.by(() => {
 		const needle = query.trim().toLowerCase();
@@ -32,7 +33,7 @@
 
 <p class="note">
 	Pickups, ammunition and carry equipment. Stat effects come from each item's carry-buff; who can
-	use each item is derived from its validators.
+	use each item is derived from its validators. Click a description to expand it.
 </p>
 
 <div class="controls">
@@ -55,53 +56,71 @@
 	<span class="count">{filtered.length} / {items.length}</span>
 </div>
 
-<div class="grid">
-	{#each filtered as item (item.id)}
-		<article class="card item" id={item.id}>
-			<header>
-				{#if item.icon}
-					<img class="item-icon" src={item.icon} alt="" loading="lazy" />
-				{:else}
-					<span class="item-icon placeholder"></span>
-				{/if}
-				<h3>{item.name}</h3>
-				{#if !item.playable}
-					<span class="tag t-hostile">NPC only</span>
-				{:else if sourceLabel(item)}
-					<span class="tag t-mos">{sourceLabel(item)}</span>
-				{/if}
-				<span class="tag t-item">{item.type}</span>
-			</header>
-			<div class="facts">
-				{#if item.charges}<span>charges {item.charges.start ?? '?'}/{item.charges.max}</span>{/if}
-				{#if item.unit}<a href="/entities/{item.unit}">unit data</a>{/if}
-			</div>
-			{#if item.mods.length}
-				<ul class="mods">
-					{#each item.mods as m (m.text + (m.note ?? ''))}
-						<li>{m.text}{#if m.note}<span class="scope">({m.note})</span>{/if}</li>
-					{/each}
-				</ul>
-			{/if}
-			{#if item.allowed !== null || item.conflicts.length}
-				<div class="restr">
-					{#if item.allowed !== null}
-						{#each item.allowed as a (a)}
-							{#if mosPageId(a)}
-								<a class="tag t-mos" href="/mos/{mosPageId(a)}">{mosName(a)}</a>
-							{:else}
-								<span class="tag t-mos">{mosName(a)}</span>
-							{/if}
+<div class="tablewrap">
+	<table class="data" style="min-width: 900px">
+		<thead>
+			<tr>
+				<th>Item</th>
+				<th>Type</th>
+				<th class="num">Charges</th>
+				<th>Effects</th>
+				<th>Classes</th>
+				<th>Conflicts</th>
+				<th>Description</th>
+			</tr>
+		</thead>
+		<tbody>
+			{#each filtered as item (item.id)}
+				<tr id={item.id} class="itemrow">
+					<td class="namecell">
+						{#if item.icon}
+							<img class="item-icon" src={item.icon} alt="" loading="lazy" />
+						{:else}
+							<span class="item-icon placeholder"></span>
+						{/if}
+						{#if item.unit}
+							<a href="/entities/{item.unit}">{item.name}</a>
+						{:else}
+							<span>{item.name}</span>
+						{/if}
+						{#if !item.playable}<span class="tag t-hostile">NPC only</span>{/if}
+					</td>
+					<td>
+						<span class="tag t-item">{item.type}</span>
+						{#if item.playable && sourceLabel(item)}
+							<span class="tag t-mos">{sourceLabel(item)}</span>
+						{/if}
+					</td>
+					<td class="num">{item.charges ? `${item.charges.start ?? '?'}/${item.charges.max}` : ''}</td>
+					<td class="mono effects">
+						{#each item.mods as m (m.text + (m.note ?? ''))}
+							<div>{m.text}{#if m.note}<span class="scope">({m.note})</span>{/if}</div>
 						{/each}
-					{/if}
-					{#each item.conflicts as c (c)}
-						<span class="tag t-hostile">{c}</span>
-					{/each}
-				</div>
-			{/if}
-			{#if item.tooltip}<p class="tip">{item.tooltip}</p>{/if}
-		</article>
-	{/each}
+						{#each item.grants as g (g.id)}
+							<div class="grant">
+								grants {g.id}: {g.dmg ?? '?'} dmg · rng {g.range ?? '?'} · {g.period ?? '?'}s
+							</div>
+							{#each g.applies ?? [] as a (a.name + (a.cond ?? ''))}
+								<div class="grant">{applyText(a)}</div>
+							{/each}
+						{/each}
+					</td>
+					<td class="classes">
+						{#if item.allowed !== null}{allowedLabel(item)}{:else}<span class="dim">everyone</span
+							>{/if}
+					</td>
+					<td class="mono conflicts">{item.conflicts.join(' · ')}</td>
+					<td
+						class="desc"
+						class:open={expanded === item.id}
+						onclick={() => (expanded = expanded === item.id ? null : item.id)}
+					>
+						{item.tooltip}
+					</td>
+				</tr>
+			{/each}
+		</tbody>
+	</table>
 </div>
 
 <style>
@@ -128,25 +147,27 @@
 		font-variant-numeric: tabular-nums;
 	}
 
-	.grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-		gap: 12px;
-	}
-	.item {
+	.itemrow {
 		scroll-margin-top: 80px;
-		display: flex;
-		flex-direction: column;
-		gap: 7px;
 	}
-	.item header {
+	.namecell {
 		display: flex;
 		align-items: center;
-		gap: 10px;
+		gap: 8px;
+		min-width: 170px;
+	}
+	.namecell a {
+		font-weight: 600;
+		text-decoration: none;
+		color: inherit;
+	}
+	.namecell a:hover {
+		text-decoration: underline;
+		text-underline-offset: 3px;
 	}
 	.item-icon {
-		width: 32px;
-		height: 32px;
+		width: 24px;
+		height: 24px;
 		object-fit: cover;
 		border-radius: var(--r-sm);
 		flex-shrink: 0;
@@ -155,58 +176,45 @@
 		display: inline-block;
 		background: var(--surface-2);
 	}
-	.item h3 {
-		margin: 0;
-		font-size: 14px;
-		font-weight: 600;
-		letter-spacing: -0.01em;
-		flex: 1;
-		min-width: 0;
-	}
-	.facts {
-		display: flex;
-		gap: 14px;
-		font-family: var(--mono);
-		font-size: 10.5px;
-		color: var(--ink-3);
-	}
-	.facts a {
-		color: var(--accent);
-		text-decoration: none;
-	}
-	.facts a:hover {
-		text-decoration: underline;
-		text-underline-offset: 3px;
-	}
-	.mods {
-		margin: 0;
-		padding-left: 18px;
-	}
-	.mods li {
-		font-family: var(--mono);
+	.effects {
 		font-size: 11.5px;
 		color: var(--ink-2);
+		min-width: 180px;
 	}
-	.mods .scope {
+	.effects .scope {
 		color: var(--ink-3);
 		margin-left: 0.4em;
 	}
-	.restr {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 4px;
+	.effects .grant {
+		color: var(--ink-3);
 	}
-	.restr a.tag {
-		text-decoration: none;
+	.classes {
+		font-size: 12px;
+		max-width: 180px;
 	}
-	.restr a.tag:hover {
-		text-decoration: underline;
-		text-underline-offset: 2px;
+	.conflicts {
+		font-size: 11px;
+		color: var(--ink-3);
+		max-width: 170px;
 	}
-	.tip {
-		margin: 0;
-		font-size: 12.5px;
+	.dim {
+		color: var(--ink-3);
+	}
+	.desc {
+		font-size: 11.5px;
 		color: var(--ink-2);
+		max-width: 300px;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+		cursor: pointer;
+	}
+	.desc.open {
+		display: block;
+		-webkit-line-clamp: unset;
+		line-clamp: unset;
 		white-space: pre-line;
 	}
 </style>

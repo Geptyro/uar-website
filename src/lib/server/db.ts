@@ -13,6 +13,8 @@
 
 import { MongoClient, type Db } from 'mongodb';
 import { buildPlayersData, type ReplaySighting } from './replay/extract.ts';
+import { topPlayersByMos } from './playtime.ts';
+import type { MosTopPlayer } from '../players.ts';
 
 export interface ReplayDoc {
 	_id: string; // file name, YYYYMMDD-HHMM.SC2Replay
@@ -95,6 +97,30 @@ export async function getReplaysList(): Promise<
 			size: r.size
 		}));
 	});
+}
+
+export async function getMosTopPlayers(mosId: string): Promise<MosTopPlayer[]> {
+	const byMos = await cached('mosPlaytime', async () => {
+		const d = await db();
+		const docs = await d
+			.collection<ReplayDoc>('replays')
+			.find(
+				{},
+				{
+					projection: {
+						playedAt: 1,
+						durationLoops: 1,
+						'sightings.toon': 1,
+						'sightings.name': 1,
+						'sightings.clan': 1,
+						'sightings.mos': 1
+					}
+				}
+			)
+			.toArray();
+		return topPlayersByMos(docs);
+	});
+	return byMos[mosId] ?? [];
 }
 
 export async function replayExists(file: string): Promise<boolean> {

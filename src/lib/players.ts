@@ -63,6 +63,17 @@ export interface PlayerProfile {
 	history: Sighting[];
 }
 
+/** One row of a per-class leaderboard (GET /api/mos-players/[id]). */
+export interface MosTopPlayer {
+	name: string;
+	clan: string;
+	toon: string;
+	/** Ingested games where the player picked this class. */
+	games: number;
+	/** Total recorded time on this class across ingested replays, in seconds. */
+	seconds: number;
+}
+
 const progression = rawProgression as { modes: string[] };
 
 export interface ReplayMeta {

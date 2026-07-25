@@ -1,25 +1,40 @@
 <script lang="ts">
 	import { allowedLabel, itemTypeLabels, itemTypeOrder, modsFor, type Item } from '$lib/mos';
 	import { applyText } from '$lib/units';
-	import StatIcon from '$lib/components/StatIcon.svelte';
+	import type { MosTopPlayer } from '$lib/players';
+	import FactsCard, { type Fact } from '$lib/components/FactsCard.svelte';
+	import ModelCard from '$lib/components/ModelCard.svelte';
+	import DescCard from '$lib/components/DescCard.svelte';
+	import models from '$lib/data/models.json';
 
 	let { data } = $props();
 
 	const mos = $derived(data.mos);
+	const modelUrl = $derived((models as Record<string, string>)[data.mos.id] ?? null);
+
 	// mission items (supply) are objective props, not class gear — keep them off class pages
 	const usable = $derived(data.items.filter((i) => i.type !== 'supply'));
 	const si = $derived(data.si);
 
-	const stats = $derived(
-		(
+	const facts = $derived([
+		...(mos.role ? [{ icon: 'role', label: 'Role', value: mos.role } as Fact] : []),
+		{ icon: 'type', label: 'Type', value: mos.unitType } as Fact,
+		...(
 			[
 				['life', 'Life', mos.life],
 				['armor', 'Armor', mos.armor],
 				['speed', 'Speed', mos.speed],
 				['energy', 'Energy', mos.energy]
 			] as const
-		).filter(([, , v]) => v !== null)
-	);
+		)
+			.filter(([, , v]) => v !== null)
+			.map(([icon, label, value]) => ({ icon, label, value: value ?? '' }) as Fact),
+		...(mos.inventory.slots
+			? [{ icon: 'bag', label: 'Bag slots', value: mos.inventory.slots } as Fact]
+			: []),
+		{ icon: 'trees', label: 'Skill trees', value: mos.skills.length } as Fact,
+		{ icon: 'items', label: 'Usable items', value: usable.length } as Fact
+	]);
 
 	const weaponItems = $derived(usable.filter((i) => i.type === 'weapon'));
 	const gearGroups = $derived(
@@ -40,6 +55,31 @@
 			if (label && item.allowed.length > 1) parts.push(label);
 		}
 		return parts.join(' · ');
+	}
+
+	// prerendered page — the leaderboard comes from the live DB, client-side
+	let topPlayers = $state<MosTopPlayer[]>([]);
+	$effect(() => {
+		const id = mos.id;
+		let stale = false;
+		topPlayers = [];
+		fetch(`/api/mos-players/${id}`)
+			.then((r) => (r.ok ? r.json() : null))
+			.then((j) => {
+				if (!stale && j) topPlayers = j.players ?? [];
+			})
+			.catch(() => {});
+		return () => {
+			stale = true;
+		};
+	});
+
+	function fmtPlaytime(seconds: number): string {
+		if (seconds >= 3600) {
+			const h = seconds / 3600;
+			return `${h >= 10 ? Math.round(h) : h.toFixed(1)} h`;
+		}
+		return `${Math.max(1, Math.round(seconds / 60))} min`;
 	}
 </script>
 
@@ -206,45 +246,21 @@
 	</div>
 
 	<aside class="infobox">
-		<div class="card box">
-			{#if mos.icon}
-				<img class="portrait" src={mos.icon} alt="{mos.name} portrait" />
-			{/if}
-			<div class="box-title">
-				<b>{mos.name}</b>
-				{#if mos.mos}<span>MOS {mos.mos}</span>{/if}
-			</div>
-			<dl class="facts">
-				{#if mos.role}
-					<dt><StatIcon name="role" />Role</dt>
-					<dd>{mos.role}</dd>
-				{/if}
-				<dt><StatIcon name="type" />Type</dt>
-				<dd>{mos.unitType}</dd>
-				{#each stats as [key, label, value] (key)}
-					<dt><StatIcon name={key} />{label}</dt>
-					<dd>{value}</dd>
-				{/each}
-				{#if mos.inventory.slots}
-					<dt><StatIcon name="bag" />Bag slots</dt>
-					<dd>{mos.inventory.slots}</dd>
-				{/if}
-				<dt><StatIcon name="trees" />Skill trees</dt>
-				<dd>{mos.skills.length}</dd>
-				<dt><StatIcon name="items" />Usable items</dt>
-				<dd>{usable.length}</dd>
-			</dl>
-			<a class="unit-link" href="/entities/{mos.id}">Unit data →</a>
-		</div>
+		<FactsCard
+			portrait={mos.icon}
+			title={mos.name}
+			chip={mos.mos ? `MOS ${mos.mos}` : null}
+			{facts}
+			link={{ href: `/entities/${mos.id}`, label: 'Unit data →' }}
+		/>
+		{#if modelUrl}
+			<ModelCard src={modelUrl} alt="3D model of {mos.name}" />
+		{/if}
 		{#if mos.tooltip}
-			<div class="card box desc">
-				<div class="box-label">In-game description</div>
-				<p>{mos.tooltip}</p>
-			</div>
+			<DescCard label="In-game description" text={mos.tooltip} />
 		{/if}
 		{#if si.length}
-			<div class="card box desc">
-				<div class="box-label">Skill Identifiers</div>
+			<DescCard label="Skill Identifiers">
 				{#each si as s (s.num)}
 					<div class="si-row">
 						{#if s.icon}
@@ -257,7 +273,39 @@
 					{#if s.desc}<p class="si-desc">{s.desc}</p>{/if}
 				{/each}
 				<a class="si-all" href="/si">All Skill Identifiers →</a>
-			</div>
+			</DescCard>
+		{/if}
+		{#if topPlayers.length}
+			<DescCard label="Top players">
+				<ol class="top-list">
+					{#each topPlayers as p, i (p.toon || p.name)}
+						<li>
+							<div class="prow">
+								<span class="pos">{i + 1}</span>
+								{#if p.clan}<span class="pclan">&lt;{p.clan}&gt;</span>{/if}
+								{#if p.toon}
+									<a class="pname" href="/players/{p.toon}">{p.name}</a>
+								{:else}
+									<span class="pname">{p.name}</span>
+								{/if}
+								<span class="ptime" title="{p.games} game{p.games === 1 ? '' : 's'}"
+									>{fmtPlaytime(p.seconds)}</span
+								>
+							</div>
+							<div class="pbar">
+								{#if p.seconds > 0}
+									<div
+										class="pbar-fill"
+										style="width: {(100 * p.seconds) / topPlayers[0].seconds}%"
+									></div>
+								{/if}
+							</div>
+						</li>
+					{/each}
+				</ol>
+				<p class="top-note">Time played on this class across ingested replays.</p>
+				<a class="si-all" href="/players">All players →</a>
+			</DescCard>
 		{/if}
 	</aside>
 </div>
@@ -321,98 +369,74 @@
 		text-decoration: underline;
 		text-underline-offset: 3px;
 	}
-	.box {
+	.top-list {
+		list-style: none;
+		margin: 2px 0 0;
 		padding: 0;
-		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+		gap: 7px;
 	}
-	.portrait {
-		display: block;
-		width: 100%;
-		aspect-ratio: 1;
-		object-fit: cover;
+	.top-list li {
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+		min-width: 0;
 	}
-	.box-title {
+	.prow {
 		display: flex;
 		align-items: baseline;
-		justify-content: space-between;
-		gap: 8px;
-		padding: 12px 14px 4px;
-	}
-	.box-title b {
-		font-size: 15px;
-		font-weight: 650;
-		letter-spacing: -0.01em;
-	}
-	.box-title span {
-		font-family: var(--mono);
-		font-size: 10px;
-		color: var(--mos);
-		letter-spacing: 0.06em;
-	}
-	.facts {
-		margin: 8px 0 0;
-		padding: 0 14px;
-	}
-	.facts dt {
-		float: left;
-		clear: left;
-		display: inline-flex;
-		align-items: center;
 		gap: 6px;
+		font-size: 12.5px;
+		min-width: 0;
+	}
+	/* time played relative to the #1 player, zero-based */
+	.pbar {
+		margin-left: 20px;
+		height: 3px;
+		border-radius: 99px;
+		background: var(--surface-2);
+		overflow: hidden;
+	}
+	.pbar-fill {
+		height: 100%;
+		min-width: 2px;
+		border-radius: inherit;
+		background: var(--accent);
+	}
+	.pos {
 		font-family: var(--mono);
 		font-size: 10px;
-		letter-spacing: 0.1em;
-		text-transform: uppercase;
 		color: var(--ink-3);
-		line-height: 2.1;
-	}
-	.facts dd {
-		margin: 0;
+		min-width: 14px;
 		text-align: right;
-		font-variant-numeric: tabular-nums;
-		font-size: 13px;
+		flex-shrink: 0;
+	}
+	.pclan {
+		color: var(--ink-3);
+		font-size: 11px;
+		flex-shrink: 0;
+	}
+	.pname {
 		font-weight: 550;
-		line-height: 2.1;
-		border-bottom: 1px solid var(--border);
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
-	.facts dd:last-of-type {
-		border-bottom: none;
-	}
-	.unit-link {
-		display: block;
-		text-align: center;
+	.ptime {
+		margin-left: auto;
 		font-family: var(--mono);
 		font-size: 11px;
-		letter-spacing: 0.07em;
-		text-transform: uppercase;
-		text-decoration: none;
 		color: var(--ink-2);
-		border-top: 1px solid var(--border);
-		padding: 10px 12px;
-		margin-top: 10px;
-		transition: all 120ms ease;
+		white-space: nowrap;
+		flex-shrink: 0;
 	}
-	.unit-link:hover {
-		color: var(--accent);
-		background: var(--surface-2);
-	}
-	.box.desc {
-		padding: 12px 14px;
-	}
-	.box-label {
-		font-family: var(--mono);
-		font-size: 10px;
-		letter-spacing: 0.14em;
-		text-transform: uppercase;
+	.top-note {
+		margin: 10px 0 0;
+		font-size: 11px;
+		line-height: 1.5;
 		color: var(--ink-3);
-		margin-bottom: 6px;
-	}
-	.box.desc p {
-		margin: 0;
-		font-size: 12.5px;
-		line-height: 1.6;
-		color: var(--ink-2);
-		white-space: pre-line;
 	}
 
 	@media (max-width: 1080px) {
@@ -420,16 +444,10 @@
 			display: block;
 		}
 		.infobox {
-			position: static;
-			max-height: none;
 			margin: 16px 0 4px;
 			display: grid;
 			grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 			align-items: start;
-		}
-		.portrait {
-			aspect-ratio: auto;
-			max-height: 220px;
 		}
 	}
 

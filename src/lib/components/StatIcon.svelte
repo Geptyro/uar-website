@@ -12,7 +12,9 @@
 		| 'energy'
 		| 'bag'
 		| 'trees'
-		| 'items';
+		| 'items'
+		| 'regen'
+		| 'sight';
 
 	const ICONS: Record<StatIconName, { p: string; o: number }[]> = {
 		role: [
@@ -55,6 +57,15 @@
 			{ p: '12,3 20,7 12,11 4,7', o: 1 },
 			{ p: '4,7 12,11 12,21 4,17', o: 0.65 },
 			{ p: '20,7 20,17 12,21 12,11', o: 0.4 }
+		],
+		regen: [
+			{ p: '10,3 14,3 14,21 10,21', o: 1 },
+			{ p: '3,10 21,10 21,14 3,14', o: 0.55 }
+		],
+		sight: [
+			{ p: '2,12 12,5.5 22,12', o: 0.45 },
+			{ p: '2,12 12,18.5 22,12', o: 0.7 },
+			{ p: '12,8 16,12 12,16 8,12', o: 1 }
 		]
 	};
 
@@ -67,7 +78,9 @@
 		energy: 'var(--item)',
 		bag: 'var(--item)',
 		trees: 'var(--accent)',
-		items: 'var(--ink-2)'
+		items: 'var(--ink-2)',
+		regen: 'var(--accent)',
+		sight: 'var(--ink-2)'
 	};
 </script>
 
