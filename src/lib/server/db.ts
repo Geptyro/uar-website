@@ -25,6 +25,9 @@ export interface ReplayDoc {
 	sha256?: string;
 	/** Lobby-wide random value — same in every participant's replay of a game. */
 	lobbyId?: number;
+	/** Recording length in game loops; a longer recording of the same lobby
+	 * replaces a shorter one. */
+	durationLoops?: number;
 	sightings: ReplaySighting[];
 }
 
@@ -104,9 +107,19 @@ export async function replayExistsBySha(sha256: string): Promise<boolean> {
 	return (await d.collection<ReplayDoc>('replays').findOne({ sha256 }, { projection: { _id: 1 } })) !== null;
 }
 
-export async function replayExistsByLobby(lobbyId: number): Promise<boolean> {
+export async function getReplayByLobby(
+	lobbyId: number
+): Promise<{ _id: string; durationLoops: number } | null> {
 	const d = await db();
-	return (await d.collection<ReplayDoc>('replays').findOne({ lobbyId }, { projection: { _id: 1 } })) !== null;
+	const doc = await d
+		.collection<ReplayDoc>('replays')
+		.findOne({ lobbyId }, { projection: { _id: 1, durationLoops: 1 } });
+	return doc ? { _id: doc._id, durationLoops: doc.durationLoops ?? 0 } : null;
+}
+
+export async function replaceReplayDoc(doc: ReplayDoc): Promise<void> {
+	const d = await db();
+	await d.collection<ReplayDoc>('replays').replaceOne({ _id: doc._id }, doc, { upsert: true });
 }
 
 export async function insertReplayDoc(doc: ReplayDoc): Promise<void> {
@@ -131,6 +144,7 @@ export async function rebuildPlayers(): Promise<number> {
 				baseBuild: r.baseBuild,
 				protocolExact: true,
 				lobbyId: r.lobbyId ?? 0,
+				durationLoops: r.durationLoops ?? 0,
 				sightings: r.sightings
 			},
 			size: r.size

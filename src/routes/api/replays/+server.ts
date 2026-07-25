@@ -14,13 +14,15 @@
 import { json, error } from '@sveltejs/kit';
 import { createHash } from 'node:crypto';
 import { parseReplay, peekReplay } from '$lib/server/replay/extract';
+import { decideIngest, canonicalName } from '$lib/server/replay/ingest';
 import { putObject } from '$lib/server/replay/s3';
 import {
 	dbConfigured,
 	replayExists,
 	replayExistsBySha,
-	replayExistsByLobby,
+	getReplayByLobby,
 	insertReplayDoc,
+	replaceReplayDoc,
 	rebuildPlayers
 } from '$lib/server/db';
 import rawMos from '$lib/data/mos.json';
@@ -99,17 +101,18 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 		error(400, `Not an Undead Assault Reborn replay (map: "${peeked.title}").`);
 	}
 
-	// identity = lobby id: identical in every participant's recording of a
-	// game, regardless of byte deltas or client clock skew
-	if (await replayExistsByLobby(peeked.lobbyId)) {
+	// identity = lobby id (see ingest.ts): duplicates 409, longer recordings
+	// of a known game replace the stored one, name clashes get a suffix
+	const existing = await getReplayByLobby(peeked.lobbyId);
+	const decision = decideIngest(
+		peeked,
+		existing,
+		existing ? false : await replayExists(canonicalName(peeked.playedAt))
+	);
+	if (decision.kind === 'duplicate') {
 		error(409, `This game (${peeked.playedAt}) is already ingested.`);
 	}
-
-	// file name = game UTC start time (human-friendly); a different game that
-	// happens to share the minute gets a lobby-id suffix instead of a clash
-	const stamp = peeked.playedAt.replace(/[-:]/g, '').slice(0, 13).replace('T', '-');
-	let name = `${stamp}.SC2Replay`;
-	if (await replayExists(name)) name = `${stamp}-${peeked.lobbyId}.SC2Replay`;
+	const name = decision.name;
 
 	let parsed;
 	try {
@@ -124,7 +127,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 
 	// blob first — an orphaned blob is harmless, a doc without its blob is not
 	await putObject(`replays/${name}`, data, 'application/octet-stream');
-	await insertReplayDoc({
+	const doc = {
 		_id: name,
 		playedAt: parsed.playedAt,
 		title: parsed.title,
@@ -133,11 +136,16 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 		players: parsed.sightings.length,
 		sha256,
 		lobbyId: parsed.lobbyId,
+		durationLoops: parsed.durationLoops,
 		sightings: parsed.sightings
-	});
+	};
+	if (decision.kind === 'replace') await replaceReplayDoc(doc);
+	else await insertReplayDoc(doc);
 	const playerCount = await rebuildPlayers();
 	recordAccept(getClientAddress());
-	console.log(`upload accepted: ${name} (${parsed.sightings.length} profiles, ${playerCount} players total)`);
+	console.log(
+		`upload ${existing ? 'replaced' : 'accepted'}: ${name} (${parsed.sightings.length} profiles, ${playerCount} players total)`
+	);
 
 	return json({
 		ok: true,
@@ -145,6 +153,9 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 		playedAt: parsed.playedAt,
 		profiles: parsed.sightings.length,
 		protocolExact: parsed.protocolExact,
-		message: 'Replay accepted — profiles are live now.'
+		replaced: Boolean(existing),
+		message: existing
+			? 'Longer recording of a known game — replaced the stored replay.'
+			: 'Replay accepted — profiles are live now.'
 	});
 };

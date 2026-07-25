@@ -33,7 +33,19 @@
 	function pick(id: string) {
 		selectedId = id;
 		query = '';
+		relief = 0;
+		fineRes = false;
 	}
+
+	// Auto-relief ladder: a lane violation means this neighborhood is
+	// undersupplied, so escalate and let the diagram re-measure + re-route —
+	// first widen the vertical gaps (corridor supply), then drop to a finer
+	// grid (endpoint supply: a chip's ring holds ~perimeter/res exclusive
+	// stubs, and gaps can't grow a ring). The banner stays as the canary for
+	// layouts the whole ladder can't absorb.
+	const RELIEF = [1, 1.35, 1.7];
+	let relief = $state(0);
+	let fineRes = $state(false);
 
 	// ---- neighborhood graph: layers by chain depth around the selection ----
 	const UP = 2; // ancestor levels
@@ -89,6 +101,40 @@
 		}
 		const shown = new Set(layers.flatMap((l) => l.nodes.map((n) => n.id)));
 
+		// Median-of-neighbors ordering (barycenter sweeps): chained triggers line
+		// up across columns instead of scattering alphabetically — shorter, calmer
+		// wiring on hub selections. Alphabetical stays as the seed and tie-break.
+		const pos = new Map<string, number>();
+		for (const l of layers) l.nodes.forEach((n, i) => pos.set(n.id, i));
+		const neigh = new Map<string, string[]>();
+		for (const id of shown) neigh.set(id, []);
+		for (const id of shown) {
+			const n = flowById.get(id);
+			if (!n) continue;
+			for (const t of [...n.enables, ...n.executes, ...n.timerTo, ...n.disables]) {
+				if (shown.has(t)) {
+					neigh.get(id)!.push(t);
+					neigh.get(t)!.push(id);
+				}
+			}
+		}
+		for (let sweep = 0; sweep < 4; sweep++) {
+			for (const l of layers) {
+				l.nodes = l.nodes
+					.map((n) => {
+						const ps = neigh
+							.get(n.id)!
+							.map((m) => pos.get(m)!)
+							.sort((a, b) => a - b);
+						const med = ps.length ? ps[Math.floor(ps.length / 2)] : pos.get(n.id)!;
+						return { n, med };
+					})
+					.sort((a, b) => a.med - b.med || a.n.name.localeCompare(b.n.name))
+					.map((x) => x.n);
+				l.nodes.forEach((n, i) => pos.set(n.id, i));
+			}
+		}
+
 		const edges: GridEdge[] = [];
 		for (const id of shown) {
 			const n = flowById.get(id);
@@ -106,6 +152,20 @@
 		}
 		return { layers, edges };
 	});
+
+	// Endpoint demand: every edge claims an exclusive ring cell on BOTH of its
+	// nodes, so a hub needs ~degree cells of perimeter. A ~210×50 chip on the
+	// res-12 grid supplies ~40 — dense hubs (Activate Timer2: 43) start on the
+	// finer grid outright instead of flashing through a failed first pass.
+	const maxDegree = $derived.by(() => {
+		const deg = new Map<string, number>();
+		for (const e of graph.edges) {
+			deg.set(e.source, (deg.get(e.source) ?? 0) + 1);
+			deg.set(e.target, (deg.get(e.target) ?? 0) + 1);
+		}
+		return Math.max(0, ...deg.values());
+	});
+	const res = $derived(fineRes || maxDegree > 30 ? 8 : 12);
 
 	const KIND_COLOR: Record<string, string> = {
 		enable: '#7fa35c',
@@ -198,14 +258,23 @@
 	<div class="board card">
 		<GridDiagram
 			edges={graph.edges}
-			opts={{ res: 12, exitCost: 6 }}
-			revision={selectedId}
+			opts={{ res, exitCost: 6 }}
+			revision={`${selectedId}:${relief}:${res}`}
 			connStyle={(c) => ({
 				color: KIND_COLOR[String(c.data ?? 'enable')] ?? KIND_COLOR.enable,
 				dashed: c.data === 'disable',
 				class: anyHover ? (activeBuses.has(c.bus) ? 'active' : 'dim') : ''
 			})}
-			onrouted={(info) => (violations = info.violations)}
+			onrouted={(info) => {
+				violations = info.violations;
+				if (info.violations > 0) {
+					if (relief < RELIEF.length - 1) relief++;
+					else if (!fineRes) {
+						fineRes = true;
+						relief = 0;
+					}
+				}
+			}}
 			onconnenter={(c) => {
 				hoveredNode = undefined;
 				hoveredBus = c.bus;
@@ -215,7 +284,7 @@
 			}}
 		>
 			{#snippet children(register)}
-				<div class="levels">
+				<div class="levels" style:--gap-scale={RELIEF[relief]}>
 					{#each graph.layers as layer (layer.depth)}
 						<div class="level">
 							{#each layer.nodes as n (n.id)}
@@ -418,7 +487,7 @@
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
-		gap: calc(var(--gr-row-gap, 54px) + 6px);
+		gap: calc((var(--gr-row-gap, 54px) + 6px) * var(--gap-scale, 1));
 	}
 	.chip {
 		display: flex;

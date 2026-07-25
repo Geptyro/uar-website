@@ -22,6 +22,7 @@ import {
 	type ReplaySighting
 } from '../src/lib/server/replay/extract.ts';
 import { hx1, hxList, decodeUnlocks } from '../src/lib/server/replay/bank.ts';
+import { decideIngest } from '../src/lib/server/replay/ingest.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FIXTURES = join(HERE, 'fixtures');
@@ -94,6 +95,35 @@ test('peekReplay agrees with the full parse (cheap dedupe path)', () => {
 	assert.equal(peeked.title, full.title);
 	assert.equal(peeked.lobbyId, full.lobbyId);
 	assert.equal(peeked.lobbyId, 3148612723); // lobby-wide m_randomValue
+	assert.equal(peeked.durationLoops, full.durationLoops);
+	assert.equal(peeked.durationLoops, 408); // ~26s recording
+});
+
+test('ingest decisions: lobby identity, replace-if-longer, name suffixing', () => {
+	const peeked = { playedAt: '2026-07-23T18:08:14Z', lobbyId: 42, durationLoops: 5000 };
+
+	// new game, minute free -> plain time name
+	assert.deepEqual(decideIngest(peeked, null, false), {
+		kind: 'insert',
+		name: '20260723-1808.SC2Replay'
+	});
+	// new game, another game already took that minute -> lobby-id suffix
+	assert.deepEqual(decideIngest(peeked, null, true), {
+		kind: 'insert',
+		name: '20260723-1808-42.SC2Replay'
+	});
+	// same lobby, stored recording is longer or equal -> duplicate
+	assert.deepEqual(decideIngest(peeked, { _id: 'x.SC2Replay', durationLoops: 5000 }, false), {
+		kind: 'duplicate'
+	});
+	assert.deepEqual(decideIngest(peeked, { _id: 'x.SC2Replay', durationLoops: 9000 }, false), {
+		kind: 'duplicate'
+	});
+	// same lobby, upload is a longer recording -> replace under the stored name
+	assert.deepEqual(decideIngest(peeked, { _id: 'x.SC2Replay', durationLoops: 400 }, false), {
+		kind: 'replace',
+		name: 'x.SC2Replay'
+	});
 });
 
 test('canonical name stamp from game time', () => {
@@ -133,6 +163,7 @@ function fakeReplay(file: string, playedAt: string, sightings: ReplaySighting[])
 			baseBuild: 97563,
 			protocolExact: true,
 			lobbyId: 42,
+			durationLoops: 1000,
 			sightings
 		},
 		size: 1000

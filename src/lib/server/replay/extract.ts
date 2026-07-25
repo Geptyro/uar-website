@@ -71,6 +71,9 @@ export interface ParsedReplay {
 	 * uploads even when their clients stamped slightly different times.
 	 */
 	lobbyId: number;
+	/** Recording length in game loops (16 per game-second) — a leaver's
+	 * recording is shorter than one that saw the game end. */
+	durationLoops: number;
 	sightings: ReplaySighting[];
 }
 
@@ -81,7 +84,7 @@ export interface ParsedReplay {
  */
 export function peekReplay(
 	data: Uint8Array
-): Pick<ParsedReplay, 'playedAt' | 'title' | 'baseBuild' | 'protocolExact' | 'lobbyId'> {
+): Pick<ParsedReplay, 'playedAt' | 'title' | 'baseBuild' | 'protocolExact' | 'lobbyId' | 'durationLoops'> {
 	const archive = new MPQArchive(data);
 	const header = decodeReplayHeader(archive.userDataContent);
 	const baseBuild = header.m_version.m_baseBuild as number;
@@ -93,7 +96,8 @@ export function peekReplay(
 		title: utf(details.m_title),
 		baseBuild,
 		protocolExact: hasProtocol(baseBuild),
-		lobbyId: initdata.m_syncLobbyState.m_gameDescription.m_randomValue as number
+		lobbyId: initdata.m_syncLobbyState.m_gameDescription.m_randomValue as number,
+		durationLoops: header.m_elapsedGameLoops as number
 	};
 }
 
@@ -193,6 +197,7 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 		baseBuild,
 		protocolExact: hasProtocol(baseBuild),
 		lobbyId: initdata.m_syncLobbyState.m_gameDescription.m_randomValue as number,
+		durationLoops: header.m_elapsedGameLoops as number,
 		sightings
 	};
 }
