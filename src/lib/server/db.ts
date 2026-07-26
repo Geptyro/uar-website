@@ -58,6 +58,15 @@ export interface AccountDoc {
 	updatedAt: string;
 }
 
+export interface ReadyDoc {
+	_id: string; // Battle.net account id (the OAuth `sub` claim) — one flag each
+	battletag: string;
+	toon?: string;
+	avatar?: string;
+	since: string; // ISO timestamp the flag was raised
+	until: string; // ISO timestamp the flag expires (one hour later)
+}
+
 let client: MongoClient | null = null;
 
 export function dbConfigured(): boolean {
@@ -235,6 +244,33 @@ export async function insertReplayDoc(doc: ReplayDoc): Promise<void> {
 export async function insertFeedback(doc: FeedbackDoc): Promise<void> {
 	const d = await db();
 	await d.collection<FeedbackDoc>('feedback').insertOne(doc);
+}
+
+/** Currently active "ready to play" flags, oldest first. */
+export async function getReadyPlayers(now: Date = new Date()): Promise<ReadyDoc[]> {
+	return cached('ready', async () => {
+		const d = await db();
+		return d
+			.collection<ReadyDoc>('ready')
+			.find({ until: { $gt: now.toISOString() } })
+			.sort({ since: 1 })
+			.toArray();
+	});
+}
+
+export async function setReady(doc: ReadyDoc): Promise<void> {
+	const d = await db();
+	const col = d.collection<ReadyDoc>('ready');
+	await col.replaceOne({ _id: doc._id }, doc, { upsert: true });
+	// opportunistic cleanup — expired flags are never read again
+	await col.deleteMany({ until: { $lt: new Date().toISOString() } });
+	invalidateCache();
+}
+
+export async function clearReady(sub: string): Promise<void> {
+	const d = await db();
+	await d.collection<ReadyDoc>('ready').deleteOne({ _id: sub });
+	invalidateCache();
 }
 
 /**
