@@ -419,6 +419,35 @@ export async function deleteAccount(sub: string): Promise<void> {
  * one code path shared with the historical static pipeline, so results are
  * always consistent and idempotent.
  */
+/**
+ * Rebuilding reads every stored replay, so a backfill of hundreds of
+ * uploads must not trigger hundreds of rebuilds. Runs inline when the last
+ * one is old enough (the normal case: one game, profiles live instantly),
+ * otherwise coalesces the burst into a single trailing rebuild.
+ */
+const REBUILD_GAP_MS = 15_000;
+let lastRebuildAt = 0;
+let rebuildTimer: ReturnType<typeof setTimeout> | null = null;
+
+export async function rebuildPlayersSoon(): Promise<number | null> {
+	if (rebuildTimer) return null; // a trailing rebuild already covers this
+	const since = Date.now() - lastRebuildAt;
+	if (since >= REBUILD_GAP_MS) {
+		const count = await rebuildPlayers();
+		lastRebuildAt = Date.now();
+		return count;
+	}
+	rebuildTimer = setTimeout(() => {
+		rebuildTimer = null;
+		void rebuildPlayers()
+			.then(() => {
+				lastRebuildAt = Date.now();
+			})
+			.catch((e) => console.error('deferred player rebuild failed:', e));
+	}, REBUILD_GAP_MS - since);
+	return null;
+}
+
 export async function rebuildPlayers(): Promise<number> {
 	const d = await db();
 	const replayDocs = await d.collection<ReplayDoc>('replays').find().toArray();

@@ -23,7 +23,7 @@ import {
 	getReplayByLobby,
 	insertReplayDoc,
 	replaceReplayDoc,
-	rebuildPlayers
+	rebuildPlayersSoon
 } from '$lib/server/db';
 import { withLock } from '$lib/mutex';
 import rawMos from '$lib/data/mos.json';
@@ -36,31 +36,21 @@ const MAX_SIZE = 16 * 1024 * 1024;
 
 const mosIds = new Set((rawMos as { id: string }[]).map((m) => m.id));
 
-// crude per-IP rate limits; single always-on machine, so in-memory is fine.
-// Attempts (invalid files, duplicates) get a generous cap; only ACCEPTED
-// ingests consume the strict one — a failed try must not lock players out.
-const ACCEPT_LIMIT = 5;
-const ATTEMPT_LIMIT = 20;
+// Crude per-IP flood guard; single always-on machine, so in-memory is fine.
+// Deliberately loose: a fresh companion install backfills hundreds of past
+// games one after another, and that is exactly what we want it to do. This
+// only stops something pathological — ingest is serialised and the player
+// rebuild is coalesced, so a legitimate backfill costs little.
+const ATTEMPT_LIMIT = 1000;
 const RATE_WINDOW_MS = 60 * 60 * 1000;
 const attemptsByIp = new Map<string, number[]>();
-const acceptsByIp = new Map<string, number[]>();
-
-function recent(map: Map<string, number[]>, ip: string): number[] {
-	const list = (map.get(ip) ?? []).filter((t) => Date.now() - t < RATE_WINDOW_MS);
-	map.set(ip, list);
-	return list;
-}
 
 function rateLimited(ip: string): boolean {
-	const attempts = recent(attemptsByIp, ip);
+	const attempts = (attemptsByIp.get(ip) ?? []).filter((t) => Date.now() - t < RATE_WINDOW_MS);
+	attemptsByIp.set(ip, attempts);
 	if (attempts.length >= ATTEMPT_LIMIT) return true;
-	if (recent(acceptsByIp, ip).length >= ACCEPT_LIMIT) return true;
 	attempts.push(Date.now());
 	return false;
-}
-
-function recordAccept(ip: string): void {
-	recent(acceptsByIp, ip).push(Date.now());
 }
 
 /** Pre-upload dedupe check: GET /api/replays?sha256=<hex> -> { exists }. */
@@ -150,13 +140,12 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 			name,
 			parsed,
 			existed: Boolean(existing),
-			playerCount: await rebuildPlayers()
+			playerCount: await rebuildPlayersSoon()
 		};
 	});
 	const existing = existed;
-	recordAccept(getClientAddress());
 	console.log(
-		`upload ${existing ? 'replaced' : 'accepted'}: ${name} (${parsed.sightings.length} profiles, ${playerCount} players total)`
+		`upload ${existing ? 'replaced' : 'accepted'}: ${name} (${parsed.sightings.length} profiles, ${playerCount === null ? 'rebuild queued' : playerCount + ' players total'})`
 	);
 
 	return json({
