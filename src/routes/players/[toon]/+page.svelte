@@ -14,17 +14,27 @@
 	import { medals, camos, decals } from '$lib/unlocks';
 	import { skillIdentifiers, mosById, mosList } from '$lib/mos';
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
+	import Pager from '$lib/components/Pager.svelte';
+	import { PER_PAGE, pageNumber } from '$lib/paging';
+	import { page as currentPage } from '$app/state';
 
 	let { data } = $props();
 
-	// a long-standing player has hundreds of games: show the most recent
-	// ones and let the page grow on demand. Indices stay absolute so the
-	// per-row deltas keep comparing against the real previous game.
-	const HISTORY_STEP = 25;
-	let historyShown = $state(HISTORY_STEP);
-	const shownHistory = $derived(
-		Array.from({ length: data.player.history.length }, (_, i) => i).slice(-historyShown)
+	// A long-standing player has hundreds of games. History is stored
+	// oldest first (that ordering is what makes the per-row deltas work),
+	// but reads newest first: page one is the tail, walked backwards, and
+	// rows within it descend too. Indices stay absolute — a row's delta
+	// must compare against the real next game, not the row above it.
+	const historyPages = $derived(Math.max(1, Math.ceil(data.player.history.length / PER_PAGE)));
+	const historyPage = $derived(
+		pageNumber(currentPage.url.searchParams.get('h'), historyPages)
 	);
+	const shownHistory = $derived.by(() => {
+		const len = data.player.history.length;
+		const end = Math.max(0, len - (historyPage - 1) * PER_PAGE);
+		const start = Math.max(0, end - PER_PAGE);
+		return Array.from({ length: end - start }, (_, i) => end - 1 - i);
+	});
 	const p = $derived(data.player);
 
 	const tracks = $derived(
@@ -336,7 +346,14 @@
 		</div>
 
 		<h2 class="section">Replay history</h2>
-		<div class="tablewrap">
+		<Pager
+			page={historyPage}
+			pages={historyPages}
+			total={p.history.length}
+			label="replays"
+			param="h"
+		/>
+		<div class="tablewrap histrows">
 			<table class="data">
 				<thead>
 					<tr>
@@ -354,6 +371,23 @@
 					{#each shownHistory as i (p.history[i].file)}
 						{@const h = p.history[i]}
 						{@const span = gamesSpanned(p.history, i)}
+						{#if span > 1}
+							<tr class="gap">
+								<td
+									class="gapinfo"
+									colspan="2"
+									title="only the game below is a recorded replay; the rest weren't"
+								>
+									⋯ over {span} games
+								</td>
+								{#each ['xpEn', 'xpWo', 'xpCo', 'gamesPlayed', 'wins', 'revives'] as const as key (key)}
+									{@const d = delta(p.history, i, key)}
+									<td class="num">
+										{#if d}<span class="delta">+{d.toLocaleString('en')}</span>{/if}
+									</td>
+								{/each}
+							</tr>
+						{/if}
 						<tr>
 							<td class="mono">
 								<a href="/replays/{h.file.replace(/\.SC2Replay$/, '')}" title="View replay"
@@ -382,37 +416,14 @@
 								</td>
 							{/each}
 						</tr>
-						{#if span > 1}
-							<tr class="gap">
-								<td
-									class="gapinfo"
-									colspan="2"
-									title="only the first of these games is the replay above; the rest weren't recorded"
-								>
-									⋯ over {span} games
-								</td>
-								{#each ['xpEn', 'xpWo', 'xpCo', 'gamesPlayed', 'wins', 'revives'] as const as key (key)}
-									{@const d = delta(p.history, i, key)}
-									<td class="num">
-										{#if d}<span class="delta">+{d.toLocaleString('en')}</span>{/if}
-									</td>
-								{/each}
-							</tr>
-						{/if}
 					{/each}
 				</tbody>
 			</table>
-		{#if shownHistory.length < p.history.length}
-			<button class="moregames" onclick={() => (historyShown += HISTORY_STEP * 2)}>
-				Show earlier games ({p.history.length - shownHistory.length} more)
-			</button>
-		{/if}
 		</div>
 		<p class="note">
-			One row per ingested replay this player appears in. Values are the save-file state when each
-			game started; green deltas show what was earned in that game. When unrecorded games sit
-			between two replays, an in-between row shows what was earned across that stretch instead. The
-			newest game's gains aren't known until a later replay is ingested.
+			Values are the save-file state when each game started; green deltas are what that game
+			earned. A ⋯ row covers games that were never uploaded, and the newest game's gains only
+			appear once a later replay arrives.
 		</p>
 	</div>
 
@@ -494,19 +505,20 @@
 </div>
 
 <style>
-	.moregames {
-		margin-top: 10px;
-		background: transparent;
-		border: 1px solid var(--border-strong);
-		color: var(--ink-2);
-		border-radius: var(--r-sm);
-		padding: 6px 14px;
-		font: 550 12.5px/1 var(--sans);
-		cursor: pointer;
+	/* The rows scroll inside the section, not the page: this table sits
+	   under a profile and beside an aside, so it cannot take the viewport
+	   the way /players does. Capped so a full page of rows never pushes
+	   the rest of the profile out of reach. */
+	.histrows {
+		max-height: min(62vh, 620px);
+		overflow: auto;
 	}
-	.moregames:hover {
-		border-color: var(--accent);
-		color: var(--accent);
+	.histrows thead th {
+		position: sticky;
+		top: 0;
+		z-index: 1;
+		background: var(--surface, var(--bg));
+		box-shadow: inset 0 -1px 0 var(--border);
 	}
 
 	.layout {

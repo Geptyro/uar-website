@@ -42,8 +42,8 @@ test('groupPresence: lobbyId first, roster fallback, solo last resort', () => {
 	]);
 	assert.equal(groups.length, 3);
 	const byKey = Object.fromEntries(groups.map((g) => [g.key, g]));
-	assert.equal(byKey['id:42'].members.length, 2);
-	assert.equal(byKey['id:42'].status, 'lobby');
+	assert.equal(byKey['lobby'].members.length, 2, 'lobbies collapse regardless of id');
+	assert.equal(byKey['lobby'].status, 'lobby');
 	const rosterKey = Object.keys(byKey).find((k) => k.startsWith('roster:'));
 	assert.ok(rosterKey, 'roster-set grouping key exists');
 	assert.equal(byKey[rosterKey!].members.length, 2);
@@ -51,39 +51,20 @@ test('groupPresence: lobbyId first, roster fallback, solo last resort', () => {
 	assert.equal(byKey['solo:F#5'].members.length, 1);
 });
 
-test('groupPresence: a lobby reporter with no id joins the lobby we can see', () => {
-	// their battlelobby file did not parse — they are still in that lobby,
-	// and showing them as a second one is the bug this rule fixes
-	const groups = groupPresence([
-		entry({ battletag: 'A#1', lobbyId: 42, status: 'lobby', roster: ['A', 'B'] }),
-		entry({ battletag: 'B#2', status: 'lobby', roster: ['A', 'B', 'C'] })
-	]);
-	assert.equal(groups.length, 1);
-	assert.equal(groups[0].key, 'id:42');
-	assert.equal(groups[0].members.length, 2);
-});
-
-test('groupPresence: id-less lobby reporters form one lobby, not one each', () => {
-	// rosters differ because people joined between heartbeats
+test('groupPresence: every lobby reporter lands in the one lobby', () => {
+	// nothing local distinguishes two open lobbies — SC2 writes the file
+	// carrying a lobby id at game start, not when the lobby forms — and
+	// matching on rosters split one lobby into several, because members see
+	// different sets as people join
 	const groups = groupPresence([
 		entry({ battletag: 'A#1', status: 'lobby', roster: ['A', 'B'] }),
 		entry({ battletag: 'B#2', status: 'lobby', roster: ['A', 'B', 'C'] }),
 		entry({ battletag: 'C#3', status: 'lobby' })
 	]);
 	assert.equal(groups.length, 1);
-	assert.equal(groups[0].key, 'lobby:unidentified');
+	assert.equal(groups[0].key, 'lobby');
 	assert.equal(groups[0].members.length, 3);
-});
-
-test('groupPresence: several identified lobbies keep id-less reporters apart', () => {
-	// the one-lobby-at-a-time guess is only safe when one lobby is visible
-	const groups = groupPresence([
-		entry({ battletag: 'A#1', lobbyId: 1, status: 'lobby' }),
-		entry({ battletag: 'B#2', lobbyId: 2, status: 'lobby' }),
-		entry({ battletag: 'C#3', status: 'lobby' })
-	]);
-	assert.equal(groups.length, 3);
-	assert.ok(groups.some((g) => g.key === 'lobby:unidentified'));
+	assert.equal(groups[0].players, 3);
 });
 
 test('groupPresence: concurrent games still separate on their rosters', () => {
@@ -94,14 +75,14 @@ test('groupPresence: concurrent games still separate on their rosters', () => {
 	assert.equal(groups.length, 2, 'games run at the same time — never merge them');
 });
 
-test('groupPresence: ingame member upgrades a mixed group, clock takes the max', () => {
+test('groupPresence: game members share a lobby id, clock takes the max', () => {
 	const groups = groupPresence([
-		entry({ battletag: 'A#1', lobbyId: 7, status: 'lobby' }),
+		entry({ battletag: 'A#1', lobbyId: 7, status: 'ingame', displayTime: 60 }),
 		entry({ battletag: 'B#2', lobbyId: 7, status: 'ingame', displayTime: 120 }),
 		entry({ battletag: 'C#3', lobbyId: 7, status: 'ingame', displayTime: 90 })
 	]);
 	assert.equal(groups.length, 1);
 	assert.equal(groups[0].status, 'ingame');
-	assert.equal(groups[0].displayTime, 120);
+	assert.equal(groups[0].displayTime, 120, 'the furthest-along clock wins');
 	assert.equal(groups[0].players, 3);
 });
