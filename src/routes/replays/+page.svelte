@@ -80,6 +80,20 @@
 	{/if}
 </form>
 
+<h2 class="section">Or let UAR Tray upload for you</h2>
+<div class="card tray">
+	<p>
+		<a href="https://github.com/Geptyro/uar-tray/releases/latest" rel="external">UAR Tray</a> is a
+		small companion app for Windows, Linux and macOS: it sits in your system tray, uploads new
+		Undead Assault Reborn replays automatically after each game, and shows who is flagged
+		<em>ready to play</em> — with a desktop notification if you want one.
+	</p>
+	<p class="hint">
+		Every replay is checked on your machine first: only UAR games are ever sent, known replays are
+		skipped, and uploads respect the server's rate limits.
+	</p>
+</div>
+
 <p class="note" style="margin-top: 14px">
 	Replays record every player's save data at game start, so games with 0 profiles (solo tests,
 	instant leavers) add nothing and are rejected at upload.
@@ -132,5 +146,17 @@
 	}
 	.result.err {
 		color: var(--hostile);
+	}
+	.tray {
+		padding: 14px 16px;
+		max-width: 640px;
+	}
+	.tray p {
+		margin: 0 0 8px;
+		font-size: 13px;
+		line-height: 1.5;
+	}
+	.tray p:last-child {
+		margin-bottom: 0;
 	}
 </style>
