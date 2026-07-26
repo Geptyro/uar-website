@@ -63,11 +63,32 @@ function decrypt(data: Uint8Array, key: number): Uint8Array {
 	return out;
 }
 
-function decompress(data: Uint8Array): Uint8Array {
+/**
+ * Ceiling for one decompressed file. Nothing in a real replay approaches
+ * it; without a cap a crafted archive inflates a few hundred kilobytes
+ * into gigabytes, and uploads are public — one request would be enough to
+ * take the machine down.
+ */
+export const MAX_FILE_BYTES = 64 * 1024 * 1024;
+
+/**
+ * @param expected how many bytes this chunk must produce — the sector size
+ * for multi-sector files, the declared file size for single-unit ones.
+ * Both decoders are bounded by it: zlib refuses to exceed it, and bzip2
+ * writes into a buffer of exactly that size and reports a mismatch.
+ * @internal exported for the decompression-bomb tests
+ */
+export function decompressChunk(data: Uint8Array, expected: number): Uint8Array {
 	const compressionType = data[0];
 	if (compressionType === 0) return data;
-	if (compressionType === 2) return inflateSync(data.subarray(1));
-	if (compressionType === 16) return Bunzip.decode(Buffer.from(data.subarray(1)));
+	if (!Number.isFinite(expected) || expected <= 0 || expected > MAX_FILE_BYTES) {
+		throw new Error(`refusing to decompress ${expected} bytes from ${data.length}`);
+	}
+	const payload = data.subarray(1);
+	if (compressionType === 2) return inflateSync(payload, { maxOutputLength: expected });
+	// given a size, seek-bzip decodes into a fixed buffer and refuses to grow
+	// it, so an overlong stream throws instead of eating the machine's memory
+	if (compressionType === 16) return Bunzip.decode(Buffer.from(payload), expected);
 	throw new Error(`unsupported MPQ compression type ${compressionType}`);
 }
 
@@ -179,12 +200,15 @@ export class MPQArchive {
 
 		if (block.flags & MPQ_FILE_SINGLE_UNIT) {
 			if (block.flags & MPQ_FILE_COMPRESS && block.size > block.archivedSize) {
-				return decompress(fileData);
+				return decompressChunk(fileData, block.size);
 			}
 			return fileData;
 		}
 
 		// multi-sector file
+		if (block.size > MAX_FILE_BYTES) {
+			throw new Error(`archive declares a ${block.size} byte file`);
+		}
 		const sectorSize = 512 << this.sectorSizeShift;
 		let sectors = Math.floor(block.size / sectorSize) + 1;
 		const hasCrc = (block.flags & MPQ_FILE_SECTOR_CRC) !== 0;
@@ -200,7 +224,7 @@ export class MPQArchive {
 		for (let i = 0; i < count; i++) {
 			let sector = fileData.subarray(positions[i], positions[i + 1]);
 			if (block.flags & MPQ_FILE_COMPRESS && bytesLeft > sector.length) {
-				sector = decompress(sector);
+				sector = decompressChunk(sector, Math.min(sectorSize, bytesLeft));
 			}
 			bytesLeft -= sector.length;
 			parts.push(sector);
