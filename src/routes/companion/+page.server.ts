@@ -1,14 +1,19 @@
 /**
- * Latest UAR Companion release, read from the GitHub API so the download
- * buttons always point at the current build without a site deploy.
- * Cached for an hour: the API allows 60 unauthenticated calls per hour and
- * a release changes far less often than the page is viewed.
+ * Latest UAR Companion release for the download buttons.
+ *
+ * Read from the auto-update manifests the app itself uses
+ * (releases/latest/download/latest*.yml) rather than the GitHub API: those
+ * are plain asset downloads with no rate limit, whereas the API allows 60
+ * calls per hour per IP and fails on shared egress. Cached for an hour;
+ * if GitHub is unreachable the page falls back to linking the releases
+ * index, which always works.
  */
 import type { PageServerLoad } from './$types';
 
 export const prerender = false;
 
 const REPO = 'Geptyro/uar-companion';
+const LATEST = `https://github.com/${REPO}/releases/latest/download`;
 const TTL_MS = 60 * 60 * 1000;
 
 export interface CompanionAsset {
@@ -19,56 +24,56 @@ export interface CompanionAsset {
 
 export interface CompanionRelease {
 	version: string | null;
-	publishedAt: string | null;
 	windows: CompanionAsset | null;
 	linux: CompanionAsset | null;
 	mac: CompanionAsset | null;
 }
 
+const EMPTY: CompanionRelease = { version: null, windows: null, linux: null, mac: null };
 let cache: { at: number; value: CompanionRelease } | null = null;
 
-const EMPTY: CompanionRelease = {
-	version: null,
-	publishedAt: null,
-	windows: null,
-	linux: null,
-	mac: null
-};
+/** Pulls version + primary file out of an electron-updater manifest. */
+function parseManifest(yml: string): { version: string; asset: CompanionAsset } | null {
+	const version = yml.match(/^version:\s*(\S+)/m)?.[1];
+	const name = yml.match(/^path:\s*(\S+)/m)?.[1];
+	if (!version || !name) return null;
+	const size = Number(
+		yml.match(new RegExp(`- url:\\s*${name.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}[\\s\\S]*?size:\\s*(\\d+)`))?.[1] ?? 0
+	);
+	return {
+		version,
+		asset: { name, url: `https://github.com/${REPO}/releases/download/v${version}/${name}`, size }
+	};
+}
 
-function pick(
-	assets: { name: string; browser_download_url: string; size: number }[],
-	test: (name: string) => boolean
-): CompanionAsset | null {
-	const a = assets.find((x) => test(x.name.toLowerCase()));
-	return a ? { name: a.name, url: a.browser_download_url, size: a.size } : null;
+async function readManifest(file: string): Promise<{ version: string; asset: CompanionAsset } | null> {
+	try {
+		const res = await fetch(`${LATEST}/${file}`, {
+			headers: { 'user-agent': 'uar-website' },
+			signal: AbortSignal.timeout(5000)
+		});
+		if (!res.ok) return null;
+		return parseManifest(await res.text());
+	} catch {
+		return null;
+	}
 }
 
 export const load: PageServerLoad = async () => {
 	if (cache && Date.now() - cache.at < TTL_MS) return { release: cache.value };
-	try {
-		const res = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, {
-			headers: { accept: 'application/vnd.github+json' },
-			signal: AbortSignal.timeout(5000)
-		});
-		if (!res.ok) throw new Error(`HTTP ${res.status}`);
-		const body = (await res.json()) as {
-			tag_name?: string;
-			published_at?: string;
-			assets?: { name: string; browser_download_url: string; size: number }[];
-		};
-		const assets = body.assets ?? [];
-		const value: CompanionRelease = {
-			version: body.tag_name ?? null,
-			publishedAt: body.published_at ?? null,
-			windows: pick(assets, (n) => n.endsWith('.exe')),
-			linux: pick(assets, (n) => n.endsWith('.appimage')),
-			mac: pick(assets, (n) => n.endsWith('.zip'))
-		};
-		cache = { at: Date.now(), value };
-		return { release: value };
-	} catch {
-		// GitHub unreachable or rate-limited: the page falls back to linking
-		// the releases index, which always works
-		return { release: cache?.value ?? EMPTY };
-	}
+	const [win, linux, mac] = await Promise.all([
+		readManifest('latest.yml'),
+		readManifest('latest-linux.yml'),
+		readManifest('latest-mac.yml')
+	]);
+	const version = win?.version ?? linux?.version ?? mac?.version ?? null;
+	if (!version) return { release: cache?.value ?? EMPTY };
+	const value: CompanionRelease = {
+		version: `v${version}`,
+		windows: win?.asset ?? null,
+		linux: linux?.asset ?? null,
+		mac: mac?.asset ?? null
+	};
+	cache = { at: Date.now(), value };
+	return { release: value };
 };
