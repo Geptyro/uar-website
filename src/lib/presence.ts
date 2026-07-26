@@ -58,46 +58,5 @@ export function validateBeat(body: unknown): PresenceBeat | null {
 	return beat;
 }
 
-/** One lobby or game, with the entries that belong to it. */
-export interface PresenceGroup {
-	/** grouping key: lobbyId, else roster hash, else per-entry */
-	key: string;
-	status: 'lobby' | 'ingame';
-	uar: boolean;
-	members: PresenceEntry[];
-	/** best-known human count (max of reported values / roster size) */
-	players: number;
-	/** longest reported game clock, seconds */
-	displayTime?: number;
-}
-
-/**
- * Groups entries into lobbies/games: by lobbyId when known, else by the
- * roster name-set (identical for every member of one game), else each
- * entry stands alone.
- */
-export function groupPresence(entries: PresenceEntry[]): PresenceGroup[] {
-	const groups = new Map<string, PresenceGroup>();
-	for (const e of entries) {
-		const key =
-			e.lobbyId != null
-				? `id:${e.lobbyId}`
-				: e.roster && e.roster.length > 0
-					? `roster:${e.status}:${[...e.roster].sort().join('\n')}`
-					: `solo:${e.battletag}`;
-		let g = groups.get(key);
-		if (!g) {
-			g = { key, status: e.status, uar: e.uar, members: [], players: 0 };
-			groups.set(key, g);
-		}
-		g.members.push(e);
-		g.uar = g.uar || e.uar;
-		// a member already in-game wins over one still in the lobby screen
-		if (e.status === 'ingame') g.status = 'ingame';
-		g.players = Math.max(g.players, e.players ?? 0, e.roster?.length ?? 0, g.members.length);
-		if (e.displayTime !== undefined) {
-			g.displayTime = Math.max(g.displayTime ?? 0, e.displayTime);
-		}
-	}
-	return [...groups.values()].sort((a, b) => b.players - a.players);
-}
+// grouping lives in uar-shared (the tray renders the same groups)
+export { groupPresence, type PresenceGroup } from 'uar-shared/presence';

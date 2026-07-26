@@ -9,7 +9,7 @@
 	 */
 	import { onMount } from 'svelte';
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
-	import PresenceChip from '$lib/components/PresenceChip.svelte';
+	import { PresenceChip } from 'uar-shared';
 	import { activeReady, minutesLeft, readyLevel, type ReadyPlayer } from '$lib/ready';
 	import { groupPresence, type PresenceEntry } from '$lib/presence';
 
