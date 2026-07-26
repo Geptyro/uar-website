@@ -121,28 +121,54 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 	const toons = new Map<number, string>();
 	const curBank = new Map<number, string>();
 	const curKey = new Map<number, string>();
-	for (const ev of decodeReplayGameEvents(protocol, archive.readFile('replay.game.events')!)) {
-		const t = ev._event as string;
-		if (!t.includes('Bank')) {
-			if ((ev._gameloop as number) > 0) break; // bank preload only happens at loop 0
-			continue;
+	// The preload is replayed at gameloop 0, so only the head of
+	// game.events matters. Decompressing the whole stream costs over a
+	// second on a long game — an order of magnitude more than decoding the
+	// few hundred events we want — so read a slice and fall back to the
+	// whole file if it did not cover the preload.
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const scanBanks = (events: Generator<any>): boolean => {
+		for (const ev of events) {
+			const t = ev._event as string;
+			if (!t.includes('Bank')) {
+				if ((ev._gameloop as number) > 0) return true; // past the preload
+				continue;
+			}
+			const uid = ev._userid.m_userId as number;
+			if (t.endsWith('SBankFileEvent')) {
+				curBank.set(uid, utf(ev.m_name));
+			} else if (curBank.get(uid) !== 'UAR') {
+				continue;
+			} else if (t.endsWith('SBankKeyEvent')) {
+				if (!banks.has(uid)) banks.set(uid, {});
+				banks.get(uid)![utf(ev.m_name)] = utf(ev.m_data);
+				curKey.set(uid, utf(ev.m_name));
+			} else if (t.endsWith('SBankValueEvent')) {
+				// value continuation for the preceding key event
+				if (!banks.has(uid)) banks.set(uid, {});
+				banks.get(uid)![curKey.get(uid) ?? '?'] = utf(ev.m_data);
+			} else if (t.endsWith('SBankSignatureEvent')) {
+				toons.set(uid, utf(ev.m_toonHandle));
+			}
 		}
-		const uid = ev._userid.m_userId as number;
-		if (t.endsWith('SBankFileEvent')) {
-			curBank.set(uid, utf(ev.m_name));
-		} else if (curBank.get(uid) !== 'UAR') {
-			continue;
-		} else if (t.endsWith('SBankKeyEvent')) {
-			if (!banks.has(uid)) banks.set(uid, {});
-			banks.get(uid)![utf(ev.m_name)] = utf(ev.m_data);
-			curKey.set(uid, utf(ev.m_name));
-		} else if (t.endsWith('SBankValueEvent')) {
-			// value continuation for the preceding key event
-			if (!banks.has(uid)) banks.set(uid, {});
-			banks.get(uid)![curKey.get(uid) ?? '?'] = utf(ev.m_data);
-		} else if (t.endsWith('SBankSignatureEvent')) {
-			toons.set(uid, utf(ev.m_toonHandle));
-		}
+		return false; // ran out of events without leaving loop 0
+	};
+
+	// 512 KB covers a full twelve-player preload several times over
+	let covered = false;
+	try {
+		covered = scanBanks(
+			decodeReplayGameEvents(protocol, archive.readFile('replay.game.events', 512 * 1024)!)
+		);
+	} catch {
+		covered = false; // slice ended mid-event
+	}
+	if (!covered) {
+		banks.clear();
+		toons.clear();
+		curBank.clear();
+		curKey.clear();
+		scanBanks(decodeReplayGameEvents(protocol, archive.readFile('replay.game.events')!));
 	}
 
 	// class picks: each player's hero unit(s) born, from tracker events

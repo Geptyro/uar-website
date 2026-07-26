@@ -156,7 +156,14 @@ export class MPQArchive {
 		return out;
 	}
 
-	readFile(filename: string): Uint8Array | null {
+	/**
+	 * @param maxBytes stop after this many decompressed bytes. The bank
+	 * preload we read from replay.game.events sits at the very start of a
+	 * file that can be ten megabytes, and decompressing all of it costs
+	 * over a second — far more than decoding the handful of events we
+	 * actually want. Callers must tolerate a truncated stream.
+	 */
+	readFile(filename: string, maxBytes = Infinity): Uint8Array | null {
 		const hashA = hash(filename, 'HASH_A');
 		const hashB = hash(filename, 'HASH_B');
 		const hashEntry = this.hashTable.find((e) => e.hashA === hashA && e.hashB === hashB);
@@ -188,6 +195,7 @@ export class MPQArchive {
 
 		const parts: Uint8Array[] = [];
 		let bytesLeft = block.size;
+		let produced = 0;
 		const count = positions.length - (hasCrc ? 2 : 1);
 		for (let i = 0; i < count; i++) {
 			let sector = fileData.subarray(positions[i], positions[i + 1]);
@@ -196,6 +204,8 @@ export class MPQArchive {
 			}
 			bytesLeft -= sector.length;
 			parts.push(sector);
+			produced += sector.length;
+			if (produced >= maxBytes) break;
 		}
 		const total = parts.reduce((n, p) => n + p.length, 0);
 		const out = new Uint8Array(total);
