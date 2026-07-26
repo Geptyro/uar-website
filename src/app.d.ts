@@ -1,6 +1,10 @@
 // See https://svelte.dev/docs/kit/types#app.d.ts
 // for information about these interfaces
 declare global {
+	interface Window {
+		/** Umami tracker (app.html, deferred) — absent until the script loads. */
+		umami?: { identify: (id: string, data?: Record<string, unknown>) => void };
+	}
 	namespace App {
 		// interface Error {}
 		interface Locals {

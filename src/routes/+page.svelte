@@ -9,6 +9,7 @@
 		? latestRelease.entries.filter((e) => e.impact !== 'minor')
 		: [];
 	import DescCard from '$lib/components/DescCard.svelte';
+	import ActivityChart from '$lib/components/ActivityChart.svelte';
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
 
 	let { data } = $props();
@@ -176,6 +177,17 @@
 		{/if}
 	</div>
 	<p class="top-note">Aggregated from ingested replays over the last 7 days.</p>
+{/if}
+
+{#if data.activity.values.some((v) => v > 0)}
+	<h2 class="section">Activity · last 7 days</h2>
+	<DescCard label="Players in game">
+		<ActivityChart timeline={data.activity} />
+	</DescCard>
+	<p class="top-note">
+		Average players in game per half hour, from ingested replays · times shown in your local
+		timezone.
+	</p>
 {/if}
 
 <h2 class="section">Heavy hostiles · 10,000+ HP</h2>

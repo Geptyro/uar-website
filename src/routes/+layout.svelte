@@ -139,6 +139,7 @@
 		if (p === '/changelog') return { section: '', title: 'Changelog' };
 		if (p === '/feedback') return { section: '', title: 'Feedback' };
 		if (p === '/account') return { section: '', title: 'Account' };
+		if (p === '/mos') return { section: 'MOS', title: 'Classes compared' };
 		if (p.startsWith('/mos/')) {
 			const m = mosById.get(decodeURIComponent(p.slice(5)));
 			return { section: 'MOS', title: m?.name ?? p.slice(5) };
@@ -158,7 +159,18 @@
 		} catch {
 			me = signedOut;
 		}
+		if (me?.battletag) identifyUmami(me.battletag, me.toon);
 	});
+
+	// Tie the Umami session (self-hosted, cookieless) to the signed-in
+	// battletag. The tracker script is deferred, so retry until it's loaded.
+	function identifyUmami(battletag: string, toon: string | null, tries = 0) {
+		if (window.umami?.identify) {
+			window.umami.identify(battletag, toon ? { toon } : undefined);
+		} else if (tries < 20) {
+			setTimeout(() => identifyUmami(battletag, toon, tries + 1), 250);
+		}
+	}
 
 	// Changelog badge: latest released version + a dot when it's new to this visitor.
 	const badge = latestVersionInfo(
@@ -273,7 +285,11 @@
 				{/each}
 			</nav>
 
-			<div class="side-label">MOS · Classes</div>
+			<div class="side-label">
+				MOS · <a class="side-label-link" href="/mos" class:active={page.url.pathname === '/mos'}
+					>Compare all</a
+				>
+			</div>
 			<nav class="mos-nav" aria-label="MOS classes">
 				{#each mosList as m (m.id)}
 					<a href="/mos/{m.id}" class:active={page.url.pathname === `/mos/${m.id}`}>
@@ -292,6 +308,15 @@
 				Unofficial fan reference — map by Znimu#743.
 				<a class="author" href="https://cedricdessalles.dev" target="_blank" rel="noopener">
 					Built by Cédric Dessalles ↗
+				</a>
+				<a class="gh" href="https://github.com/Geptyro/uar-website" target="_blank" rel="noopener">
+					<svg viewBox="0 0 16 16" aria-hidden="true">
+						<path
+							fill-rule="evenodd"
+							d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
+						/>
+					</svg>
+					Source on GitHub ↗
 				</a>
 			</div>
 		</aside>
@@ -927,6 +952,16 @@
 		color: var(--sidebar-ink-2);
 		padding: 18px 10px 6px;
 	}
+	.side-label-link {
+		color: inherit;
+		text-decoration: none;
+	}
+	.side-label-link:hover,
+	.side-label-link.active {
+		color: var(--sidebar-ink);
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
 	.mos-nav a {
 		padding: 4.5px 10px;
 		font-weight: 450;
@@ -977,6 +1012,27 @@
 		color: var(--accent-hover);
 		text-decoration: underline;
 		text-underline-offset: 3px;
+	}
+	.side-foot .gh {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		margin-top: 6px;
+		color: var(--sidebar-ink);
+		text-decoration: none;
+		font-weight: 550;
+		transition: color 120ms ease;
+	}
+	.side-foot .gh:hover {
+		color: var(--accent-hover);
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+	.side-foot .gh svg {
+		width: 13px;
+		height: 13px;
+		fill: currentColor;
+		flex-shrink: 0;
 	}
 	.ver-dot {
 		width: 5px;

@@ -1,4 +1,5 @@
-import { dbConfigured, getAvatarsByToon, getWeeklyBoards } from '$lib/server/db';
+import { dbConfigured, getAvatarsByToon, getReplaysList, getWeeklyBoards } from '$lib/server/db';
+import { activityTimeline, type ActivityTimeline } from '$lib/activity';
 import type { WeeklyBoards } from '$lib/players';
 import type { PageServerLoad } from './$types';
 
@@ -8,7 +9,16 @@ export const prerender = false;
 const EMPTY: WeeklyBoards = { xp: [], prestiged: [], classPicks: [] };
 
 export const load: PageServerLoad = async () => {
-	if (!dbConfigured()) return { weekly: EMPTY, avatars: {} as Record<string, string> };
-	const [weekly, avatars] = await Promise.all([getWeeklyBoards(), getAvatarsByToon()]);
-	return { weekly, avatars };
+	if (!dbConfigured())
+		return {
+			weekly: EMPTY,
+			avatars: {} as Record<string, string>,
+			activity: { start: 0, values: [] } as ActivityTimeline
+		};
+	const [weekly, avatars, replays] = await Promise.all([
+		getWeeklyBoards(),
+		getAvatarsByToon(),
+		getReplaysList()
+	]);
+	return { weekly, avatars, activity: activityTimeline(replays, new Date()) };
 };

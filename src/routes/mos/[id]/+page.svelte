@@ -14,12 +14,17 @@
 	import FactsCard, { type Fact } from '$lib/components/FactsCard.svelte';
 	import ModelCard from '$lib/components/ModelCard.svelte';
 	import DescCard from '$lib/components/DescCard.svelte';
+	import MechanicsGrid from '$lib/components/MechanicsGrid.svelte';
+	import ClassPanel from '$lib/components/ClassPanel.svelte';
+	import Tooltip from '$lib/components/Tooltip.svelte';
+	import { mechanicsFor } from '$lib/mechanics';
 	import models from '$lib/data/models.json';
 
 	let { data } = $props();
 
 	const mos = $derived(data.mos);
 	const modelUrl = $derived((models as Record<string, string>)[data.mos.id] ?? null);
+	const mechanics = $derived(mechanicsFor(data.mos.id));
 
 	// mission items (supply) are objective props, not class gear — keep them off class pages
 	const usable = $derived(data.items.filter((i) => i.type !== 'supply'));
@@ -55,6 +60,14 @@
 
 	function dps(dmg: number | null, period: number | null): string {
 		return dmg && period ? String(Math.round(dmg / period)) : '?';
+	}
+
+	/** stand-in tile art for the handful of abilities the map ships without an icon */
+	function initials(name: string): string {
+		return (name.match(/[A-Za-z0-9]+/g) ?? [])
+			.slice(0, 2)
+			.map((w) => w[0].toUpperCase())
+			.join('');
 	}
 
 	function itemNote(item: Item): string {
@@ -164,71 +177,91 @@
 			</div>
 		{/if}
 
-		<h2 class="section">Armament</h2>
-		<p class="note">
-			Standard-issue weapons plus every weapon item this class can pick up and use. Buff-type
-			weapons (no separate stats) modify the equipped weapon instead.
-		</p>
-		<div class="tablewrap">
-			<table class="data" style="min-width: 660px">
-				<thead>
-					<tr>
-						<th>Weapon</th>
-						<th>Source</th>
-						<th class="num">Damage</th>
-						<th class="num">Range</th>
-						<th class="num">Period (s)</th>
-						<th class="num">DPS</th>
-						<th>Notes</th>
-					</tr>
-				</thead>
-				<tbody>
-					{#each mos.weapons as w (w.id)}
+		<!-- vehicles arm themselves through panel abilities, so they have no weapon rows -->
+		{#if mos.weapons.length || weaponItems.length}
+			<h2 class="section">Armament</h2>
+			<p class="note">
+				Standard-issue weapons plus every weapon item this class can pick up and use. Buff-type
+				weapons (no separate stats) modify the equipped weapon instead.
+			</p>
+			<div class="tablewrap">
+				<table class="data" style="min-width: 660px">
+					<thead>
 						<tr>
-							<td class="wname">{w.id}</td>
-							<td><span class="tag">standard issue</span></td>
-							<td class="num">{w.dmg ?? '?'}</td>
-							<td class="num">{w.range ?? '?'}</td>
-							<td class="num">{w.period ?? '?'}</td>
-							<td class="num">{dps(w.dmg, w.period)}</td>
-							<td class="mono notes">{(w.applies ?? []).map(applyText).join(' · ')}</td>
+							<th>Weapon</th>
+							<th>Source</th>
+							<th class="num">Damage</th>
+							<th class="num">Range</th>
+							<th class="num">Period (s)</th>
+							<th class="num">DPS</th>
+							<th>Notes</th>
 						</tr>
-					{/each}
-					{#each weaponItems as item (item.id)}
-						{#if item.grants.length}
-							{#each item.grants as g (g.id)}
+					</thead>
+					<tbody>
+						{#each mos.weapons as w (w.id)}
+							<tr>
+								<td class="wname">{w.id}</td>
+								<td><span class="tag">standard issue</span></td>
+								<td class="num">{w.dmg ?? '?'}</td>
+								<td class="num">{w.range ?? '?'}</td>
+								<td class="num">{w.period ?? '?'}</td>
+								<td class="num">{dps(w.dmg, w.period)}</td>
+								<td class="mono notes">{(w.applies ?? []).map(applyText).join(' · ')}</td>
+							</tr>
+						{/each}
+						{#each weaponItems as item (item.id)}
+							{#if item.grants.length}
+								{#each item.grants as g (g.id)}
+									<tr>
+										<td class="wname namecell">
+											{#if item.icon}<img class="row-icon" src={item.icon} alt="" loading="lazy" />{/if}
+											<a href="/items#{item.id}">{item.name}</a>
+										</td>
+										<td><span class="tag t-item">item</span></td>
+										<td class="num">{g.dmg ?? '?'}</td>
+										<td class="num">{g.range ?? '?'}</td>
+										<td class="num">{g.period ?? '?'}</td>
+										<td class="num">{dps(g.dmg, g.period)}</td>
+										<td class="mono notes"
+											>{[itemNote(item), ...(g.applies ?? []).map(applyText)]
+												.filter(Boolean)
+												.join(' · ')}</td
+										>
+									</tr>
+								{/each}
+							{:else}
 								<tr>
 									<td class="wname namecell">
 										{#if item.icon}<img class="row-icon" src={item.icon} alt="" loading="lazy" />{/if}
 										<a href="/items#{item.id}">{item.name}</a>
 									</td>
-									<td><span class="tag t-item">item</span></td>
-									<td class="num">{g.dmg ?? '?'}</td>
-									<td class="num">{g.range ?? '?'}</td>
-									<td class="num">{g.period ?? '?'}</td>
-									<td class="num">{dps(g.dmg, g.period)}</td>
-									<td class="mono notes"
-										>{[itemNote(item), ...(g.applies ?? []).map(applyText)]
-											.filter(Boolean)
-											.join(' · ')}</td
-									>
+									<td><span class="tag t-item">weapon buff</span></td>
+									<td class="num" colspan="4"></td>
+									<td class="mono notes">{itemNote(item)}</td>
 								</tr>
-							{/each}
-						{:else}
-							<tr>
-								<td class="wname namecell">
-									{#if item.icon}<img class="row-icon" src={item.icon} alt="" loading="lazy" />{/if}
-									<a href="/items#{item.id}">{item.name}</a>
-								</td>
-								<td><span class="tag t-item">weapon buff</span></td>
-								<td class="num" colspan="4"></td>
-								<td class="mono notes">{itemNote(item)}</td>
-							</tr>
 						{/if}
 					{/each}
 				</tbody>
 			</table>
 		</div>
+		{/if}
+
+		{#if mechanics}
+			<h2 class="section">Handling</h2>
+			<p class="note">
+				Ammunition, jamming and shared-class behaviour, read from the map's trigger script rather
+				than the unit data.
+			</p>
+			<MechanicsGrid mosId={mos.id} />
+		{/if}
+
+		{#if mechanics?.panel.length}
+			<h2 class="section">Class panel · {mechanics.panel.length} buttons</h2>
+			<p class="note">
+				Extra actions on this class's mini-panel, with the hotkey that triggers each one.
+			</p>
+			<ClassPanel keys={mechanics.panel} />
+		{/if}
 
 		{#each gearGroups as group (group.type)}
 			<h2 class="section">{group.label} · {group.items.length}</h2>
@@ -269,35 +302,6 @@
 			</div>
 		{/each}
 
-		{#if mos.common.length}
-			<h2 class="section">Standard abilities</h2>
-			<div class="abil-list">
-				{#each mos.common as a (a.id)}
-					{#if a.tooltip}
-						<details>
-							<summary>
-								{#if a.icon}
-									<img class="abil-icon" src={a.icon} alt="" loading="lazy" />
-								{:else}
-									<span class="abil-icon placeholder"></span>
-								{/if}
-								{a.name}
-							</summary>
-							<p>{a.tooltip}</p>
-						</details>
-					{:else}
-						<span class="abil-plain">
-							{#if a.icon}
-								<img class="abil-icon" src={a.icon} alt="" loading="lazy" />
-							{:else}
-								<span class="abil-icon placeholder"></span>
-							{/if}
-							{a.name}
-						</span>
-					{/if}
-				{/each}
-			</div>
-		{/if}
 	</div>
 
 	<aside class="infobox">
@@ -308,6 +312,28 @@
 			{facts}
 			link={{ href: `/entities/${mos.id}`, label: 'Unit data →' }}
 		/>
+		{#if mos.common.length}
+			<DescCard label="Standard abilities · {mos.common.length}">
+				<ul class="abil-grid">
+					{#each mos.common as a (a.id)}
+						<li>
+							<Tooltip label={a.name} text={a.tooltip} placement="left">
+								<span class="abil-tile">
+									{#if a.icon}
+										<img src={a.icon} alt={a.name} loading="lazy" />
+									{:else}
+										<span class="abil-fallback" aria-label={a.name}>{initials(a.name)}</span>
+									{/if}
+								</span>
+							</Tooltip>
+						</li>
+					{/each}
+				</ul>
+				<p class="unlock-note">
+					Commands this class has by default. Hover — or focus — an icon for what it does.
+				</p>
+			</DescCard>
+		{/if}
 		{#if unlock}
 			<DescCard label="Unlock requirements">
 				<div class="unlock-grid">
@@ -751,73 +777,59 @@
 		white-space: pre-line;
 	}
 
-	.abil-list {
-		display: flex;
-		flex-direction: column;
+	/* command-card style grid: square tiles filling the infobox width */
+	.abil-grid {
+		list-style: none;
+		margin: 2px 0 0;
+		padding: 0;
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
 		gap: 6px;
-		max-width: 78ch;
 	}
-	details,
-	.abil-plain {
-		background: var(--surface);
+	.abil-tile {
+		width: 100%;
+		aspect-ratio: 1;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		overflow: hidden;
+		/* dark slot in both themes: the icon art is drawn for SC2's dark command
+		   card, and white line-art ones vanish on the light surface */
+		background: var(--sidebar);
 		border: 1px solid var(--border);
 		border-radius: var(--r-sm);
 		box-shadow: var(--shadow-1);
+		cursor: help;
+		transition:
+			border-color 140ms ease,
+			transform 140ms ease,
+			box-shadow 140ms ease;
 	}
-	summary {
-		cursor: pointer;
-		padding: 8px 14px;
-		font-size: 13px;
-		font-weight: 550;
-		list-style: none;
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		transition: color 120ms ease;
-	}
-	summary::before {
-		content: '';
-		width: 5px;
-		height: 5px;
-		border-right: 1.5px solid var(--ink-3);
-		border-bottom: 1.5px solid var(--ink-3);
-		transform: rotate(-45deg);
-		transition: transform 140ms ease;
-		flex-shrink: 0;
-	}
-	details[open] summary::before {
-		transform: rotate(45deg);
-	}
-	summary:hover {
-		color: var(--accent);
-	}
-	details p {
-		margin: 0;
-		padding: 0 14px 12px 27px;
-		font-size: 12.5px;
-		color: var(--ink-2);
-		white-space: pre-line;
-	}
-	.abil-plain {
-		padding: 8px 14px;
-		font-size: 13px;
-		display: flex;
-		align-items: center;
-		gap: 8px;
-	}
-	.abil-icon {
-		width: 22px;
-		height: 22px;
+	.abil-tile img {
+		width: 100%;
+		height: 100%;
 		object-fit: cover;
-		border-radius: 4px;
-		flex-shrink: 0;
+		display: block;
 	}
-	.abil-icon.placeholder {
-		display: inline-block;
-		background: var(--surface-2);
+	.abil-grid :global(.tt) {
+		width: 100%;
 	}
-	details p {
-		padding-left: 44px;
+	.abil-fallback {
+		font-family: var(--mono);
+		font-size: 12px;
+		font-weight: 650;
+		color: var(--sidebar-ink-2);
+		width: 100%;
+		height: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+	.abil-grid li:hover .abil-tile,
+	.abil-grid li:focus-within .abil-tile {
+		border-color: var(--border-strong);
+		transform: translateY(-1px);
+		box-shadow: var(--shadow-2);
 	}
 
 	td.namecell {
