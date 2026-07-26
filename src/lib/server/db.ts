@@ -355,6 +355,33 @@ export async function pickPrimaryProfile(profiles: Sc2Profile[]): Promise<Sc2Pro
 }
 
 /** toon -> SC2 portrait URL, across every linked account (small collection). */
+/**
+ * In-game names → the player we know under that name (most recently seen
+ * wins, since SC2 profile names are not unique). Lets live rosters link to
+ * profiles for players who never installed the companion app.
+ */
+export async function getPlayerDirectory(): Promise<
+	Record<string, { toon: string; avatar?: string }>
+> {
+	return cached('playerDirectory', async () => {
+		const d = await db();
+		const docs = (await d
+			.collection('players')
+			.find({}, { projection: { name: 1, toon: 1, lastSeen: 1, _id: 1 } })
+			.toArray()) as unknown as { _id: string; name?: string; lastSeen?: string }[];
+		const avatars = await getAvatarsByToon();
+		const seen: Record<string, string> = {};
+		const map: Record<string, { toon: string; avatar?: string }> = {};
+		for (const p of docs) {
+			if (!p.name) continue;
+			if (seen[p.name] && (p.lastSeen ?? '') <= seen[p.name]) continue;
+			seen[p.name] = p.lastSeen ?? '';
+			map[p.name] = { toon: p._id, ...(avatars[p._id] ? { avatar: avatars[p._id] } : {}) };
+		}
+		return map;
+	});
+}
+
 export async function getAvatarsByToon(): Promise<Record<string, string>> {
 	return cached('avatars', async () => {
 		const d = await db();

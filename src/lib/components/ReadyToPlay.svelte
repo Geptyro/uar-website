@@ -16,6 +16,7 @@
 
 	let players = $state<ReadyPlayer[]>([]);
 	let presence = $state<PresenceEntry[]>([]);
+	let known = $state<Record<string, { toon: string; avatar?: string }>>({});
 	let myStatus = $state<'lobby' | 'ingame' | null>(null);
 	let myUntil = $state<string | null>(null);
 	let busy = $state(false);
@@ -48,9 +49,11 @@
 				const body = (await res.json()) as {
 					players: PresenceEntry[];
 					me: 'lobby' | 'ingame' | null;
+					known?: Record<string, { toon: string; avatar?: string }>;
 				};
 				presence = body.players;
 				myStatus = body.me;
+				known = body.known ?? {};
 			}
 		} catch {
 			// transient — keep the last known state
@@ -91,6 +94,8 @@
 	lobbies={split.lobbies}
 	games={split.games}
 	href={(m: PresenceEntry) => (m.toon ? `/players/${m.toon}` : null)}
+	{known}
+	toonHref={(toon: string) => `/players/${toon}`}
 />
 
 {#if signedIn || active.length > 0}

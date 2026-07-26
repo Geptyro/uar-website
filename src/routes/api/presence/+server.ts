@@ -18,6 +18,7 @@ import {
 	dbConfigured,
 	deletePresence,
 	getActivePresence,
+	getPlayerDirectory,
 	getReadyPlayers,
 	upsertPresence
 } from '$lib/server/db';
@@ -45,7 +46,16 @@ export const GET: RequestHandler = async ({ locals, setHeaders }) => {
 		lobbyId: d.lobbyId ?? null,
 		selfName: d.selfName
 	}));
-	return json({ players, me: mine?.status ?? null });
+
+	// resolve the roster names we recognise, so a live lobby can link to the
+	// profiles of players who never installed the companion app
+	const names = new Set(players.flatMap((p) => p.roster ?? []));
+	const known: Record<string, { toon: string; avatar?: string }> = {};
+	if (names.size > 0) {
+		const directory = await getPlayerDirectory();
+		for (const name of names) if (directory[name]) known[name] = directory[name];
+	}
+	return json({ players, me: mine?.status ?? null, known });
 };
 
 export const POST: RequestHandler = async ({ locals, request }) => {
