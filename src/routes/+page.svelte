@@ -340,7 +340,8 @@
 	.pick-icon.placeholder {
 		background: var(--surface-2);
 	}
-	.pick-bar {
+	/* aligned under the name: icon 18 + gap (must out-rank .pbar's 48px) */
+	.pbar.pick-bar {
 		margin-left: 24px;
 	}
 	.top-list {
