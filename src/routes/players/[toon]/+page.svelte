@@ -16,6 +16,15 @@
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
 
 	let { data } = $props();
+
+	// a long-standing player has hundreds of games: show the most recent
+	// ones and let the page grow on demand. Indices stay absolute so the
+	// per-row deltas keep comparing against the real previous game.
+	const HISTORY_STEP = 25;
+	let historyShown = $state(HISTORY_STEP);
+	const shownHistory = $derived(
+		Array.from({ length: data.player.history.length }, (_, i) => i).slice(-historyShown)
+	);
 	const p = $derived(data.player);
 
 	const tracks = $derived(
@@ -342,7 +351,8 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#each p.history as h, i (h.file)}
+					{#each shownHistory as i (p.history[i].file)}
+						{@const h = p.history[i]}
 						{@const span = gamesSpanned(p.history, i)}
 						<tr>
 							<td class="mono">
@@ -392,6 +402,11 @@
 					{/each}
 				</tbody>
 			</table>
+		{#if shownHistory.length < p.history.length}
+			<button class="moregames" onclick={() => (historyShown += HISTORY_STEP * 2)}>
+				Show earlier games ({p.history.length - shownHistory.length} more)
+			</button>
+		{/if}
 		</div>
 		<p class="note">
 			One row per ingested replay this player appears in. Values are the save-file state when each
@@ -479,6 +494,21 @@
 </div>
 
 <style>
+	.moregames {
+		margin-top: 10px;
+		background: transparent;
+		border: 1px solid var(--border-strong);
+		color: var(--ink-2);
+		border-radius: var(--r-sm);
+		padding: 6px 14px;
+		font: 550 12.5px/1 var(--sans);
+		cursor: pointer;
+	}
+	.moregames:hover {
+		border-color: var(--accent);
+		color: var(--accent);
+	}
+
 	.layout {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) 290px;

@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import Pager from '$lib/components/Pager.svelte';
 
 	let { data, children } = $props();
-	const replays = $derived([...data.replays].reverse());
+	const replays = $derived(data.replays); // already newest-first from the server
 
 	function replayId(file: string): string {
 		return file.replace(/\.SC2Replay$/, '');
@@ -16,7 +17,7 @@
 <div class="split">
 	<nav class="rlist" aria-label="Ingested replays">
 		<a class="rlist-head" href="/replays" class:active={!page.params.id}>
-			Ingested replays <span class="counthint">{replays.length}</span>
+			Ingested replays <span class="counthint">{data.total}</span>
 		</a>
 		<ol>
 			{#each replays as r (r.file)}
@@ -31,6 +32,9 @@
 				</li>
 			{/each}
 		</ol>
+		<div class="rpager">
+			<Pager page={data.page} pages={data.pages} total={data.total} label="replays" />
+		</div>
 	</nav>
 
 	<div class="rmain">
@@ -39,6 +43,9 @@
 </div>
 
 <style>
+	.rpager {
+		padding: 0 10px;
+	}
 	.split {
 		display: flex;
 		gap: 28px;

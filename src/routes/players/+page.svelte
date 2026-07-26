@@ -1,54 +1,33 @@
 <script lang="ts">
 	import { rankFor, totalWins, totalXp, careerXp, type PlayerProfile } from '$lib/players';
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
+	import Pager from '$lib/components/Pager.svelte';
 
 	let { data } = $props();
 	const players = $derived(data.players);
 
-	type Col = {
-		key: string;
-		label: string;
-		num?: boolean;
-		value: (p: PlayerProfile) => number | string;
-	};
+	type Col = { key: string; label: string; num?: boolean };
 
 	const columns: Col[] = [
-		{ key: 'name', label: 'Player', value: (p) => p.name.toLowerCase() },
-		{ key: 'career', label: 'Career XP', num: true, value: (p) => careerXp(p) },
-		{ key: 'xpEn', label: 'Enlisted', num: true, value: (p) => p.xpEn },
-		{ key: 'xpWo', label: 'Warrant Officer', num: true, value: (p) => p.xpWo },
-		{ key: 'xpCo', label: 'Commissioned Officer', num: true, value: (p) => p.xpCo },
-		{ key: 'prestige', label: 'Prestige', num: true, value: (p) => p.prestige },
-		{ key: 'games', label: 'Games', num: true, value: (p) => p.gamesPlayed },
-		{ key: 'wins', label: 'Wins', num: true, value: (p) => totalWins(p) },
-		{ key: 'revives', label: 'Revives', num: true, value: (p) => p.revives },
-		{ key: 'avg', label: 'Avg game', num: true, value: (p) => p.avgGameTime }
+		{ key: 'name', label: 'Player' },
+		{ key: 'career', label: 'Career XP', num: true },
+		{ key: 'xpEn', label: 'Enlisted', num: true },
+		{ key: 'xpWo', label: 'Warrant Officer', num: true },
+		{ key: 'xpCo', label: 'Commissioned Officer', num: true },
+		{ key: 'prestige', label: 'Prestige', num: true },
+		{ key: 'games', label: 'Games', num: true },
+		{ key: 'wins', label: 'Wins', num: true },
+		{ key: 'revives', label: 'Revives', num: true },
+		{ key: 'avg', label: 'Avg game', num: true }
 	];
 
-	let sortKey = $state('career');
-	let sortDir = $state(-1);
-
-	function setSort(key: string) {
-		if (sortKey === key) sortDir *= -1;
-		else {
-			sortKey = key;
-			// numbers feel right descending-first, names ascending-first
-			sortDir = key === 'name' ? 1 : -1;
-		}
+	// sorting is a link, not local state: the server holds the whole
+	// leaderboard and sends one page of it
+	function sortHref(key: string): string {
+		const flip = data.sort === key && data.dir === 'desc';
+		const dir = flip ? 'asc' : key === 'name' && data.sort !== key ? 'asc' : 'desc';
+		return `?sort=${key}&dir=${dir}`;
 	}
-
-	const sorted = $derived.by(() => {
-		const col = columns.find((c) => c.key === sortKey);
-		const value = col?.value ?? careerXp;
-		const out = [...players];
-		out.sort((a, b) => {
-			const x = value(a);
-			const y = value(b);
-			const cmp = typeof x === 'number' ? x - (y as number) : String(x).localeCompare(String(y));
-			return cmp * sortDir || careerXp(b) - careerXp(a);
-		});
-		return out;
-	});
 
 	function fmtSize(bytes: number): string {
 		return bytes >= 1e6 ? `${(bytes / 1e6).toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`;
@@ -79,17 +58,21 @@
 			<tr>
 				<th class="num">#</th>
 				{#each columns as col (col.key)}
-					<th class:num={col.num} class="sortable" onclick={() => setSort(col.key)}>
-						{col.label}
-						<span class="dir">{sortKey === col.key ? (sortDir > 0 ? '↑' : '↓') : ''}</span>
+					<th class:num={col.num} class="sortable">
+						<a href={sortHref(col.key)} data-sveltekit-noscroll>
+							{col.label}
+							<span class="dir">
+								{data.sort === col.key ? (data.dir === 'asc' ? '↑' : '↓') : ''}
+							</span>
+						</a>
 					</th>
 				{/each}
 			</tr>
 		</thead>
 		<tbody>
-			{#each sorted as p, i (p.toon)}
+			{#each players as p, i (p.toon)}
 				<tr>
-					<td class="num rank-pos">{i + 1}</td>
+					<td class="num rank-pos">{(data.page - 1) * 50 + i + 1}</td>
 					<td class="namecell">
 						<span class="playercell">
 							<img
@@ -128,6 +111,7 @@
 		</tbody>
 	</table>
 </div>
+<Pager page={data.page} pages={data.pages} total={data.total} label="players" />
 
 <p class="note">
 	Experience caps at 250,000 per track; Career XP adds 600,000 per prestige (prestiging requires

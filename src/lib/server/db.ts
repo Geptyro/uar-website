@@ -124,6 +124,21 @@ export async function getPlayers(): Promise<Record<string, unknown>[]> {
 	});
 }
 
+/**
+ * Player rows without the per-game history and the unlock arrays — those
+ * are only needed on a profile page, and carrying them for every player
+ * made the leaderboard payload grow with the archive.
+ */
+export async function getPlayersLite(): Promise<Record<string, unknown>[]> {
+	return cached('playersLite', async () => {
+		const d = await db();
+		return d
+			.collection('players')
+			.find({}, { projection: { _id: 0, history: 0, unlocks: 0 } })
+			.toArray() as Promise<Record<string, unknown>[]>;
+	});
+}
+
 export async function getPlayer(toon: string): Promise<Record<string, unknown> | null> {
 	const d = await db();
 	return d.collection('players').findOne({ _id: toon } as never, { projection: { _id: 0 } });
