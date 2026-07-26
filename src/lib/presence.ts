@@ -22,6 +22,8 @@ export interface PresenceBeat {
 	roster?: string[];
 	/** battlelobby m_randomValue — groups members of one lobby/game */
 	lobbyId?: number | null;
+	/** the reporter's own entry in `roster` (their SC2 profile name) */
+	selfName?: string;
 }
 
 /** One public presence entry (GET /api/presence). */
@@ -54,6 +56,9 @@ export function validateBeat(body: unknown): PresenceBeat | null {
 	}
 	if (typeof b.lobbyId === 'number' && Number.isInteger(b.lobbyId) && b.lobbyId > 0) {
 		beat.lobbyId = b.lobbyId;
+	}
+	if (typeof b.selfName === 'string' && b.selfName.length > 0 && b.selfName.length <= 64) {
+		beat.selfName = b.selfName;
 	}
 	return beat;
 }

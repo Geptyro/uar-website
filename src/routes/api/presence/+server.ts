@@ -42,7 +42,8 @@ export const GET: RequestHandler = async ({ locals, setHeaders }) => {
 		players: d.players,
 		displayTime: d.displayTime,
 		roster: d.roster,
-		lobbyId: d.lobbyId ?? null
+		lobbyId: d.lobbyId ?? null,
+		selfName: d.selfName
 	}));
 	return json({ players, me: mine?.status ?? null });
 };
@@ -65,6 +66,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		...(beat.displayTime !== undefined ? { displayTime: beat.displayTime } : {}),
 		...(beat.roster !== undefined ? { roster: beat.roster } : {}),
 		...(beat.lobbyId != null ? { lobbyId: beat.lobbyId } : {}),
+		...(beat.selfName ? { selfName: beat.selfName } : {}),
 		at: new Date().toISOString()
 	});
 

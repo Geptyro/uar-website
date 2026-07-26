@@ -78,6 +78,7 @@ export interface PresenceDoc {
 	displayTime?: number;
 	roster?: string[];
 	lobbyId?: number;
+	selfName?: string;
 	at: string; // ISO timestamp of the last heartbeat — stale after ~2 min
 }
 
