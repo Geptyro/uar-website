@@ -117,7 +117,7 @@
 				{#if active.length > 0}<span class="count">{active.length}</span>{/if}
 			</button>
 		{:else}
-			<a class="ready-btn plain" href="/account" title="Sign in with Battle.net to flag yourself too">
+			<a class="ready-btn plain guest" href="/account" title="Sign in with Battle.net to flag yourself too">
 				<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
 					stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 					<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
@@ -182,6 +182,17 @@
 	.ready-btn.plain:disabled {
 		opacity: 0.6;
 		cursor: default;
+	}
+	/* signed-out visitors: amber attention pill — players are ready, join in */
+	.ready-btn.guest {
+		background: var(--item);
+		color: var(--on-accent);
+		border-color: var(--item);
+	}
+	.ready-btn.guest:hover {
+		color: var(--on-accent);
+		border-color: var(--item);
+		filter: brightness(1.08);
 	}
 	.ready-btn.on {
 		--chip-bg: var(--accent);
