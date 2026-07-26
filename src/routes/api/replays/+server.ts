@@ -25,6 +25,7 @@ import {
 	replaceReplayDoc,
 	rebuildPlayers
 } from '$lib/server/db';
+import { withLock } from '$lib/mutex';
 import rawMos from '$lib/data/mos.json';
 import type { RequestHandler } from './$types';
 
@@ -101,47 +102,58 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 		error(400, `Not an Undead Assault Reborn replay (map: "${peeked.title}").`);
 	}
 
-	// identity = lobby id (see ingest.ts): duplicates 409, longer recordings
-	// of a known game replace the stored one, name clashes get a suffix
-	const existing = await getReplayByLobby(peeked.lobbyId);
-	const decision = decideIngest(
-		peeked,
-		existing,
-		existing ? false : await replayExists(canonicalName(peeked.playedAt))
-	);
-	if (decision.kind === 'duplicate') {
-		error(409, `This game (${peeked.playedAt}) is already ingested.`);
-	}
-	const name = decision.name;
+	// Everyone in a lobby records their own copy of the same game, so two
+	// players uploading at once arrive with different files but the same
+	// lobby id. Decide and write under a lock, or both would look new and
+	// collide on the document id; the second now sees the first's result
+	// and answers duplicate/replace like any later upload.
+	const { name, parsed, existed, playerCount } = await withLock('replay-ingest', async () => {
+		const existing = await getReplayByLobby(peeked.lobbyId);
+		const decision = decideIngest(
+			peeked,
+			existing,
+			existing ? false : await replayExists(canonicalName(peeked.playedAt))
+		);
+		if (decision.kind === 'duplicate') {
+			error(409, `This game (${peeked.playedAt}) is already ingested.`);
+		}
+		const name = decision.name;
 
-	let parsed;
-	try {
-		parsed = parseReplay(name, data, mosIds);
-	} catch (e) {
-		console.warn('upload parse failed:', e);
-		error(400, 'Not a readable StarCraft II replay.');
-	}
-	if (!parsed.sightings.length) {
-		error(400, 'No player save data in this replay (empty or corrupted bank preload).');
-	}
+		let parsed;
+		try {
+			parsed = parseReplay(name, data, mosIds);
+		} catch (e) {
+			console.warn('upload parse failed:', e);
+			error(400, 'Not a readable StarCraft II replay.');
+		}
+		if (!parsed.sightings.length) {
+			error(400, 'No player save data in this replay (empty or corrupted bank preload).');
+		}
 
-	// blob first — an orphaned blob is harmless, a doc without its blob is not
-	await putObject(`replays/${name}`, data, 'application/octet-stream');
-	const doc = {
-		_id: name,
-		playedAt: parsed.playedAt,
-		title: parsed.title,
-		baseBuild: parsed.baseBuild,
-		size: data.length,
-		players: parsed.sightings.length,
-		sha256,
-		lobbyId: parsed.lobbyId,
-		durationLoops: parsed.durationLoops,
-		sightings: parsed.sightings
-	};
-	if (decision.kind === 'replace') await replaceReplayDoc(doc);
-	else await insertReplayDoc(doc);
-	const playerCount = await rebuildPlayers();
+		// blob first — an orphaned blob is harmless, a doc without its blob is not
+		await putObject(`replays/${name}`, data, 'application/octet-stream');
+		const doc = {
+			_id: name,
+			playedAt: parsed.playedAt,
+			title: parsed.title,
+			baseBuild: parsed.baseBuild,
+			size: data.length,
+			players: parsed.sightings.length,
+			sha256,
+			lobbyId: parsed.lobbyId,
+			durationLoops: parsed.durationLoops,
+			sightings: parsed.sightings
+		};
+		if (decision.kind === 'replace') await replaceReplayDoc(doc);
+		else await insertReplayDoc(doc);
+		return {
+			name,
+			parsed,
+			existed: Boolean(existing),
+			playerCount: await rebuildPlayers()
+		};
+	});
+	const existing = existed;
 	recordAccept(getClientAddress());
 	console.log(
 		`upload ${existing ? 'replaced' : 'accepted'}: ${name} (${parsed.sightings.length} profiles, ${playerCount} players total)`

@@ -221,9 +221,6 @@
 				{:else}
 					<span class="brand-sub">Field reference · EU</span>
 				{/if}
-				<a class="brand-sub app-dl" href="/companion" title="Get the desktop companion app">
-					companion app
-				</a>
 			</span>
 		</div>
 		<div class="page-crumb">
@@ -1082,8 +1079,5 @@
 		.content {
 			padding: 20px 16px 48px;
 		}
-	}
-	.app-dl {
-		white-space: nowrap;
 	}
 </style>
