@@ -36,6 +36,10 @@ rolls entries into `changelog/vX.Y.Z/` before tagging.
 
 - `npm run dev` needs `.env` (gitignored). Server code reads `process.env`
   (not `$env`) so CLIs work: `node --env-file=.env scripts/<x>.ts`.
+- `npm run build` is two passes: SvelteKit, then `vite.worker.config.ts`,
+  which emits `build/replay-worker.mjs`. Replay parsing runs in that worker
+  (it is ~250ms of CPU per upload); without the second pass the server
+  silently falls back to parsing in-process and blocking page requests.
 - `npm test` = unit tests (node:test, `tests/**/*.test.ts`).
 - `npm run test:integration` = throwaway docker mongo+minio against the real
   built server.
