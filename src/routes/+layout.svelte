@@ -201,6 +201,14 @@
 				{:else}
 					<span class="brand-sub">Field reference · EU</span>
 				{/if}
+				<a
+					class="brand-sub app-dl"
+					href="https://github.com/Geptyro/uar-companion/releases/latest"
+					rel="external"
+					title="Download the UAR companion app — auto-uploads your replays, shows who's ready and which lobbies are open (Windows / Linux / macOS)"
+				>
+					companion app
+				</a>
 			</span>
 		</div>
 		<div class="page-crumb">
@@ -1015,5 +1023,8 @@
 		.content {
 			padding: 20px 16px 48px;
 		}
+	}
+	.app-dl {
+		white-space: nowrap;
 	}
 </style>

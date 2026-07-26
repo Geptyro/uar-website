@@ -129,7 +129,7 @@ export async function getPlayer(toon: string): Promise<Record<string, unknown> |
 }
 
 export async function getReplaysList(): Promise<
-	{ file: string; playedAt: string; players: number; size: number }[]
+	{ file: string; playedAt: string; players: number; size: number; durationLoops: number }[]
 > {
 	return cached('replays', async () => {
 		const d = await db();
@@ -142,7 +142,8 @@ export async function getReplaysList(): Promise<
 			file: r._id,
 			playedAt: r.playedAt,
 			players: r.players,
-			size: r.size
+			size: r.size,
+			durationLoops: r.durationLoops ?? 0
 		}));
 	});
 }

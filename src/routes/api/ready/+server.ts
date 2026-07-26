@@ -54,14 +54,20 @@ export const POST: RequestHandler = async ({ locals }) => {
 	const s = locals.session;
 	if (!s) error(401, 'sign in with Battle.net to flag yourself as ready');
 	if (!dbConfigured()) error(503, 'player database not configured');
-	// playing ≠ available: block flagging while a fresh heartbeat says the
-	// player is in a game (a lobby is fine — that's recruiting)
+	// in a lobby or game = not looking: block flagging while a fresh
+	// heartbeat says so (the same transition also auto-withdraws the flag)
 	const presence = await getPresence(s.sub);
 	if (
-		presence?.status === 'ingame' &&
+		presence &&
+		presence.status !== 'menus' &&
 		Date.now() - Date.parse(presence.at) < PRESENCE_STALE_MS
 	) {
-		error(409, 'You are in a game — the flag comes back when it ends.');
+		error(
+			409,
+			presence.status === 'ingame'
+				? 'You are in a game — flag yourself again when it ends.'
+				: 'You are in a lobby — no need for the flag anymore.'
+		);
 	}
 	if (toggleLimited(s.sub)) error(429, 'Too many ready toggles — give it a few minutes.');
 	const now = new Date();

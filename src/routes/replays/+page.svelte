@@ -80,10 +80,10 @@
 	{/if}
 </form>
 
-<h2 class="section">Or let UAR Tray upload for you</h2>
+<h2 class="section">Or let UAR Companion upload for you</h2>
 <div class="card tray">
 	<p>
-		<a href="https://github.com/Geptyro/uar-tray/releases/latest" rel="external">UAR Tray</a> is a
+		<a href="https://github.com/Geptyro/uar-companion/releases/latest" rel="external">UAR Companion</a> is a
 		small companion app for Windows, Linux and macOS: it sits in your system tray, uploads new
 		Undead Assault Reborn replays automatically after each game, and shows who is flagged
 		<em>ready to play</em> — with a desktop notification if you want one.

@@ -8,26 +8,25 @@
 	 * Client-side fetch + polling because the layout is prerendered.
 	 */
 	import { onMount } from 'svelte';
-	import anonPortrait from '$lib/assets/anon-portrait.svg';
-	import { PresenceChip } from 'uar-shared';
+	import { PresenceChips, HoverPop, ReadyPlayers, ReadyChip } from 'uar-shared';
 	import { activeReady, minutesLeft, readyLevel, type ReadyPlayer } from '$lib/ready';
-	import { groupPresence, type PresenceEntry } from '$lib/presence';
+	import { splitPresence, type PresenceEntry } from '$lib/presence';
 
 	let { signedIn }: { signedIn: boolean } = $props();
 
 	let players = $state<ReadyPlayer[]>([]);
 	let presence = $state<PresenceEntry[]>([]);
+	let myStatus = $state<'lobby' | 'ingame' | null>(null);
 	let myUntil = $state<string | null>(null);
 	let busy = $state(false);
 	let now = $state(0);
 
 	const active = $derived(activeReady(players, now));
-	const groups = $derived(groupPresence(presence));
-	const lobbies = $derived(groups.filter((g) => g.status === 'lobby' && g.uar));
-	const games = $derived(groups.filter((g) => g.status === 'ingame' && g.uar));
+	const split = $derived(splitPresence(presence));
 	const statusOf = (battletag: string) => presence.find((p) => p.battletag === battletag)?.status;
-	const me = $derived(myUntil !== null && Date.parse(myUntil) > now);
-	const myMinutes = $derived(me ? minutesLeft(myUntil!, now) : null);
+	const myMinutes = $derived(
+		myUntil !== null && Date.parse(myUntil) > now ? minutesLeft(myUntil, now) : null
+	);
 	const level = $derived(myMinutes === null ? 'high' : readyLevel(myMinutes));
 
 	function apply(data: { until: string | null; players: ReadyPlayer[] }) {
@@ -45,7 +44,14 @@
 		}
 		try {
 			const res = await fetch('/api/presence');
-			if (res.ok) presence = ((await res.json()) as { players: PresenceEntry[] }).players;
+			if (res.ok) {
+				const body = (await res.json()) as {
+					players: PresenceEntry[];
+					me: 'lobby' | 'ingame' | null;
+				};
+				presence = body.players;
+				myStatus = body.me;
+			}
 		} catch {
 			// transient — keep the last known state
 		}
@@ -81,384 +87,34 @@
 	}
 </script>
 
-{#snippet groupList(list: typeof lobbies, gameClock: boolean)}
-	{#each list as g (g.key)}
-		<div class="grp">
-			<div class="grp-head">
-				{g.uar ? 'UAR' : ''}
-				{g.status === 'ingame' ? 'game' : 'lobby'} · {g.players}
-				player{g.players === 1 ? '' : 's'}{#if gameClock && g.displayTime}&nbsp;· {Math.floor(
-						g.displayTime / 60
-					)} min{/if}
-			</div>
-			{#each g.members as m (m.battletag)}
-				<div class="row">
-					<img class="portrait" src={m.avatar ?? anonPortrait} alt="" />
-					{#if m.toon}
-						<a class="tag-link" href="/players/{m.toon}">{m.battletag}</a>
-					{:else}
-						<span class="tag-link">{m.battletag}</span>
-					{/if}
-				</div>
-			{/each}
-			{#if g.players > g.members.length}
-				<div class="grp-more">+{g.players - g.members.length} more (not on UAR Tray)</div>
-			{/if}
-		</div>
-	{/each}
-{/snippet}
-
-{#if signedIn || active.length > 0 || lobbies.length > 0 || games.length > 0}
-	<div class="presence-row">
-		{#if lobbies.length > 0}
-			<div class="hover-wrap">
-				<PresenceChip kind="lobby" count={lobbies.length} />
-				<div class="pop">
-					<div class="pop-card">
-						<div class="pop-head">Open lobbies · {lobbies.length}</div>
-						{@render groupList(lobbies, false)}
-					</div>
-				</div>
-			</div>
-		{/if}
-		{#if games.length > 0}
-			<div class="hover-wrap">
-				<PresenceChip kind="game" count={games.length} />
-				<div class="pop">
-					<div class="pop-card">
-						<div class="pop-head">Games running · {games.length}</div>
-						{@render groupList(games, true)}
-					</div>
-				</div>
-			</div>
-		{/if}
-	</div>
-{/if}
+<PresenceChips
+	lobbies={split.lobbies}
+	games={split.games}
+	href={(m: PresenceEntry) => (m.toon ? `/players/${m.toon}` : null)}
+/>
 
 {#if signedIn || active.length > 0}
-	<div class="ready">
-		{#if signedIn && me}
-			<!-- flagged: the chip is a group — toggle area + inline restart segment -->
-			<div class="ready-btn on" class:mid={level === 'mid'} class:low={level === 'low'}>
-				<button
-					class="seg main"
-					onclick={() => send('DELETE')}
-					disabled={busy}
-					title={`Ready for ${myMinutes} more min — click to withdraw`}
-				>
-					<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
-						stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-						<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
-						<line x1="4" y1="22" x2="4" y2="15" />
-					</svg>
-					Ready · {myMinutes} min
-					{#if active.length > 0}<span class="count">{active.length}</span>{/if}
-				</button>
-				<button
-					class="seg re"
-					onclick={() => send('POST')}
-					disabled={busy}
-					aria-label="Restart your ready hour"
-					title="Restart your ready hour"
-				>
-					<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor"
-						stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-						<polyline points="23 4 23 10 17 10" />
-						<path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-					</svg>
-				</button>
-			</div>
-		{:else if signedIn}
-			<button
-				class="ready-btn plain"
-				onclick={() => send('POST')}
-				disabled={busy}
-				title="Flag yourself as ready to play for the next hour"
-			>
-				<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
-					stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-					<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
-					<line x1="4" y1="22" x2="4" y2="15" />
-				</svg>
-				Ready to play?
-				{#if active.length > 0}<span class="count">{active.length}</span>{/if}
-			</button>
-		{:else}
-			<a class="ready-btn plain guest" href="/account" title="Sign in with Battle.net to flag yourself too">
-				<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
-					stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-					<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
-					<line x1="4" y1="22" x2="4" y2="15" />
-				</svg>
-				Ready to play
-				<span class="count">{active.length}</span>
-			</a>
-		{/if}
-
+	<HoverPop disabled={active.length === 0} heading={`Ready to play · ${active.length}`}>
+		{#snippet trigger()}
+			<ReadyChip
+				{signedIn}
+				minutes={myMinutes}
+				{level}
+				count={active.length}
+				{busy}
+				locked={myStatus !== null}
+				lockedStatus={myStatus ?? 'lobby'}
+				ontoggle={(on: boolean) => send(on ? 'POST' : 'DELETE')}
+				guestHref="/account"
+			/>
+		{/snippet}
 		{#if active.length > 0}
-			<div class="pop">
-				<div class="pop-card">
-					<div class="pop-head">Ready to play · {active.length}</div>
-					{#each active as p (p.battletag)}
-						<div class="row">
-							<img class="portrait" src={p.avatar ?? anonPortrait} alt="" />
-							{#if p.toon}
-								<a class="tag-link" href="/players/{p.toon}">{p.battletag}</a>
-							{:else}
-								<span class="tag-link">{p.battletag}</span>
-							{/if}
-							{#if statusOf(p.battletag) === 'lobby'}
-								<span class="mini-tag">in lobby</span>
-							{:else if statusOf(p.battletag) === 'ingame'}
-								<span class="mini-tag game">in game</span>
-							{/if}
-							<span class="left">{minutesLeft(p.until, now)} min</span>
-						</div>
-					{/each}
-				</div>
-			</div>
+			<ReadyPlayers
+				players={active}
+				{now}
+				href={(p: ReadyPlayer) => (p.toon ? `/players/${p.toon}` : null)}
+				{statusOf}
+			/>
 		{/if}
-	</div>
+	</HoverPop>
 {/if}
-
-<style>
-	.ready {
-		position: relative;
-		display: flex;
-		align-items: center;
-	}
-	.ready-btn {
-		display: flex;
-		align-items: stretch;
-		height: 30px;
-		background: var(--sidebar-2);
-		color: var(--sidebar-ink);
-		border: 1px solid var(--sidebar-line);
-		border-radius: 99px;
-		font: 500 12px/1 var(--mono);
-		font-variant-numeric: tabular-nums;
-		text-decoration: none;
-		white-space: nowrap;
-		transition: all 120ms ease;
-	}
-	.ready-btn.plain {
-		align-items: center;
-		gap: 7px;
-		padding: 0 14px;
-		cursor: pointer;
-	}
-	.ready-btn.plain:hover {
-		color: var(--accent-hover);
-		border-color: var(--accent);
-	}
-	.ready-btn.plain:disabled {
-		opacity: 0.6;
-		cursor: default;
-	}
-	/* signed-out visitors: amber attention pill — players are ready, join in */
-	.ready-btn.guest {
-		background: var(--item);
-		color: var(--on-accent);
-		border-color: var(--item);
-	}
-	.ready-btn.guest:hover {
-		color: var(--on-accent);
-		border-color: var(--item);
-		filter: brightness(1.08);
-	}
-	.ready-btn.on {
-		--chip-bg: var(--accent);
-		background: var(--chip-bg);
-		color: var(--on-accent);
-		border-color: var(--chip-bg);
-	}
-	.ready-btn.on.mid {
-		--chip-bg: var(--item);
-	}
-	.ready-btn.on.low {
-		--chip-bg: var(--hostile);
-	}
-	/* segments inside the flagged chip: toggle area + restart */
-	.seg {
-		display: flex;
-		align-items: center;
-		gap: 7px;
-		background: none;
-		border: none;
-		color: inherit;
-		font: inherit;
-		cursor: pointer;
-		transition: background 120ms ease, opacity 120ms ease;
-	}
-	.seg.main {
-		/* extra right padding runs under the overlapping circle, so the hover
-		   tint's straight edge hides behind it and is cut by the curve */
-		padding: 0 24px 0 14px;
-		border-radius: 99px 0 0 99px;
-	}
-	.seg.main:hover {
-		background: color-mix(in srgb, currentColor 14%, transparent);
-	}
-	/* restart = the chip's circular right end-cap: fixed 30px to match the
-	   chip height (aspect-ratio can't square a stretched flex item), negative
-	   margins overlap it onto the chip border (right) and the main segment
-	   (left); opaque inherited background masks the tint underneath */
-	.seg.re {
-		align-self: stretch;
-		flex: none;
-		width: 30px;
-		padding: 0;
-		justify-content: center;
-		position: relative;
-		margin: -1px -1px -1px -15px;
-		/* frosted like the count badge: text color over chip color, kept
-		   opaque so it masks the main segment's hover tint underneath */
-		background: color-mix(in srgb, var(--on-accent) 18%, var(--chip-bg));
-		border: 1px solid color-mix(in srgb, currentColor 40%, transparent);
-		border-radius: 50%;
-	}
-	.seg.re svg {
-		opacity: 0.85;
-	}
-	.seg.re:hover {
-		background: color-mix(in srgb, var(--on-accent) 30%, var(--chip-bg));
-	}
-	.seg.re:hover svg {
-		opacity: 1;
-	}
-	.seg:disabled {
-		opacity: 0.6;
-		cursor: default;
-	}
-	.count {
-		display: grid;
-		place-items: center;
-		min-width: 17px;
-		height: 17px;
-		padding: 0 4px;
-		border-radius: 99px;
-		background: color-mix(in srgb, currentColor 18%, transparent);
-		font-size: 10.5px;
-		font-variant-numeric: tabular-nums;
-	}
-	/* hover / focus dropdown; transparent padding keeps hover alive over the gap */
-	.pop {
-		display: none;
-		position: absolute;
-		top: 100%;
-		right: 0;
-		padding-top: 8px;
-		z-index: 40;
-	}
-	.ready:hover .pop,
-	.ready:focus-within .pop {
-		display: block;
-	}
-	.pop-card {
-		min-width: 240px;
-		background: var(--surface);
-		color: var(--ink);
-		border: 1px solid var(--border);
-		border-radius: var(--r);
-		box-shadow: var(--shadow-2);
-		padding: 6px;
-	}
-	.pop-head {
-		font-family: var(--mono);
-		font-size: 10px;
-		font-weight: 600;
-		letter-spacing: 0.1em;
-		text-transform: uppercase;
-		color: var(--ink-3);
-		padding: 5px 8px 7px;
-		border-bottom: 1px solid var(--border);
-		margin-bottom: 4px;
-	}
-	.row {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		padding: 4px 8px;
-		border-radius: var(--r-sm);
-	}
-	.row:hover {
-		background: var(--surface-2);
-	}
-	.portrait {
-		width: 22px;
-		height: 22px;
-		border-radius: 50%;
-		object-fit: cover;
-		border: 1px solid var(--border);
-		flex-shrink: 0;
-	}
-	.tag-link {
-		flex: 1;
-		font-size: 12.5px;
-		font-weight: 550;
-		color: var(--ink);
-		text-decoration: none;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-	a.tag-link:hover {
-		color: var(--accent);
-		text-decoration: underline;
-		text-underline-offset: 3px;
-	}
-	.left {
-		font-family: var(--mono);
-		font-size: 11px;
-		font-variant-numeric: tabular-nums;
-		color: var(--ink-3);
-		flex-shrink: 0;
-	}
-
-	/* presence chips (open lobbies / running games) share the pop pattern */
-	.presence-row {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-	}
-	.hover-wrap {
-		position: relative;
-		display: flex;
-		align-items: center;
-	}
-	.hover-wrap:hover .pop,
-	.hover-wrap:focus-within .pop {
-		display: block;
-	}
-	.grp + .grp {
-		border-top: 1px solid var(--border);
-		margin-top: 4px;
-		padding-top: 4px;
-	}
-	.grp-head {
-		font-family: var(--mono);
-		font-size: 10px;
-		font-weight: 600;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		color: var(--ink-3);
-		padding: 4px 8px 2px;
-	}
-	.grp-more {
-		font-size: 11.5px;
-		color: var(--ink-3);
-		padding: 2px 8px 4px;
-	}
-	.mini-tag {
-		font: 550 9.5px/1 var(--mono);
-		letter-spacing: 0.04em;
-		padding: 2.5px 7px;
-		border-radius: 99px;
-		color: var(--on-accent);
-		background: var(--item);
-		white-space: nowrap;
-	}
-	.mini-tag.game {
-		background: var(--mos);
-	}
-</style>

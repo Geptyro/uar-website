@@ -59,4 +59,4 @@ export function validateBeat(body: unknown): PresenceBeat | null {
 }
 
 // grouping lives in uar-shared (the tray renders the same groups)
-export { groupPresence, type PresenceGroup } from 'uar-shared/presence';
+export { groupPresence, splitPresence, type PresenceGroup } from 'uar-shared/presence';

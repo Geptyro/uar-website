@@ -27,10 +27,12 @@ import type { RequestHandler } from './$types';
 
 export const prerender = false;
 
-export const GET: RequestHandler = async ({ setHeaders }) => {
-	setHeaders({ 'cache-control': 'no-store' });
-	if (!dbConfigured()) return json({ players: [] });
+export const GET: RequestHandler = async ({ locals, setHeaders }) => {
+	setHeaders({ 'cache-control': 'private, no-store' });
+	if (!dbConfigured()) return json({ players: [], me: null });
 	const docs = await getActivePresence(PRESENCE_STALE_MS);
+	// the widget colors its own chip by where the session user is
+	const mine = locals.session ? docs.find((d) => d._id === locals.session!.sub) : undefined;
 	const players: PresenceEntry[] = docs.map((d) => ({
 		battletag: d.battletag,
 		toon: d.toon ?? null,
@@ -42,7 +44,7 @@ export const GET: RequestHandler = async ({ setHeaders }) => {
 		roster: d.roster,
 		lobbyId: d.lobbyId ?? null
 	}));
-	return json({ players });
+	return json({ players, me: mine?.status ?? null });
 };
 
 export const POST: RequestHandler = async ({ locals, request }) => {
@@ -66,8 +68,8 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		at: new Date().toISOString()
 	});
 
-	// playing = not available: a started game withdraws the ready flag
-	if (beat.status === 'ingame') {
+	// in a lobby or game = not looking anymore: withdraw the ready flag
+	if (beat.status === 'ingame' || beat.status === 'lobby') {
 		const ready = await getReadyPlayers();
 		if (ready.some((r) => r._id === s.sub)) await clearReady(s.sub);
 	}
