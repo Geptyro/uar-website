@@ -1047,7 +1047,10 @@
 		overflow-y: auto;
 	}
 	.content {
-		padding: 26px 36px 72px;
+		--content-pad-x: 36px;
+		--content-pad-top: 26px;
+		--content-pad-bottom: 72px;
+		padding: var(--content-pad-top) var(--content-pad-x) var(--content-pad-bottom);
 	}
 
 	@media (max-width: 820px) {
@@ -1077,7 +1080,9 @@
 			overflow: visible;
 		}
 		.content {
-			padding: 20px 16px 48px;
+			--content-pad-x: 16px;
+			--content-pad-top: 20px;
+			--content-pad-bottom: 48px;
 		}
 	}
 </style>

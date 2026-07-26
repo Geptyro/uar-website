@@ -2,15 +2,22 @@
 	import { rankFor, totalWins, totalXp, careerXp, type PlayerProfile } from '$lib/players';
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
 	import Pager from '$lib/components/Pager.svelte';
+	import { goto } from '$app/navigation';
+	import { page as currentPage } from '$app/state';
 
 	let { data } = $props();
 	const players = $derived(data.players);
 
-	type Col = { key: string; label: string; num?: boolean };
+	type Col = { key: string; label: string; num?: boolean; hint?: string };
 
 	const columns: Col[] = [
 		{ key: 'name', label: 'Player' },
-		{ key: 'career', label: 'Career XP', num: true },
+		{
+			key: 'career',
+			label: 'Career XP',
+			num: true,
+			hint: 'XP across the three tracks, plus 600,000 per prestige'
+		},
 		{ key: 'xpEn', label: 'Enlisted', num: true },
 		{ key: 'xpWo', label: 'Warrant Officer', num: true },
 		{ key: 'xpCo', label: 'Commissioned Officer', num: true },
@@ -20,6 +27,26 @@
 		{ key: 'revives', label: 'Revives', num: true },
 		{ key: 'avg', label: 'Avg game', num: true }
 	];
+
+	// search as you type, once typing pauses — the surrounding <form> keeps
+	// working when JavaScript does not
+	let searchTimer: ReturnType<typeof setTimeout>;
+	function searchInput(event: Event) {
+		clearTimeout(searchTimer);
+		const value = (event.currentTarget as HTMLInputElement).value;
+		searchTimer = setTimeout(() => {
+			const params = new URLSearchParams(currentPage.url.search);
+			if (value.trim()) params.set('q', value.trim());
+			else params.delete('q');
+			params.delete('page'); // a new search starts from the first page
+			const query = params.toString();
+			goto(query ? `?${query}` : currentPage.url.pathname, {
+				keepFocus: true,
+				replaceState: true,
+				noScroll: true
+			});
+		}, 300);
+	}
 
 	// sorting is a link, not local state: the server holds the whole
 	// leaderboard and sends one page of it
@@ -45,21 +72,31 @@
 	<title>Players — UAR Unit Database</title>
 </svelte:head>
 
-<p class="note">
-	Player profiles decoded from the save data that replays capture at game start — experience and
-	rank in the three <a href="/ranks">rank tracks</a>, prestige, games played, wins and revives.
-	Each profile is a snapshot from the newest ingested replay that player appears in ({ingested}
-	replay{ingested === 1 ? '' : 's'} ingested, latest {latest}).
-</p>
+<div class="playerspage">
+<div class="ptools">
+	<form class="psearch" method="GET" data-sveltekit-keepfocus>
+		<input
+			type="search"
+			name="q"
+			value={data.q}
+			placeholder="Search player, clan or toon…"
+			oninput={searchInput}
+			aria-label="Search players"
+		/>
+		{#if data.sort !== 'career'}<input type="hidden" name="sort" value={data.sort} />{/if}
+		{#if data.dir !== 'desc'}<input type="hidden" name="dir" value={data.dir} />{/if}
+	</form>
+	<Pager page={data.page} pages={data.pages} total={data.total} label="players" />
+</div>
 
-<div class="tablewrap">
+<div class="tablewrap rows">
 	<table class="data" style="min-width: 860px">
 		<thead>
 			<tr>
 				<th class="num">#</th>
 				{#each columns as col (col.key)}
 					<th class:num={col.num} class="sortable">
-						<a href={sortHref(col.key)} data-sveltekit-noscroll>
+						<a href={sortHref(col.key)} data-sveltekit-noscroll title={col.hint}>
 							{col.label}
 							<span class="dir">
 								{data.sort === col.key ? (data.dir === 'asc' ? '↑' : '↓') : ''}
@@ -111,21 +148,50 @@
 		</tbody>
 	</table>
 </div>
-<Pager page={data.page} pages={data.pages} total={data.total} label="players" />
-
-<p class="note">
-	Experience caps at 250,000 per track; Career XP adds 600,000 per prestige (prestiging requires
-	all three tracks maxed and resets each to 50,000). Profiles appear once a player shows up in an
-	ingested replay with existing save data — brand-new players are recorded from their second game
-	on.
-</p>
-
-<p class="note">
-	Data comes from {data.replayCount} ingested replays —
-	<a href="/replays">browse, download or upload replays →</a>
-</p>
+</div>
 
 <style>
+	/* only the rows scroll: the note, the pager and the header stay put,
+	   and the table runs the full width of the content area */
+	.ptools {
+		display: flex;
+		align-items: center;
+		/* breathing room between the toolbar and the table header */
+		margin-bottom: 12px;
+		justify-content: space-between;
+		gap: 16px;
+		flex-wrap: wrap;
+	}
+	.ptools :global(.pager) {
+		margin: 0;
+	}
+	.psearch input {
+		min-width: 240px;
+	}
+	.playerspage {
+		display: flex;
+		flex-direction: column;
+		/* fills what the shell leaves us, so the table owns the scroll and
+		   reaches the bottom of the window instead of floating above it */
+		--bottom-gap: 8px;
+		height: calc(100dvh - var(--topbar-h) - var(--content-pad-top, 26px) - var(--bottom-gap));
+		margin-bottom: calc(var(--bottom-gap) - var(--content-pad-bottom, 72px));
+	}
+	.rows {
+		flex: 1;
+		min-height: 0;
+		overflow: auto;
+		margin-inline: calc(-1 * var(--content-pad-x, 36px));
+		border-inline: none;
+		border-radius: 0;
+	}
+	.rows thead th {
+		position: sticky;
+		top: 0;
+		z-index: 2;
+		background: var(--surface-2);
+	}
+
 	.rank-pos {
 		color: var(--ink-3);
 	}

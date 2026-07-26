@@ -23,9 +23,9 @@
 	}
 </script>
 
-{#if pages > 1}
-	<nav class="pager" aria-label="Pagination">
-		<span class="count mono">{total} {label}</span>
+<nav class="pager" aria-label="Pagination">
+	<span class="count mono">{total} {total === 1 ? label.replace(/s$/, '') : label}</span>
+	{#if pages > 1}
 		<span class="links">
 			{#if page > 1}<a class="step" href={href(page - 1)} rel="prev">←</a>{/if}
 			<!-- key on position: gaps are null and would otherwise collide -->
@@ -40,8 +40,8 @@
 			{/each}
 			{#if page < pages}<a class="step" href={href(page + 1)} rel="next">→</a>{/if}
 		</span>
-	</nav>
-{/if}
+	{/if}
+</nav>
 
 <style>
 	.pager {

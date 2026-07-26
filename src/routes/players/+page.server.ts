@@ -31,11 +31,13 @@ export const load: PageServerLoad = async ({ url }) => {
 			latest: '',
 			avatars: {},
 			...meta,
+			q: '',
 			page: 1,
 			pages: 1,
 			total: 0
 		};
 	}
+	const q = (url.searchParams.get('q') ?? '').trim();
 	const [all, replays, avatars] = await Promise.all([
 		getPlayersLite() as unknown as Promise<PlayerProfile[]>,
 		getReplaysList(),
@@ -44,8 +46,19 @@ export const load: PageServerLoad = async ({ url }) => {
 
 	// sort and page here, so the response carries one screen of rows rather
 	// than the whole leaderboard with every player's history attached
+	// search first, so paging and the row count describe the filtered list
+	const needle = q.toLowerCase();
+	const matched = needle
+		? all.filter(
+				(p) =>
+					p.name.toLowerCase().includes(needle) ||
+					(p.clan ?? '').toLowerCase().includes(needle) ||
+					p.toon.includes(needle)
+			)
+		: all;
+
 	const value = SORTS[sort];
-	const sorted = [...all].sort((a, b) => {
+	const sorted = [...matched].sort((a, b) => {
 		const x = value(a);
 		const y = value(b);
 		const cmp = typeof x === 'number' ? x - (y as number) : String(x).localeCompare(String(y));
@@ -59,6 +72,7 @@ export const load: PageServerLoad = async ({ url }) => {
 		latest: replays.at(-1)?.playedAt?.slice(0, 10) ?? '',
 		avatars,
 		...meta,
+		q,
 		page,
 		pages,
 		total
