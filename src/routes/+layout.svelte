@@ -6,6 +6,7 @@
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import { mosList, mosById } from '$lib/mos';
+	import { latestVersion } from '$lib/changelog';
 
 	let { children } = $props();
 
@@ -54,6 +55,7 @@
 		}
 		if (p === '/map') return { section: '', title: 'Map & missions' };
 		if (p === '/flow') return { section: '', title: 'Mission flow' };
+		if (p === '/changelog') return { section: '', title: 'Changelog' };
 		if (p.startsWith('/mos/')) {
 			const m = mosById.get(decodeURIComponent(p.slice(5)));
 			return { section: 'MOS', title: m?.name ?? p.slice(5) };
@@ -87,6 +89,22 @@
 		goto(q ? `/entities?q=${encodeURIComponent(q)}` : '/entities');
 		quick = '';
 	}
+
+	// Changelog badge: latest released version + a dot when it's new to this visitor.
+	const siteVersion = latestVersion(
+		Object.keys(import.meta.glob('/changelog/v*/release.json', { eager: true }))
+	);
+	let newChanges = $state(false);
+	$effect(() => {
+		if (!siteVersion) return;
+		const seen = localStorage.getItem('uar:seen-version');
+		if (page.url.pathname === '/changelog' || seen === null) {
+			localStorage.setItem('uar:seen-version', siteVersion);
+			newChanges = false;
+		} else {
+			newChanges = seen !== siteVersion;
+		}
+	});
 </script>
 
 <svelte:head>
@@ -95,13 +113,22 @@
 
 <div class="shell">
 	<header class="topbar">
-		<a class="brand" href="/">
-			<span class="brand-mark">UAR</span>
+		<div class="brand">
+			<a class="brand-home" href="/" aria-label="Overview">
+				<span class="brand-mark">UAR</span>
+			</a>
 			<span class="brand-text">
-				<span class="brand-title">Undead Assault Reborn</span>
-				<span class="brand-sub">Field reference · EU</span>
+				<a class="brand-title" href="/">Undead Assault Reborn</a>
+				{#if siteVersion}
+					<a class="brand-sub ver" href="/changelog" title="Changelog">
+						{siteVersion}
+						{#if newChanges}<span class="ver-dot" aria-hidden="true"></span>{/if}
+					</a>
+				{:else}
+					<span class="brand-sub">Field reference · EU</span>
+				{/if}
 			</span>
-		</a>
+		</div>
 		<div class="page-crumb">
 			{#if pageTitle.section}<span class="crumb-section">{pageTitle.section} /</span>{/if}
 			<span class="crumb-title">{pageTitle.title}</span>
@@ -610,9 +637,12 @@
 		display: flex;
 		align-items: center;
 		gap: 10px;
-		text-decoration: none;
 		width: 226px;
 		flex-shrink: 0;
+	}
+	.brand-home {
+		display: flex;
+		text-decoration: none;
 	}
 	.brand-mark {
 		display: grid;
@@ -635,13 +665,22 @@
 		font-weight: 650;
 		color: #fff;
 		white-space: nowrap;
+		text-decoration: none;
 	}
 	.brand-sub {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		align-self: flex-start;
 		font-family: var(--mono);
 		font-size: 9px;
 		letter-spacing: 0.16em;
 		text-transform: uppercase;
 		color: var(--sidebar-ink-2);
+		text-decoration: none;
+	}
+	a.brand-sub:hover {
+		color: var(--sidebar-ink);
 	}
 	.page-crumb {
 		display: flex;
@@ -802,6 +841,12 @@
 		color: var(--accent-hover);
 		text-decoration: underline;
 		text-underline-offset: 3px;
+	}
+	.ver-dot {
+		width: 5px;
+		height: 5px;
+		border-radius: 50%;
+		background: var(--accent);
 	}
 
 	main {

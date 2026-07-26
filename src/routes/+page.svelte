@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { units, categories, categoryCount, weaponLabel } from '$lib/units';
 	import StatIcon from '$lib/components/StatIcon.svelte';
+	import ChangeChip from '$lib/components/ChangeChip.svelte';
+	import { latestRelease } from '$lib/changelog-data';
 
 	const mosUnits = units
 		.filter(
@@ -37,6 +39,21 @@
 		</a>
 	{/each}
 </div>
+
+{#if latestRelease}
+<section class="whatsnew card">
+	<div class="wn-head">
+		<h2>What's new <span class="wn-ver">{latestRelease.version}</span></h2>
+		{#if latestRelease.date}<time class="wn-date" datetime={latestRelease.date}>{latestRelease.date}</time>{/if}
+		<a class="wn-all" href="/changelog">Full changelog →</a>
+	</div>
+	<ul class="wn-list">
+		{#each latestRelease.entries as e (e.title)}
+			<li><ChangeChip type={e.type} /> {e.title}</li>
+		{/each}
+	</ul>
+</section>
+{/if}
 
 <h2 class="section">MOS · Player classes</h2>
 <div class="cards">
@@ -142,6 +159,57 @@
 	}
 	.kv b {
 		font-weight: 600;
+		color: var(--ink-2);
+	}
+	.whatsnew {
+		margin-top: 14px;
+	}
+	.wn-head {
+		display: flex;
+		align-items: baseline;
+		gap: 10px;
+	}
+	.wn-head h2 {
+		margin: 0;
+		font-size: 13.5px;
+		font-weight: 650;
+		letter-spacing: -0.01em;
+	}
+	.wn-ver {
+		font-family: var(--mono);
+		font-size: 12px;
+		font-weight: 700;
+		color: var(--accent);
+		margin-left: 3px;
+	}
+	.wn-date {
+		font-size: 11px;
+		color: var(--ink-3);
+	}
+	.wn-all {
+		margin-left: auto;
+		font-size: 12px;
+		color: var(--accent);
+		text-decoration: none;
+		white-space: nowrap;
+	}
+	.wn-all:hover {
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+	.wn-list {
+		list-style: none;
+		margin: 9px 0 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+	.wn-list li {
+		display: flex;
+		align-items: baseline;
+		gap: 8px;
+		font-size: 13px;
 		color: var(--ink-2);
 	}
 </style>

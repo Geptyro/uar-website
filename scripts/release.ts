@@ -1,0 +1,62 @@
+/**
+ * Roll changelog/unreleased/ entries into a version folder and commit
+ * (pathspec-limited to changelog/, so parallel-session WIP is never swept).
+ *
+ * Usage:  npm run release v0.8.0
+ * Then:   git push origin main — wait for CI green — then
+ *         git tag v0.8.0 && git push origin v0.8.0
+ */
+
+import { execFileSync } from 'node:child_process';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { basename, join } from 'node:path';
+
+function git(...args: string[]): string {
+	return execFileSync('git', args, { encoding: 'utf8' }).trim();
+}
+
+const version = process.argv[2] ?? '';
+if (!/^v\d+\.\d+\.\d+$/.test(version)) {
+	console.error('Usage: npm run release vX.Y.Z');
+	process.exit(1);
+}
+if (git('tag', '-l', version)) {
+	console.error(`Tag ${version} already exists — pick the next version (check \`git tag\`).`);
+	process.exit(1);
+}
+const dir = join('changelog', version);
+if (existsSync(dir)) {
+	console.error(`${dir} already exists.`);
+	process.exit(1);
+}
+
+// Move only tracked entries: an uncommitted entry belongs to another
+// session's unfinished work and must stay in unreleased/.
+const tracked = git('ls-files', '--', 'changelog/unreleased')
+	.split('\n')
+	.filter((f) => f.endsWith('.md') && basename(f) !== 'README.md');
+if (!tracked.length) {
+	console.error('No tracked entries in changelog/unreleased/ — nothing to release.');
+	process.exit(1);
+}
+const untracked = git('ls-files', '--others', '--exclude-standard', '--', 'changelog/unreleased')
+	.split('\n')
+	.filter(Boolean);
+if (untracked.length) {
+	console.warn(`Leaving uncommitted entries behind (another session's WIP?):\n  ${untracked.join('\n  ')}`);
+}
+
+mkdirSync(dir);
+for (const f of tracked) git('mv', f, join(dir, basename(f)));
+const date = new Date().toISOString().slice(0, 10);
+writeFileSync(join(dir, 'release.json'), JSON.stringify({ date }) + '\n');
+git('add', '--', join(dir, 'release.json'));
+execFileSync(
+	'git',
+	['commit', '-m', `Release ${version}: changelog rollup`, '--', 'changelog'],
+	{ stdio: 'inherit' }
+);
+
+console.log(`\n${version}: ${tracked.length} entr${tracked.length === 1 ? 'y' : 'ies'} rolled up.`);
+console.log('Next: git push origin main — wait for CI green — then:');
+console.log(`  git tag ${version} && git push origin ${version}`);
