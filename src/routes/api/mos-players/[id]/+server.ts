@@ -6,7 +6,7 @@
 
 import { json, error } from '@sveltejs/kit';
 import { mosById } from '$lib/mos';
-import { dbConfigured, getMosTopPlayers } from '$lib/server/db';
+import { dbConfigured, getAvatarsByToon, getMosTopPlayers } from '$lib/server/db';
 import type { RequestHandler } from './$types';
 
 export const prerender = false;
@@ -14,5 +14,6 @@ export const prerender = false;
 export const GET: RequestHandler = async ({ params }) => {
 	if (!mosById.has(params.id)) error(404, `No MOS class with id "${params.id}"`);
 	if (!dbConfigured()) return json({ players: [] });
-	return json({ players: await getMosTopPlayers(params.id) });
+	const [players, avatars] = await Promise.all([getMosTopPlayers(params.id), getAvatarsByToon()]);
+	return json({ players: players.map((p) => ({ ...p, avatarUrl: avatars[p.toon] ?? null })) });
 };

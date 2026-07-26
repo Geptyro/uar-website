@@ -91,7 +91,11 @@ export function decodeUnlocks(bank: Record<string, string>): Unlocks {
 	const adz = new Bits(bank['adz'] ?? '');
 	const medvisor = Array.from({ length: 2 }, () => adz.next());
 
-	decals[11] = walker[5]; // cluster rockets grant decal 11 (load code)
+	// completing a vehicle's gear ladder grants its decal (map load code):
+	// walker → Fire Hound, LK19 → Black Wings, Predator → White moon
+	decals[11] = walker[5];
+	decals[12] = lk19[8];
+	decals[13] = predator[5];
 
 	const unlockedIds = (m: Record<number, boolean>) =>
 		Object.keys(m)

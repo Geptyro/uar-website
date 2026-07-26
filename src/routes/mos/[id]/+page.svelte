@@ -9,7 +9,8 @@
 		type UnlockReq
 	} from '$lib/mos';
 	import { applyText } from '$lib/units';
-	import type { MosTopPlayer } from '$lib/players';
+	import { gearGroups as accountGear, type MosTopPlayer } from '$lib/players';
+	import anonPortrait from '$lib/assets/anon-portrait.svg';
 	import FactsCard, { type Fact } from '$lib/components/FactsCard.svelte';
 	import ModelCard from '$lib/components/ModelCard.svelte';
 	import DescCard from '$lib/components/DescCard.svelte';
@@ -80,6 +81,13 @@
 		return () => {
 			stale = true;
 		};
+	});
+
+	// account-progression gear (vehicle upgrades / medical visor) owned by this class,
+	// shown in pilot-rank order rather than bank-flag order
+	const progressionGear = $derived.by(() => {
+		const g = accountGear.find((g) => g.mosId === mos.id);
+		return g ? { ...g, items: [...g.items].sort((a, b) => a.rank - b.rank) } : null;
 	});
 
 	const unlock = $derived(mos.unlock ?? null);
@@ -334,6 +342,31 @@
 				<a class="si-all" href="/ranks">Rank tracks →</a>
 			</DescCard>
 		{/if}
+		{#if progressionGear}
+			<DescCard label="{progressionGear.label} · {progressionGear.items.length} unlocks">
+				{#each progressionGear.items as item, i (item.name)}
+					<div class="pg-item">
+						<div class="pg-head">
+							{#if progressionGear.ordered}<span class="pg-rank">{i + 1}</span>{/if}
+							<b class="pg-name">{item.name}</b>
+						</div>
+						{#if item.desc}<p class="pg-desc">{item.desc}</p>{/if}
+						{#if item.req}
+							<p class="pg-req"><span class="pg-req-k">unlock</span>{item.req}</p>
+						{/if}
+					</div>
+				{/each}
+				{#if progressionGear.ordered}
+					<p class="unlock-note">
+						Earned in order — each piece needs the previous ones plus its own challenge.
+					</p>
+				{/if}
+				<p class="unlock-note">
+					Account unlocks earned by playing — each <a href="/players">player profile</a> shows which
+					ones they own.
+				</p>
+			</DescCard>
+		{/if}
 		{#if modelUrl}
 			<ModelCard src={modelUrl} alt="3D model of {mos.name}" />
 		{/if}
@@ -363,6 +396,7 @@
 						<li>
 							<div class="prow">
 								<span class="pos">{i + 1}</span>
+								<img class="pportrait" src={p.avatarUrl || anonPortrait} alt="" loading="lazy" />
 								{#if p.clan}<span class="pclan">&lt;{p.clan}&gt;</span>{/if}
 								{#if p.toon}
 									<a class="pname" href="/players/{p.toon}">{p.name}</a>
@@ -482,6 +516,48 @@
 		color: var(--ink-3);
 	}
 
+	.pg-item {
+		margin-top: 10px;
+	}
+	.pg-item:first-of-type {
+		margin-top: 4px;
+	}
+	.pg-head {
+		display: flex;
+		align-items: baseline;
+		gap: 7px;
+	}
+	.pg-rank {
+		font-family: var(--mono);
+		font-size: 10px;
+		color: var(--ink-3);
+		flex: none;
+	}
+	.pg-name {
+		font-size: 13px;
+		font-weight: 600;
+	}
+	.pg-desc {
+		margin: 2px 0 0;
+		font-size: 11.5px;
+		line-height: 1.5;
+		color: var(--ink-2);
+	}
+	.pg-req {
+		margin: 2px 0 0;
+		font-size: 11px;
+		line-height: 1.5;
+		color: var(--ink-3);
+	}
+	.pg-req-k {
+		font-family: var(--mono);
+		font-size: 9px;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--accent);
+		margin-right: 6px;
+	}
+
 	.si-row {
 		display: flex;
 		align-items: center;
@@ -541,9 +617,19 @@
 		font-size: 12.5px;
 		min-width: 0;
 	}
+	.pportrait {
+		width: 22px;
+		height: 22px;
+		border-radius: var(--r-sm);
+		object-fit: cover;
+		border: 1px solid var(--border);
+		align-self: center;
+		flex-shrink: 0;
+	}
 	/* time played relative to the #1 player, zero-based */
 	.pbar {
-		margin-left: 20px;
+		/* aligned under the name: pos 14 + portrait 22 + 2 gaps */
+		margin-left: 48px;
 		height: 3px;
 		border-radius: 99px;
 		background: var(--surface-2);

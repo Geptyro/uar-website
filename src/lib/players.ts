@@ -68,10 +68,48 @@ export interface MosTopPlayer {
 	name: string;
 	clan: string;
 	toon: string;
+	/** SC2 portrait when the player linked their Battle.net account. */
+	avatarUrl?: string | null;
 	/** Ingested games where the player picked this class. */
 	games: number;
 	/** Total recorded time on this class across ingested replays, in seconds. */
 	seconds: number;
+}
+
+/** One row of the overview page's 7-day XP leaderboard. */
+export interface WeeklyXpEntry {
+	name: string;
+	clan: string;
+	toon: string;
+	/** Career XP gained inside the window (prestige-aware, see careerXp). */
+	xpGained: number;
+	/** Bank games-played delta over the same span. */
+	games: number;
+}
+
+/** One row of the overview's prestiged-this-week honor roll. */
+export interface WeeklyPrestige {
+	name: string;
+	clan: string;
+	toon: string;
+	/** Prestige level at the baseline sighting / at the newest one. */
+	from: number;
+	to: number;
+}
+
+/** One row of the overview's class-picks widget. */
+export interface WeeklyClassPick {
+	/** MOS unit id (matches /mos/[id]). */
+	mos: string;
+	/** Times the class was picked across ingested games this week. */
+	picks: number;
+}
+
+/** The overview page's 7-day widgets, computed in one pass (see server/weekly.ts). */
+export interface WeeklyBoards {
+	xp: WeeklyXpEntry[];
+	prestiged: WeeklyPrestige[];
+	classPicks: WeeklyClassPick[];
 }
 
 const progression = rawProgression as { modes: string[] };
@@ -82,6 +120,36 @@ export interface ReplayMeta {
 	players: number;
 	/** File size in bytes; served for download at /replays/<file>. */
 	size: number;
+}
+
+/** One player row of an individual replay page (/replays/[id]). */
+export interface ReplayPlayer {
+	name: string;
+	clan: string;
+	/** Battle.net toon handle — links to the player profile. */
+	toon: string;
+	/** MOS class(es) the player picked in this game. */
+	mos: string[];
+	/** Career save-file values as of game start. */
+	xpEn: number;
+	xpWo: number;
+	xpCo: number;
+	prestige: number;
+	gamesPlayed: number;
+	revives: number;
+}
+
+/** Full detail of one ingested replay (server-loaded at /replays/[id]). */
+export interface ReplayDetail {
+	file: string;
+	playedAt: string;
+	/** Map title recorded in the replay. */
+	title: string;
+	baseBuild: number;
+	size: number;
+	/** Recording length in game loops (16 per game-second). */
+	durationLoops: number;
+	players: ReplayPlayer[];
 }
 
 /** Game mode names; winsByMode[i] is the mode modeNames[i]. */
@@ -98,41 +166,181 @@ export function decalName(num: number): string {
 	return num === 0 ? 'Rank insignia' : (decalByNum.get(num)?.name ?? `#${num}`);
 }
 
-export const gearGroups: { key: keyof Unlocks; label: string; items: string[] }[] = [
+/** One account-progression unlock; the index in `items` matches the bank flag order. */
+export interface GearItem {
+	name: string;
+	/** Position in the pilot-rank ladder — class-page display order. */
+	rank: number;
+	/** What it does, from the in-game button tooltip (map GameStrings). */
+	desc: string | null;
+	/** How it is earned, from the map's requirement/trigger strings. */
+	req: string | null;
+}
+
+/** Per-class account-progression gear; `mosId` is the class that owns the vehicle/visor. */
+export const gearGroups: {
+	key: keyof Unlocks;
+	label: string;
+	mosId: string;
+	/** Pilot-rank ladder: pieces unlock in rank order, each needing the previous ones. */
+	ordered: boolean;
+	items: GearItem[];
+}[] = [
 	{
 		key: 'walker',
 		label: 'Walker gear',
+		mosId: 'FP500CombatWalker',
+		ordered: true,
 		items: [
-			'Auxiliary generator',
-			'Shield amplifier',
-			'Floodlights',
-			'Flare gun',
-			'Motion sensor',
-			'Cluster rockets'
+			{
+				name: 'Auxiliary generator',
+				rank: 2,
+				desc: 'Utilizes kinetic motion to generate additional power — energy regeneration +30%.',
+				req: 'Win PMC mode'
+			},
+			{
+				name: 'Shield amplifier',
+				rank: 3,
+				desc: 'Module improving shield regeneration — +2 shield per second.',
+				req: 'Win Hard OB mode'
+			},
+			{
+				name: 'Floodlights',
+				rank: 4,
+				desc: 'Switchable floodlights that light up the surroundings, draining energy while on.',
+				req: 'Win Hard T1'
+			},
+			{
+				name: 'Flare gun',
+				rank: 1,
+				desc: 'Fires a flare above the target point, removing the fog of war for 45 seconds. Detects invisible units and slows nearby enemies — but enemies gain vision from it too.',
+				req: "Kill 100 units with the Walker's rockets"
+			},
+			{ name: 'Motion sensor', rank: 5, desc: 'Detects motion for 4.5 minutes.', req: 'Win Insane OB' },
+			{
+				name: 'Cluster rockets',
+				rank: 6,
+				desc: 'Fires a barrage of 6 randomly-guided rockets, 900 damage each, temporarily stunning targets. Explosions damage allies and items.',
+				req: 'Win Nightmare taking 5 hits or fewer'
+			}
 		]
 	},
 	{
 		key: 'lk19',
 		label: 'Alligator LK19',
+		mosId: 'AlligatorLK19',
+		ordered: true,
 		items: [
-			'Enhanced weaponry',
-			'Auxiliary generator',
-			'Reconfigured energy I',
-			'Reconfigured energy II',
-			'Improved rockets I',
-			'Improved rockets II',
-			'Improved rockets III',
-			'Improved rockets IV',
-			'Improved rockets V'
+			{
+				name: 'Enhanced weaponry',
+				rank: 1,
+				desc: 'Jam immunity, reload speed +15%, move speed +0.2.',
+				req: null
+			},
+			{
+				name: 'Auxiliary generator',
+				rank: 2,
+				desc: 'Regenerates 1.25 energy per second.',
+				req: 'Win Insane OB'
+			},
+			{
+				name: 'Reconfigured energy I',
+				rank: 3,
+				desc: 'Reconfigured energy system — energy max +50, energy regeneration +0.5.',
+				req: 'Win Nightmare'
+			},
+			{
+				name: 'Reconfigured energy II',
+				rank: 4,
+				desc: 'Second step of the reconfigured energy system.',
+				req: 'Win PMC'
+			},
+			{
+				name: 'Improved rockets I',
+				rank: 5,
+				desc: 'Enhanced combustion system — rocket speed +100% once all five steps are done.',
+				req: 'Win Hard'
+			},
+			{ name: 'Improved rockets II', rank: 6, desc: null, req: 'Win Hard' },
+			{ name: 'Improved rockets III', rank: 7, desc: null, req: 'Win Insane' },
+			{ name: 'Improved rockets IV', rank: 8, desc: null, req: 'Win Insane' },
+			{ name: 'Improved rockets V', rank: 9, desc: null, req: 'Win Nightmare OB' }
 		]
 	},
 	{
 		key: 'predator',
 		label: 'Predator',
-		items: ['Floodlights', 'MK II', 'Flare gun', 'MK III', 'Shield regeneration', 'MK IV']
+		mosId: 'AssaultEngineer',
+		ordered: true,
+		items: [
+			{
+				name: 'Floodlights',
+				rank: 1,
+				desc: 'Switchable floodlights, draining energy while on.',
+				req: null
+			},
+			{ name: 'MK II', rank: 2, desc: 'Move speed +0.01, energy max +20.', req: 'Win PMC mode' },
+			{
+				name: 'Flare gun',
+				rank: 3,
+				desc: 'Fires a flare above the target point, removing the fog of war for 45 seconds. Detects invisible units and slows nearby enemies.',
+				req: 'Win Hard with 1 life'
+			},
+			{
+				name: 'MK III',
+				rank: 4,
+				desc: 'Move speed +0.01, energy max +20, life +20.',
+				req: 'Win Insane'
+			},
+			{ name: 'Shield regeneration', rank: 5, desc: null, req: 'Win Nightmare' },
+			{
+				name: 'MK IV',
+				rank: 6,
+				desc: 'Move speed +0.01, energy max +20, life +60.',
+				req: 'Win Insane with 1 life'
+			}
+		]
 	},
-	{ key: 'robot', label: 'Robot Rjx-73', items: ['Strike walk', 'Focus fire'] },
-	{ key: 'medvisor', label: 'Combat Medic', items: ['Advanced medical visor', 'Visor activated'] }
+	{
+		key: 'robot',
+		label: 'Robot Rjx-73',
+		mosId: 'Rjx73',
+		ordered: false,
+		items: [
+			{
+				name: 'Strike walk',
+				rank: 1,
+				desc: 'The Robot dashes through enemies for 2 seconds, damaging everything in its path. A pure movement modifier — you keep steering during the strike.',
+				req: "Learned by observing an Assault Engineer's Strike Walk"
+			},
+			{
+				name: 'Focus fire',
+				rank: 2,
+				desc: 'Increases damage by 20% and range by 1.5 for 10 seconds.',
+				req: "Learned by observing a Rifleman's Focus Fire"
+			}
+		]
+	},
+	{
+		key: 'medvisor',
+		label: 'Combat Medic',
+		mosId: 'CombatMedic',
+		ordered: false,
+		items: [
+			{
+				name: 'Advanced medical visor',
+				rank: 1,
+				desc: 'Provides the auto-SITREP.',
+				req: 'Win a PMC, or a Hard, Insane or Nightmare game with 10 or more heals, as Combat Medic'
+			},
+			{
+				name: 'Visor activated',
+				rank: 2,
+				desc: 'Whether the auto-SITREP visor is switched on (profile checkbox).',
+				req: null
+			}
+		]
+	}
 ];
 
 /** Highest rank reached in a track (1-based track number) for a given XP. */

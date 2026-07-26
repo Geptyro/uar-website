@@ -2,27 +2,102 @@
 	import '@fontsource-variable/inter';
 	import '@fontsource-variable/jetbrains-mono';
 	import favicon from '$lib/assets/favicon.svg';
+	import anonPortrait from '$lib/assets/anon-portrait.svg';
 	import { page } from '$app/state';
-	import { goto } from '$app/navigation';
-	import { browser } from '$app/environment';
+	import { onMount } from 'svelte';
 	import { mosList, mosById } from '$lib/mos';
 	import { latestVersion } from '$lib/changelog';
 
 	let { children } = $props();
 
+	// Feather-style stroke icons, same visual language as the account cog.
+	const icon = (paths: string) =>
+		`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+
 	const nav = [
-		{ href: '/', label: 'Overview' },
-		{ href: '/entities', label: 'Entities' },
-		{ href: '/items', label: 'Items' },
-		{ href: '/si', label: 'Skill IDs' },
-		{ href: '/ranks', label: 'Ranks' },
-		{ href: '/medals', label: 'Medals & decals' },
-		{ href: '/camos', label: 'Camouflages' },
-		{ href: '/players', label: 'Players' },
-		{ href: '/clans', label: 'Clans' },
-		{ href: '/replays', label: 'Replays' },
-		{ href: '/map', label: 'Map & missions' },
-		{ href: '/flow', label: 'Mission flow' }
+		{
+			href: '/',
+			label: 'Overview',
+			icon: icon(
+				'<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>'
+			)
+		},
+		{
+			href: '/entities',
+			label: 'Entities',
+			icon: icon(
+				'<circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/>'
+			)
+		},
+		{
+			href: '/items',
+			label: 'Items',
+			icon: icon(
+				'<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>'
+			)
+		},
+		{
+			href: '/si',
+			label: 'Skill IDs',
+			icon: icon(
+				'<line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/>'
+			)
+		},
+		{
+			href: '/ranks',
+			label: 'Ranks',
+			icon: icon('<polyline points="17 11 12 6 7 11"/><polyline points="17 18 12 13 7 18"/>')
+		},
+		{
+			href: '/medals',
+			label: 'Medals & decals',
+			icon: icon(
+				'<circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>'
+			)
+		},
+		{
+			href: '/camos',
+			label: 'Camouflages',
+			icon: icon('<path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>')
+		},
+		{
+			href: '/players',
+			label: 'Players',
+			icon: icon(
+				'<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'
+			)
+		},
+		{
+			href: '/clans',
+			label: 'Clans',
+			icon: icon(
+				'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'
+			)
+		},
+		{
+			href: '/replays',
+			label: 'Replays',
+			icon: icon('<circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/>')
+		},
+		{
+			href: '/map',
+			label: 'Map & missions',
+			icon: icon(
+				'<polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>'
+			)
+		},
+		{
+			href: '/flow',
+			label: 'Mission flow',
+			icon: icon(
+				'<line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>'
+			)
+		},
+		{
+			href: '/feedback',
+			label: 'Feedback',
+			icon: icon('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>')
+		}
 	];
 
 	function isActive(href: string): boolean {
@@ -49,6 +124,11 @@
 			return { section: 'Clans', title: `<${decodeURIComponent(p.slice(7))}>` };
 		}
 		if (p === '/replays') return { section: '', title: 'Replays' };
+		if (p.startsWith('/replays/')) {
+			const id = p.slice(9);
+			const m = id.match(/^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})/);
+			return { section: 'Replays', title: m ? `${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]}` : id };
+		}
 		if (p.startsWith('/players/')) {
 			const pl = page.data.player as { name?: string } | undefined;
 			return { section: 'Players', title: pl?.name ?? p.slice(9) };
@@ -56,6 +136,8 @@
 		if (p === '/map') return { section: '', title: 'Map & missions' };
 		if (p === '/flow') return { section: '', title: 'Mission flow' };
 		if (p === '/changelog') return { section: '', title: 'Changelog' };
+		if (p === '/feedback') return { section: '', title: 'Feedback' };
+		if (p === '/account') return { section: '', title: 'Account' };
 		if (p.startsWith('/mos/')) {
 			const m = mosById.get(decodeURIComponent(p.slice(5)));
 			return { section: 'MOS', title: m?.name ?? p.slice(5) };
@@ -63,32 +145,19 @@
 		return { section: '', title: '' };
 	});
 
-	// theme toggle: auto -> light -> dark
-	let theme = $state<'auto' | 'light' | 'dark'>('auto');
-	$effect(() => {
-		if (!browser) return;
-		const saved = localStorage.getItem('theme');
-		if (saved === 'light' || saved === 'dark') theme = saved;
-	});
-	function cycleTheme() {
-		theme = theme === 'auto' ? 'light' : theme === 'light' ? 'dark' : 'auto';
-		if (theme === 'auto') {
-			delete document.documentElement.dataset.theme;
-			localStorage.removeItem('theme');
-		} else {
-			document.documentElement.dataset.theme = theme;
-			localStorage.setItem('theme', theme);
+	// Battle.net login state for the top-bar buttons; fetched client-side
+	// because most pages (and this layout) are prerendered. undefined = not
+	// yet known — the buttons stay hidden rather than flashing a wrong state.
+	const signedOut = { battletag: null, avatar: null, toon: null };
+	let me = $state<{ battletag: string | null; avatar: string | null; toon: string | null } | undefined>();
+	onMount(async () => {
+		try {
+			const res = await fetch('/api/me');
+			me = res.ok ? await res.json() : signedOut;
+		} catch {
+			me = signedOut;
 		}
-	}
-	const themeIcon = $derived(theme === 'light' ? '☀' : theme === 'dark' ? '☾' : '◐');
-
-	let quick = $state('');
-	function quickSearch(e: SubmitEvent) {
-		e.preventDefault();
-		const q = quick.trim();
-		goto(q ? `/entities?q=${encodeURIComponent(q)}` : '/entities');
-		quick = '';
-	}
+	});
 
 	// Changelog badge: latest released version + a dot when it's new to this visitor.
 	const siteVersion = latestVersion(
@@ -133,30 +202,55 @@
 			{#if pageTitle.section}<span class="crumb-section">{pageTitle.section} /</span>{/if}
 			<span class="crumb-title">{pageTitle.title}</span>
 		</div>
-		<form class="quick" onsubmit={quickSearch}>
-			<input
-				type="search"
-				placeholder="Quick search entities…"
-				aria-label="Quick search entities"
-				bind:value={quick}
-			/>
-		</form>
-		<button
-			class="theme-btn"
-			onclick={cycleTheme}
-			title="Theme: {theme}"
-			aria-label="Cycle theme (current: {theme})"
-		>
-			{themeIcon}
-			<span class="theme-label">{theme}</span>
-		</button>
+		{#if me !== undefined}
+			<div class="acct-group">
+				{#if me.battletag}
+					<a
+						class="account-btn"
+						class:on={me.toon != null && page.url.pathname === `/players/${me.toon}`}
+						href={me.toon ? `/players/${me.toon}` : '/account'}
+						title={me.toon ? 'Your player profile' : 'Your Battle.net account'}
+					>
+						<img class="acct-avatar" src={me.avatar ?? anonPortrait} alt="" />
+						{me.battletag}
+					</a>
+					<a
+						class="cog-btn"
+						class:on={page.url.pathname === '/account'}
+						href="/account"
+						aria-label="Account settings"
+						title="Account settings"
+					>
+						<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+							stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							<circle cx="12" cy="12" r="3" />
+							<path
+								d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
+							/>
+						</svg>
+					</a>
+				{:else}
+					<a
+						class="account-btn"
+						class:on={page.url.pathname === '/account'}
+						href="/account"
+						title="Sign in with Battle.net"
+					>
+						Sign in
+					</a>
+				{/if}
+			</div>
+		{/if}
 	</header>
 
 	<div class="body">
 		<aside class="sidebar">
 			<nav aria-label="Main">
 				{#each nav as item (item.href)}
-					<a href={item.href} class:active={isActive(item.href)}>{item.label}</a>
+					<a href={item.href} class:active={isActive(item.href)}>
+						<span class="nav-icon">{@html item.icon}</span>
+						{item.label}
+					</a>
 				{/each}
 			</nav>
 
@@ -255,58 +349,6 @@
 			--shadow-2: 0 2px 10px rgb(0 0 0 / 0.45);
 		}
 	}
-	/* explicit user choice via the top-bar toggle overrides the OS preference */
-	:global(:root[data-theme='light']) {
-		--bg: #f1efe8;
-		--surface: #faf9f4;
-		--surface-2: #eae7dc;
-		--sidebar: #23281c;
-		--sidebar-2: #2b3122;
-		--sidebar-ink: #d8d6c6;
-		--sidebar-ink-2: #8f957d;
-		--sidebar-line: #3a4130;
-		--border: #ddd8c9;
-		--border-strong: #b9b3a0;
-		--ink: #23271c;
-		--ink-2: #5c6151;
-		--ink-3: #8d927f;
-		--accent: #52713d;
-		--accent-hover: #46612f;
-		--on-accent: #fff;
-		--mos: #3d6483;
-		--hostile: #a84632;
-		--item: #91702c;
-		--scroll-thumb: #b9b3a0;
-		--scroll-thumb-hover: #9b9480;
-		--shadow-1: 0 1px 2px rgb(30 32 24 / 0.05), 0 1px 1px rgb(30 32 24 / 0.03);
-		--shadow-2: 0 2px 8px rgb(30 32 24 / 0.08), 0 1px 2px rgb(30 32 24 / 0.05);
-	}
-	:global(:root[data-theme='dark']) {
-		--bg: #14170f;
-		--surface: #1b1f16;
-		--surface-2: #23281c;
-		--sidebar: #101309;
-		--sidebar-2: #1a1e12;
-		--sidebar-ink: #d3d1bf;
-		--sidebar-ink-2: #7c8269;
-		--sidebar-line: #262c1c;
-		--border: #2d3324;
-		--border-strong: #454d38;
-		--ink: #e2e0d1;
-		--ink-2: #a3a891;
-		--ink-3: #757b65;
-		--accent: #8db566;
-		--accent-hover: #a0c77c;
-		--on-accent: #131608;
-		--mos: #7fadd1;
-		--hostile: #d97f61;
-		--item: #cfa95c;
-		--scroll-thumb: #3c4430;
-		--scroll-thumb-hover: #4f5940;
-		--shadow-1: 0 1px 2px rgb(0 0 0 / 0.35);
-		--shadow-2: 0 2px 10px rgb(0 0 0 / 0.45);
-	}
-
 	/* ---------- base ---------- */
 	:global(*) {
 		box-sizing: border-box;
@@ -706,38 +748,53 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
-	.quick input {
-		width: 190px;
-		padding: 5px 11px;
-		font-size: 12.5px;
-		background: var(--sidebar-2);
-		border-color: var(--sidebar-line);
-		color: var(--sidebar-ink);
-	}
-	.quick input:focus {
-		width: 250px;
-	}
-	.theme-btn {
+	.acct-group {
 		display: flex;
 		align-items: center;
-		gap: 6px;
+		gap: 8px;
+	}
+	.account-btn {
+		display: flex;
+		align-items: center;
+		gap: 7px;
 		background: var(--sidebar-2);
 		color: var(--sidebar-ink);
 		border: 1px solid var(--sidebar-line);
 		border-radius: 99px;
-		padding: 5px 12px;
+		padding: 5px 14px 5px 6px;
 		font: 500 12px/1 var(--mono);
-		cursor: pointer;
+		text-decoration: none;
+		white-space: nowrap;
 		transition: all 120ms ease;
 	}
-	.theme-btn:hover {
+	.account-btn:not(:has(.acct-avatar)) {
+		padding-left: 14px;
+	}
+	.acct-avatar {
+		width: 22px;
+		height: 22px;
+		border-radius: 50%;
+		object-fit: cover;
+		border: 1px solid var(--sidebar-line);
+	}
+	.cog-btn {
+		display: grid;
+		place-items: center;
+		width: 32px;
+		height: 32px;
+		flex-shrink: 0;
+		background: var(--sidebar-2);
+		color: var(--sidebar-ink);
+		border: 1px solid var(--sidebar-line);
+		border-radius: 99px;
+		transition: all 120ms ease;
+	}
+	.account-btn:hover,
+	.account-btn.on,
+	.cog-btn:hover,
+	.cog-btn.on {
 		color: var(--accent-hover);
 		border-color: var(--accent);
-	}
-	.theme-label {
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		font-size: 10px;
 	}
 
 	.body {
@@ -781,6 +838,26 @@
 		background: var(--sidebar-2);
 		color: #fff;
 		box-shadow: inset 2.5px 0 0 var(--accent);
+	}
+
+	/* 22px slot matches .mos-icon so labels in both nav groups line up */
+	.nav-icon {
+		display: grid;
+		place-items: center;
+		width: 22px;
+		flex-shrink: 0;
+		color: var(--sidebar-ink-2);
+		transition: color 120ms ease;
+	}
+	.nav-icon :global(svg) {
+		width: 16px;
+		height: 16px;
+	}
+	nav a:hover .nav-icon {
+		color: var(--sidebar-ink);
+	}
+	nav a.active .nav-icon {
+		color: var(--accent);
 	}
 
 	.side-label {

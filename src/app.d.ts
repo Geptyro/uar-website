@@ -3,7 +3,10 @@
 declare global {
 	namespace App {
 		// interface Error {}
-		// interface Locals {}
+		interface Locals {
+			/** Battle.net login parsed from the signed session cookie, or null. */
+			session: import('$lib/server/session').Session | null;
+		}
 		// interface PageData {}
 		// interface PageState {}
 		// interface Platform {}

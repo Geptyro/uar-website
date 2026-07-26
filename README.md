@@ -11,6 +11,23 @@ Battle.net cache (`.s2ma` MPQ archives → `UnitData.xml`, `WeaponData.xml`, `Ef
 English localization). Raw extracted files live in `../extracted/`. Values are pre-trigger raw
 data; in-game numbers can differ because `MapScript.galaxy` applies runtime modifiers.
 
+## Battle.net login
+
+Players can connect their Battle.net account on `/account` (Blizzard OAuth,
+authorization-code flow, scope `openid sc2.profile`). The SC2 profiles linked to
+the account are matched to player pages by toon handle and marked as verified.
+
+Env vars (`.env` for dev, `fly secrets` in prod):
+
+- `BNET_CLIENT_ID` / `BNET_CLIENT_SECRET` — OAuth client from
+  <https://develop.battle.net/access/clients>. Register both redirect URLs:
+  `https://uar.cedricdessalles.dev/auth/bnet/callback` and
+  `http://localhost:5173/auth/bnet/callback` (dev).
+- `AUTH_SECRET` — random 32+ bytes (`openssl rand -hex 32`); signs the session
+  cookie. Rotating it signs everyone out.
+- `BNET_REDIRECT_URI` — optional override if the URI derived from the request
+  origin can't match a registered redirect URL.
+
 ## Develop
 
 ```sh

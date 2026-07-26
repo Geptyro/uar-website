@@ -1,0 +1,151 @@
+<script lang="ts">
+	import { careerXp } from '$lib/players';
+	import { mosById, mosName, mosPageId } from '$lib/mos';
+
+	let { data } = $props();
+	const r = $derived(data.replay);
+
+	const when = $derived(r.playedAt.slice(0, 16).replace('T', ' '));
+
+	function fmtSize(bytes: number): string {
+		return bytes >= 1e6 ? `${(bytes / 1e6).toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`;
+	}
+
+	function fmtDuration(loops: number): string {
+		const s = Math.round(loops / 16);
+		return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+	}
+
+	const players = $derived([...r.players].sort((a, b) => careerXp(b) - careerXp(a)));
+</script>
+
+<svelte:head>
+	<title>{when} — Replays — UAR Unit Database</title>
+</svelte:head>
+
+<div class="tiles">
+	<div class="tile"><b>{when}</b><span>game date · UTC</span></div>
+	<div class="tile"><b>{r.players.length}</b><span>profiles</span></div>
+	<div class="tile"><b>{fmtDuration(r.durationLoops)}</b><span>recorded</span></div>
+	<div class="tile"><b>{fmtSize(r.size)}</b><span>file size</span></div>
+</div>
+
+<p class="note meta">
+	<span class="mono">{r.title}</span> · base build <span class="mono">{r.baseBuild}</span> ·
+	recording length is the uploader's client recording — a leaver's replay is shorter than the
+	full game.
+</p>
+
+<a class="dl" href="/replays/{r.file}" download rel="external">Download {r.file} ⬇</a>
+
+<h2 class="section">Players in this game</h2>
+<div class="tablewrap">
+	<table class="data" style="max-width: 860px">
+		<thead>
+			<tr>
+				<th>Player</th>
+				<th>Class picked</th>
+				<th class="num">Career XP</th>
+				<th class="num">Prestige</th>
+				<th class="num">Games</th>
+				<th class="num">Revives</th>
+			</tr>
+		</thead>
+		<tbody>
+			{#each players as p (p.toon)}
+				<tr>
+					<td class="namecell">
+						{#if p.clan}<a class="clan" href="/clans/{encodeURIComponent(p.clan)}"
+								>&lt;{p.clan}&gt;</a
+							>{/if}
+						<a class="pname" href="/players/{p.toon}">{p.name}</a>
+					</td>
+					<td>
+						<div class="classlist">
+						{#each p.mos as id (id)}
+							{@const info = mosById.get(id)}
+							{@const pageId = mosPageId(id)}
+							{#if pageId}
+								<a class="tag t-mos" href="/mos/{pageId}">
+									{#if info?.icon}<img class="class-icon" src={info.icon} alt="" loading="lazy" />{/if}
+									{mosName(id)}
+								</a>
+							{:else}
+								<span class="tag t-mos">{mosName(id)}</span>
+							{/if}
+						{:else}
+							<span class="none">—</span>
+						{/each}
+						</div>
+					</td>
+					<td class="num">{careerXp(p).toLocaleString('en')}</td>
+					<td class="num">{p.prestige || ''}</td>
+					<td class="num">{p.gamesPlayed.toLocaleString('en')}</td>
+					<td class="num">{p.revives.toLocaleString('en')}</td>
+				</tr>
+			{/each}
+		</tbody>
+	</table>
+</div>
+<p class="note">
+	Values are each player's career save-file state as of game start — progress earned in this game
+	shows up in their next sighting. Players are ordered by career XP.
+</p>
+
+<style>
+	.meta {
+		margin-top: 12px;
+	}
+	.dl {
+		display: inline-block;
+		padding: 7px 16px;
+		border-radius: var(--r-sm);
+		background: var(--accent);
+		color: var(--on-accent);
+		font-weight: 650;
+		font-size: 13px;
+		text-decoration: none;
+	}
+	.dl:hover {
+		background: var(--accent-hover);
+	}
+	.namecell .clan {
+		font-family: var(--mono);
+		font-size: 11px;
+		color: var(--ink-3);
+		text-decoration: none;
+		margin-right: 5px;
+	}
+	.namecell .clan:hover {
+		color: var(--accent);
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+	.namecell .pname {
+		font-weight: 550;
+	}
+	.classlist {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px;
+	}
+	.classlist a.tag {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+		text-decoration: none;
+	}
+	.classlist a.tag:hover {
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+	.class-icon {
+		width: 15px;
+		height: 15px;
+		object-fit: cover;
+		border-radius: 3px;
+	}
+	.none {
+		color: var(--ink-3);
+	}
+</style>

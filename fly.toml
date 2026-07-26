@@ -14,6 +14,9 @@ primary_region = 'cdg'
 [env]
   # rate limiting must see the real client IP forwarded by the cdd-gateway
   ADDRESS_HEADER = 'x-forwarded-for'
+  # public origin (the gateway hop is plain HTTP) — keeps url.origin, and thus
+  # the Battle.net OAuth redirect_uri, on the real domain
+  ORIGIN = 'https://uar.cedricdessalles.dev'
   # replay uploads are up to ~16MB; adapter-node defaults to 512K
   BODY_SIZE_LIMIT = '16M'
 

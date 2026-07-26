@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { rankFor, totalWins, totalXp, careerXp, type PlayerProfile } from '$lib/players';
+	import anonPortrait from '$lib/assets/anon-portrait.svg';
 
 	let { data } = $props();
 	const players = $derived(data.players);
@@ -90,11 +91,21 @@
 				<tr>
 					<td class="num rank-pos">{i + 1}</td>
 					<td class="namecell">
-						{#if p.clan}<a class="clan" href="/clans/{encodeURIComponent(p.clan)}"
-								>&lt;{p.clan}&gt;</a
-							>{/if}
-						<a class="pname" href="/players/{p.toon}">{p.name}</a>
-						<span class="toon mono">{p.toon}</span>
+						<span class="playercell">
+							<img
+								class="portrait"
+								src={data.avatars[p.toon] ?? anonPortrait}
+								alt=""
+								loading="lazy"
+							/>
+							<span class="nameblock">
+								{#if p.clan}<a class="clan" href="/clans/{encodeURIComponent(p.clan)}"
+										>&lt;{p.clan}&gt;</a
+									>{/if}
+								<a class="pname" href="/players/{p.toon}">{p.name}</a>
+								<span class="toon mono">{p.toon}</span>
+							</span>
+						</span>
 					</td>
 					<td class="num career">{careerXp(p).toLocaleString('en')}</td>
 					{#each [rankFor(1, p.xpEn), rankFor(2, p.xpWo), rankFor(3, p.xpCo)] as rank, t (t)}
@@ -139,6 +150,22 @@
 	}
 	.namecell {
 		white-space: nowrap;
+	}
+	.playercell {
+		display: flex;
+		align-items: center;
+		gap: 9px;
+	}
+	.portrait {
+		width: 32px;
+		height: 32px;
+		border-radius: var(--r-sm);
+		object-fit: cover;
+		border: 1px solid var(--border);
+		flex-shrink: 0;
+	}
+	.nameblock {
+		min-width: 0;
 	}
 	.clan {
 		color: var(--ink-3);

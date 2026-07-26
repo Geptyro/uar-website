@@ -3,6 +3,12 @@
 	import StatIcon from '$lib/components/StatIcon.svelte';
 	import ChangeChip from '$lib/components/ChangeChip.svelte';
 	import { latestRelease } from '$lib/changelog-data';
+	import DescCard from '$lib/components/DescCard.svelte';
+	import anonPortrait from '$lib/assets/anon-portrait.svg';
+
+	let { data } = $props();
+
+	const unitById = new Map(units.map((u) => [u.id, u]));
 
 	const mosUnits = units
 		.filter(
@@ -77,6 +83,92 @@
 	{/each}
 </div>
 
+{#if data.weekly.xp.length || data.weekly.classPicks.length}
+	<h2 class="section">This week · last 7 days</h2>
+	<div class="boards">
+		{#if data.weekly.xp.length}
+			<DescCard label="XP gained">
+				<ol class="top-list">
+					{#each data.weekly.xp as p, i (p.toon || p.name)}
+						<li>
+							<div class="prow">
+								<span class="pos">{i + 1}</span>
+								<img
+									class="pportrait"
+									src={(p.toon && data.avatars[p.toon]) || anonPortrait}
+									alt=""
+									loading="lazy"
+								/>
+								{#if p.clan}<span class="pclan">&lt;{p.clan}&gt;</span>{/if}
+								{#if p.toon}
+									<a class="pname" href="/players/{p.toon}">{p.name}</a>
+								{:else}
+									<span class="pname">{p.name}</span>
+								{/if}
+								<span class="pxp" title="{p.games} game{p.games === 1 ? '' : 's'} this week"
+									>+{p.xpGained.toLocaleString('en')} XP</span
+								>
+							</div>
+							<div class="pbar">
+								<div
+									class="pbar-fill"
+									style="width: {(100 * p.xpGained) / data.weekly.xp[0].xpGained}%"
+								></div>
+							</div>
+						</li>
+					{/each}
+				</ol>
+			</DescCard>
+		{/if}
+		{#if data.weekly.classPicks.length}
+			<DescCard label="Class picks">
+				<ol class="top-list">
+					{#each data.weekly.classPicks as c (c.mos)}
+						{@const u = unitById.get(c.mos)}
+						<li>
+							<div class="prow">
+								{#if u?.icon}
+									<img class="pick-icon" src={u.icon} alt="" loading="lazy" />
+								{:else}
+									<span class="pick-icon placeholder"></span>
+								{/if}
+								<a class="pname" href="/mos/{c.mos}">{u?.name || c.mos}</a>
+								<span class="pxp" title="times picked in ingested games this week">{c.picks}</span>
+							</div>
+							<div class="pbar pick-bar">
+								<div
+									class="pbar-fill"
+									style="width: {(100 * c.picks) / data.weekly.classPicks[0].picks}%"
+								></div>
+							</div>
+						</li>
+					{/each}
+				</ol>
+			</DescCard>
+		{/if}
+		{#if data.weekly.prestiged.length}
+			<DescCard label="Prestiged">
+				<ul class="top-list">
+					{#each data.weekly.prestiged as p (p.toon || p.name)}
+						<li>
+							<div class="prow">
+								{#if p.clan}<span class="pclan">&lt;{p.clan}&gt;</span>{/if}
+								{#if p.toon}
+									<a class="pname" href="/players/{p.toon}">{p.name}</a>
+								{:else}
+									<span class="pname">{p.name}</span>
+								{/if}
+								<span class="pxp">P{p.from} → P{p.to}</span>
+							</div>
+						</li>
+					{/each}
+				</ul>
+			</DescCard>
+		{/if}
+	</div>
+	<p class="top-note">Aggregated from ingested replays over the last 7 days.</p>
+{/if}
+
 <h2 class="section">Heavy hostiles · 10,000+ HP</h2>
 <div class="tablewrap">
 	<table class="data" style="min-width: 640px">
@@ -111,14 +203,14 @@
 	}
 	.mos-card {
 		display: flex;
-		gap: 12px;
-		align-items: flex-start;
+		align-items: stretch;
+		padding: 0;
+		overflow: hidden;
 	}
 	.card-icon {
-		width: 44px;
-		height: 44px;
+		width: 84px;
+		align-self: stretch;
 		object-fit: cover;
-		border-radius: var(--r-sm);
 		flex-shrink: 0;
 	}
 	.card-icon.placeholder {
@@ -126,6 +218,7 @@
 	}
 	.card-body {
 		min-width: 0;
+		padding: 12px 14px;
 	}
 	.mos-card h3 {
 		margin: 0;
@@ -211,5 +304,103 @@
 		gap: 8px;
 		font-size: 13px;
 		color: var(--ink-2);
+	}
+	.boards {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+		gap: 12px;
+		align-items: start;
+	}
+	.pick-icon {
+		width: 18px;
+		height: 18px;
+		object-fit: cover;
+		border-radius: 4px;
+		align-self: center;
+		flex-shrink: 0;
+	}
+	.pick-icon.placeholder {
+		background: var(--surface-2);
+	}
+	.pick-bar {
+		margin-left: 24px;
+	}
+	.top-list {
+		list-style: none;
+		margin: 2px 0 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 7px;
+	}
+	.top-list li {
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+		min-width: 0;
+	}
+	.prow {
+		display: flex;
+		align-items: baseline;
+		gap: 6px;
+		font-size: 12.5px;
+		min-width: 0;
+	}
+	.pportrait {
+		width: 22px;
+		height: 22px;
+		border-radius: var(--r-sm);
+		object-fit: cover;
+		border: 1px solid var(--border);
+		align-self: center;
+		flex-shrink: 0;
+	}
+	/* XP gained relative to the #1 player */
+	.pbar {
+		/* aligned under the name: pos 14 + portrait 22 + 2 gaps */
+		margin-left: 48px;
+		height: 3px;
+		border-radius: 99px;
+		background: var(--surface-2);
+		overflow: hidden;
+	}
+	.pbar-fill {
+		height: 100%;
+		min-width: 2px;
+		border-radius: inherit;
+		background: var(--accent);
+	}
+	.pos {
+		font-family: var(--mono);
+		font-size: 10px;
+		color: var(--ink-3);
+		min-width: 14px;
+		text-align: right;
+		flex-shrink: 0;
+	}
+	.pclan {
+		color: var(--ink-3);
+		font-size: 11px;
+		flex-shrink: 0;
+	}
+	.pname {
+		font-weight: 550;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.pxp {
+		margin-left: auto;
+		font-family: var(--mono);
+		font-size: 11px;
+		color: var(--ink-2);
+		white-space: nowrap;
+		flex-shrink: 0;
+	}
+	.top-note {
+		margin: 10px 0 0;
+		font-size: 11px;
+		color: var(--ink-3);
 	}
 </style>

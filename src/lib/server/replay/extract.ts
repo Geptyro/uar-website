@@ -246,6 +246,17 @@ export function buildPlayersData(parsed: { replay: ParsedReplay; size: number }[
 	for (const sightings of byToon.values()) {
 		sightings.sort((a, b) => (a.playedAt < b.playedAt ? -1 : a.playedAt > b.playedAt ? 1 : 0));
 		const cur = sightings[sightings.length - 1];
+		// Ladder-completion decals (walker/LK19/Predator → 11/12/13) are derived, not
+		// bank-stored; re-derive here so sightings decoded before this rule still get them.
+		const decalSet = new Set(cur.unlocks.decals);
+		for (const [num, has] of [
+			[11, cur.unlocks.walker?.[5]],
+			[12, cur.unlocks.lk19?.[8]],
+			[13, cur.unlocks.predator?.[5]]
+		] as [number, boolean | undefined][]) {
+			if (has) decalSet.add(num);
+		}
+		cur.unlocks.decals = [...decalSet].sort((a, b) => a - b);
 		const history: HistoryEntry[] = sightings.map((s) => ({
 			playedAt: s.playedAt,
 			file: s.file,

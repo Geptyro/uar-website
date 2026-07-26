@@ -11,8 +11,9 @@
 		XP_CAP,
 		type Sighting
 	} from '$lib/players';
-	import { medals, camos } from '$lib/unlocks';
-	import { skillIdentifiers, mosById } from '$lib/mos';
+	import { medals, camos, decals } from '$lib/unlocks';
+	import { skillIdentifiers, mosById, mosList } from '$lib/mos';
+	import anonPortrait from '$lib/assets/anon-portrait.svg';
 
 	let { data } = $props();
 	const p = $derived(data.player);
@@ -39,6 +40,8 @@
 	const sisUnlocked = $derived(new Set(p.unlocks.sis));
 	const medalsUnlocked = $derived(new Set(p.unlocks.medals));
 	const camosUnlocked = $derived(new Set(p.unlocks.camos));
+	// num 0 (rank insignia) is everyone's default decal, never bank-stored
+	const decalsUnlocked = $derived(new Set([0, ...p.unlocks.decals]));
 	const sisSorted = [...skillIdentifiers].sort((a, b) => a.num - b.num);
 
 	const modes = $derived(
@@ -47,6 +50,47 @@
 			.filter((m) => m.wins > 0)
 			.sort((a, b) => b.wins - a.wins)
 	);
+
+	const playerGear = $derived(
+		gearGroups.map((g) => ({
+			...g,
+			flags: p.unlocks[g.key] as boolean[],
+			mosInfo: mosById.get(g.mosId)
+		}))
+	);
+
+	function fmtXpShort(xp: number): string {
+		return xp >= 1000
+			? `${(xp / 1000).toLocaleString('en-US', { maximumFractionDigits: 1 })}k`
+			: String(xp);
+	}
+
+	// Which classes this player can pick, from their per-track XP, prestige and medals
+	// (any prestige bypasses the rank requirements; Sushi transformations have no unlock).
+	const classRoster = $derived.by(() => {
+		const xp = [p.xpEn, p.xpWo, p.xpCo];
+		const trackLabels = ['Enlisted', 'Warrant', 'Commissioned'];
+		return mosList
+			.filter((m) => m.unlock)
+			.map((m) => {
+				const u = m.unlock!;
+				const reqs = [u.en, u.wo, u.co];
+				const rankOk =
+					p.prestige > 0 ||
+					(u.en?.everyTrack
+						? xp.every((x) => x >= (u.en?.xp ?? Infinity))
+						: reqs.some((r, i) => r?.xp != null && xp[i] >= r.xp));
+				const medalsOk = (u.medals ?? 0) <= p.unlocks.medals.length;
+				const parts = u.en?.everyTrack
+					? [`${fmtXpShort(u.en.xp ?? 0)} XP on all three tracks`]
+					: reqs.flatMap((r, i) =>
+							r?.xp ? [`${fmtXpShort(r.xp)} XP ${trackLabels[i]}`] : []
+						);
+				if (u.medals) parts.push(`${u.medals} medals`);
+				return { m, unlocked: rankOk && medalsOk, req: parts.join(' · ') };
+			});
+	});
+	const unlockedClasses = $derived(classRoster.filter((c) => c.unlocked).length);
 
 	const classesPlayed = $derived.by(() => {
 		const counts = new Map<string, number>();
@@ -58,10 +102,18 @@
 			.map(([id, games]) => ({ id, games, info: mosById.get(id) }));
 	});
 
+	// Sighting values are the save-file state at game start, so the progress
+	// earned in game i only shows up in sighting i+1 — attribute it back to row i.
 	function delta(h: Sighting[], i: number, key: keyof Sighting): number | null {
-		if (i === 0) return null;
-		const d = (h[i][key] as number) - (h[i - 1][key] as number);
+		if (i >= h.length - 1) return null;
+		const d = (h[i + 1][key] as number) - (h[i][key] as number);
 		return d > 0 ? d : null;
+	}
+
+	/** Games played between sighting i and the next one; >1 means the delta spans non-ingested games. */
+	function gamesSpanned(h: Sighting[], i: number): number {
+		if (i >= h.length - 1) return 0;
+		return h[i + 1].gamesPlayed - h[i].gamesPlayed;
 	}
 
 	function fmtDate(iso: string): string {
@@ -176,6 +228,23 @@
 			{/if}
 		</div>
 
+		<h2 class="section">
+			Classes unlocked <span class="counthint">{unlockedClasses} / {classRoster.length}</span>
+		</h2>
+		<div class="mosgrid">
+			{#each classRoster as c (c.m.id)}
+				<a
+					class="mosbox"
+					class:locked={!c.unlocked}
+					href="/mos/{c.m.id}"
+					title={c.unlocked ? c.m.name : `${c.m.name} — unlocks at ${c.req}`}
+				>
+					{#if c.m.icon}<img class="mos-img" src={c.m.icon} alt="" loading="lazy" />{/if}
+					<span class="mos-name">{c.m.name}</span>
+				</a>
+			{/each}
+		</div>
+
 		<h2 class="section">Medals <span class="counthint">{p.unlocks.medals.length} / {medals.length}</span></h2>
 		<div class="medals">
 			{#each medals as m (m.num)}
@@ -233,6 +302,30 @@
 			{/each}
 		</div>
 
+		<h2 class="section">
+			Decals <span class="counthint">{decalsUnlocked.size} / {decals.length}</span>
+		</h2>
+		<div class="camogrid">
+			{#each decals as d (d.num)}
+				<a
+					class="camo"
+					class:locked={!decalsUnlocked.has(d.num)}
+					class:worn={p.decal === d.num}
+					href="/medals"
+					title="{decalName(d.num)}{d.req ? ` — ${d.req}` : ''}{p.decal === d.num
+						? ' (equipped)'
+						: ''}"
+				>
+					{#if d.icon}
+						<img class="camo-img decal-img" src={d.icon} alt="{d.name} decal" loading="lazy" />
+					{:else}
+						<span class="camo-img camo-placeholder"></span>
+					{/if}
+					<span class="camo-name">{decalName(d.num)}</span>
+				</a>
+			{/each}
+		</div>
+
 		<h2 class="section">Replay history</h2>
 		<div class="tablewrap">
 			<table class="data">
@@ -250,10 +343,11 @@
 				</thead>
 				<tbody>
 					{#each p.history as h, i (h.file)}
+						{@const span = gamesSpanned(p.history, i)}
 						<tr>
 							<td class="mono">
-								<a href="/replays/{h.file}" download rel="external" title="Download replay"
-									>{fmtDate(h.playedAt)} ⬇</a
+								<a href="/replays/{h.file.replace(/\.SC2Replay$/, '')}" title="View replay"
+									>{fmtDate(h.playedAt)}</a
 								>
 							</td>
 							<td class="histclass">
@@ -272,7 +366,13 @@
 								{@const d = delta(p.history, i, key)}
 								<td class="num">
 									{(h[key] as number).toLocaleString('en')}
-									{#if d}<span class="delta">+{d.toLocaleString('en')}</span>{/if}
+									{#if d}<span
+											class="delta"
+											class:approx={span > 1}
+											title={span > 1
+												? `earned across ${span} games; only the first is this replay`
+												: 'earned in this game'}>+{d.toLocaleString('en')}</span
+										>{/if}
 								</td>
 							{/each}
 						</tr>
@@ -281,13 +381,32 @@
 			</table>
 		</div>
 		<p class="note">
-			One row per ingested replay this player appears in; green deltas show progress between
-			sightings. Values are the save-file state when each game started.
+			One row per ingested replay this player appears in. Values are the save-file state when each
+			game started; green deltas show what was earned in that game (dimmed when unrecorded games sit
+			between two replays). The newest game's gains aren't known until a later replay is ingested.
 		</p>
 	</div>
 
 	<aside class="infobox">
 		<div class="card box">
+			<div class="idhead">
+				<img class="portrait-lg" src={data.avatarUrl ?? anonPortrait} alt="" />
+				<div class="idtext">
+					<div class="idname">
+						{#if p.clan}<span class="idclan">&lt;{p.clan}&gt;</span>{/if}{p.name}
+					</div>
+					{#if data.verified}
+						<div>
+							<span class="tag t-mos" title="Linked via Battle.net login">
+								✓ {data.verified.battletag}
+							</span>
+							{#if data.verified.isOwner}
+								<a class="you" href="/account">you</a>
+							{/if}
+						</div>
+					{/if}
+				</div>
+			</div>
 			<dl class="facts">
 				<dt>Battle.net ID</dt>
 				<dd class="mono">{p.toon}</dd>
@@ -314,27 +433,33 @@
 				<dt>Camos</dt>
 				<dd><a href="/camos">{p.unlocks.camos.length} / 25</a></dd>
 				<dt>Decals</dt>
-				<dd><a href="/medals">{p.unlocks.decals.length}</a></dd>
+				<dd><a href="/medals">{decalsUnlocked.size} / {decals.length}</a></dd>
 				<dt>Last seen</dt>
 				<dd class="mono">{fmtDate(p.lastSeen)}</dd>
 			</dl>
 		</div>
 
-		{#each gearGroups as g (g.key)}
-			{@const flags = p.unlocks[g.key] as boolean[]}
-			{#if flags.some(Boolean)}
-				<div class="card box">
-					<div class="box-label">{g.label}</div>
+		{#if playerGear.length}
+			<div class="card box">
+				<div class="box-label">Gear unlocks</div>
+				{#each playerGear as g (g.key)}
+					<a class="gear-head" href="/mos/{g.mosId}">
+						{#if g.mosInfo?.icon}
+							<img class="gear-mos" src={g.mosInfo.icon} alt="" loading="lazy" />
+						{/if}
+						<span class="gear-title">{g.label}</span>
+						<span class="gear-count mono">{g.flags.filter(Boolean).length}/{g.items.length}</span>
+					</a>
 					<ul class="gear">
-						{#each g.items as item, i (item)}
-							<li class:locked={!flags[i]}>
-								<span class="tick">{flags[i] ? '✓' : '·'}</span>{item}
+						{#each g.items as item, i (item.name)}
+							<li class:locked={!g.flags[i]} title={item.desc ?? undefined}>
+								<span class="tick">{g.flags[i] ? '✓' : '·'}</span>{item.name}
 							</li>
 						{/each}
 					</ul>
-				</div>
-			{/if}
-		{/each}
+				{/each}
+			</div>
+		{/if}
 		<a class="backlink" href="/players">← All players</a>
 	</aside>
 </div>
@@ -540,6 +665,39 @@
 		margin-right: 3px;
 	}
 
+	/* ---------- class roster grid ---------- */
+	.mosgrid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+		gap: 10px;
+	}
+	.mosbox {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 4px;
+		text-decoration: none;
+		color: var(--ink-2);
+	}
+	.mosbox.locked {
+		opacity: 0.3;
+	}
+	.mosbox.locked .mos-img {
+		filter: grayscale(1);
+	}
+	.mos-img {
+		width: 64px;
+		height: 64px;
+		object-fit: cover;
+		border-radius: var(--r-sm);
+		border: 1px solid var(--border);
+	}
+	.mos-name {
+		font-size: 10.5px;
+		text-align: center;
+		line-height: 1.2;
+	}
+
 	/* ---------- camo grid ---------- */
 	.camogrid {
 		display: grid;
@@ -576,6 +734,11 @@
 		display: inline-block;
 		background: var(--surface-2);
 	}
+	.decal-img {
+		object-fit: contain;
+		box-sizing: border-box;
+		padding: 7px;
+	}
 	.camo-name {
 		font-size: 10.5px;
 		text-align: center;
@@ -588,6 +751,9 @@
 		font-size: 10.5px;
 		margin-left: 4px;
 	}
+	.delta.approx {
+		color: var(--ink-3);
+	}
 
 	/* ---------- infobox ---------- */
 	.infobox {
@@ -597,6 +763,40 @@
 	}
 	.box {
 		padding: 8px 0;
+	}
+	.idhead {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		padding: 6px 14px 4px;
+	}
+	.portrait-lg {
+		width: 56px;
+		height: 56px;
+		border-radius: var(--r-sm);
+		object-fit: cover;
+		border: 1px solid var(--border-strong);
+		flex-shrink: 0;
+	}
+	.idtext {
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+		min-width: 0;
+	}
+	.idname {
+		font-size: 15px;
+		font-weight: 650;
+		letter-spacing: -0.01em;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.idclan {
+		color: var(--ink-3);
+		font-size: 13px;
+		font-weight: 500;
+		margin-right: 5px;
 	}
 	.facts {
 		margin: 8px 0 0;
@@ -624,6 +824,19 @@
 	.facts dd:last-of-type {
 		border-bottom: none;
 	}
+	.idhead .you {
+		font-family: var(--mono);
+		font-size: 10px;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--accent);
+		text-decoration: none;
+		margin-left: 4px;
+	}
+	.idhead .you:hover {
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
 	.box-label {
 		font-family: var(--mono);
 		font-size: 10px;
@@ -632,10 +845,41 @@
 		color: var(--ink-3);
 		padding: 4px 14px 2px;
 	}
-	.gear {
-		padding: 2px 14px 6px;
+	.gear-head {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 6px 14px 3px;
+		text-decoration: none;
+		color: inherit;
+	}
+	.gear + .gear-head {
+		border-top: 1px solid var(--border);
+		margin-top: 5px;
+		padding-top: 10px;
+	}
+	.gear-head:hover .gear-title {
+		color: var(--accent);
+	}
+	.gear-mos {
+		width: 24px;
+		height: 24px;
+		object-fit: cover;
+		border-radius: 4px;
+		flex: none;
+	}
+	.gear-title {
+		font-size: 12.5px;
+		font-weight: 650;
+		flex: 1;
+		min-width: 0;
+	}
+	.gear-count {
+		font-size: 10px;
+		color: var(--ink-3);
 	}
 	.gear {
+		padding: 2px 14px 6px;
 		list-style: none;
 		margin: 0;
 		font-size: 12.5px;

@@ -6,15 +6,20 @@
  *   Holds the full parsed sightings, so player docs can always be rebuilt
  *   from scratch with the exact same merge logic as the old static pipeline.
  * - players: one doc per toon handle (_id = toon), the merged profile.
+ * - feedback: visitor-submitted feedback from the /feedback page, append-only.
+ * - accounts: one doc per Battle.net login (_id = OAuth sub), linking the
+ *   account's SC2 profiles (toons) to player pages. Written by /auth/bnet.
  *
  * Uses process.env (not $env) so the same module works in the SvelteKit
  * server and in plain-node CLI scripts.
  */
 
 import { MongoClient, type Db } from 'mongodb';
+import type { Sc2Profile } from './bnet.ts';
 import { buildPlayersData, type ReplaySighting } from './replay/extract.ts';
 import { topPlayersByMos } from './playtime.ts';
-import type { MosTopPlayer } from '../players.ts';
+import { weeklyBoards } from './weekly.ts';
+import type { MosTopPlayer, ReplayDetail, WeeklyBoards } from '../players.ts';
 
 export interface ReplayDoc {
 	_id: string; // file name, YYYYMMDD-HHMM.SC2Replay
@@ -31,6 +36,26 @@ export interface ReplayDoc {
 	 * replaces a shorter one. */
 	durationLoops?: number;
 	sightings: ReplaySighting[];
+}
+
+export interface FeedbackDoc {
+	createdAt: string; // ISO timestamp
+	message: string;
+	name?: string;
+	contact?: string;
+	/** Triage flags — written by the maintainer's feedbacks.sveld tool, not the site. */
+	done?: boolean;
+	doneAt?: string; // ISO timestamp, set when flagged done
+}
+
+export interface AccountDoc {
+	_id: string; // Battle.net account id (the OAuth `sub` claim)
+	battletag: string;
+	/** Toon handles of the account's SC2 profiles — the players._id format. */
+	toons: string[];
+	profiles: Sc2Profile[];
+	linkedAt: string; // ISO timestamp of the first link
+	updatedAt: string;
 }
 
 let client: MongoClient | null = null;
@@ -99,6 +124,33 @@ export async function getReplaysList(): Promise<
 	});
 }
 
+export async function getReplay(file: string): Promise<ReplayDetail | null> {
+	const d = await db();
+	const doc = await d.collection<ReplayDoc>('replays').findOne({ _id: file });
+	if (!doc) return null;
+	return {
+		file: doc._id,
+		playedAt: doc.playedAt,
+		title: doc.title,
+		baseBuild: doc.baseBuild,
+		size: doc.size,
+		durationLoops: doc.durationLoops ?? 0,
+		// project sightings down to what the page shows — unlocks etc. stay server-side
+		players: doc.sightings.map((s) => ({
+			name: s.name,
+			clan: s.clan,
+			toon: s.toon,
+			mos: s.mos,
+			xpEn: s.xpEn,
+			xpWo: s.xpWo,
+			xpCo: s.xpCo,
+			prestige: s.prestige,
+			gamesPlayed: s.gamesPlayed,
+			revives: s.revives
+		}))
+	};
+}
+
 export async function getMosTopPlayers(mosId: string): Promise<MosTopPlayer[]> {
 	const byMos = await cached('mosPlaytime', async () => {
 		const d = await db();
@@ -121,6 +173,33 @@ export async function getMosTopPlayers(mosId: string): Promise<MosTopPlayer[]> {
 		return topPlayersByMos(docs);
 	});
 	return byMos[mosId] ?? [];
+}
+
+export async function getWeeklyBoards(): Promise<WeeklyBoards> {
+	return cached('weeklyBoards', async () => {
+		const d = await db();
+		const docs = await d
+			.collection<ReplayDoc>('replays')
+			.find(
+				{},
+				{
+					projection: {
+						playedAt: 1,
+						'sightings.toon': 1,
+						'sightings.name': 1,
+						'sightings.clan': 1,
+						'sightings.xpEn': 1,
+						'sightings.xpWo': 1,
+						'sightings.xpCo': 1,
+						'sightings.prestige': 1,
+						'sightings.gamesPlayed': 1,
+						'sightings.mos': 1
+					}
+				}
+			)
+			.toArray();
+		return weeklyBoards(docs, new Date());
+	});
 }
 
 export async function replayExists(file: string): Promise<boolean> {
@@ -151,6 +230,76 @@ export async function replaceReplayDoc(doc: ReplayDoc): Promise<void> {
 export async function insertReplayDoc(doc: ReplayDoc): Promise<void> {
 	const d = await db();
 	await d.collection<ReplayDoc>('replays').insertOne(doc);
+}
+
+export async function insertFeedback(doc: FeedbackDoc): Promise<void> {
+	const d = await db();
+	await d.collection<FeedbackDoc>('feedback').insertOne(doc);
+}
+
+/**
+ * Record a Battle.net login. `profiles` is null when the SC2 profile fetch
+ * failed (flaky API) — the login still succeeds and any previously stored
+ * toons are kept rather than clobbered with an empty list.
+ */
+export async function upsertAccount(
+	sub: string,
+	battletag: string,
+	profiles: Sc2Profile[] | null,
+	now: Date = new Date()
+): Promise<void> {
+	const d = await db();
+	const iso = now.toISOString();
+	const set: Partial<AccountDoc> = { battletag, updatedAt: iso };
+	if (profiles !== null) {
+		set.profiles = profiles;
+		set.toons = profiles.map((p) => p.toon);
+	}
+	await d
+		.collection<AccountDoc>('accounts')
+		.updateOne({ _id: sub }, { $set: set, $setOnInsert: { linkedAt: iso } }, { upsert: true });
+	invalidateCache();
+}
+
+/** The account's primary profile: first seen in UAR replays, else the first. */
+export async function pickPrimaryProfile(profiles: Sc2Profile[]): Promise<Sc2Profile | undefined> {
+	for (const p of profiles) {
+		if (await getPlayer(p.toon)) return p;
+	}
+	return profiles[0];
+}
+
+/** toon -> SC2 portrait URL, across every linked account (small collection). */
+export async function getAvatarsByToon(): Promise<Record<string, string>> {
+	return cached('avatars', async () => {
+		const d = await db();
+		const docs = await d
+			.collection<AccountDoc>('accounts')
+			.find({}, { projection: { profiles: 1 } })
+			.toArray();
+		const map: Record<string, string> = {};
+		for (const a of docs) {
+			for (const p of a.profiles ?? []) if (p.avatarUrl) map[p.toon] = p.avatarUrl;
+		}
+		return map;
+	});
+}
+
+export async function getAccount(sub: string): Promise<AccountDoc | null> {
+	const d = await db();
+	return d.collection<AccountDoc>('accounts').findOne({ _id: sub });
+}
+
+/** The account that owns this toon, if anyone has linked it. */
+export async function getAccountByToon(toon: string): Promise<AccountDoc | null> {
+	const d = await db();
+	return d.collection<AccountDoc>('accounts').findOne({ toons: toon });
+}
+
+export async function deleteAccount(sub: string): Promise<void> {
+	const d = await db();
+	await d.collection<AccountDoc>('accounts').deleteOne({ _id: sub });
+	invalidateCache();
 }
 
 /**
