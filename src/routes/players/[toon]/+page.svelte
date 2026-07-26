@@ -363,27 +363,41 @@
 								{/each}
 							</td>
 							{#each ['xpEn', 'xpWo', 'xpCo', 'gamesPlayed', 'wins', 'revives'] as const as key (key)}
-								{@const d = delta(p.history, i, key)}
+								{@const d = span === 1 ? delta(p.history, i, key) : null}
 								<td class="num">
 									{(h[key] as number).toLocaleString('en')}
-									{#if d}<span
-											class="delta"
-											class:approx={span > 1}
-											title={span > 1
-												? `earned across ${span} games; only the first is this replay`
-												: 'earned in this game'}>+{d.toLocaleString('en')}</span
+									{#if d}<span class="delta" title="earned in this game"
+											>+{d.toLocaleString('en')}</span
 										>{/if}
 								</td>
 							{/each}
 						</tr>
+						{#if span > 1}
+							<tr class="gap">
+								<td
+									class="gapinfo"
+									colspan="2"
+									title="only the first of these games is the replay above; the rest weren't recorded"
+								>
+									⋯ over {span} games
+								</td>
+								{#each ['xpEn', 'xpWo', 'xpCo', 'gamesPlayed', 'wins', 'revives'] as const as key (key)}
+									{@const d = delta(p.history, i, key)}
+									<td class="num">
+										{#if d}<span class="delta">+{d.toLocaleString('en')}</span>{/if}
+									</td>
+								{/each}
+							</tr>
+						{/if}
 					{/each}
 				</tbody>
 			</table>
 		</div>
 		<p class="note">
 			One row per ingested replay this player appears in. Values are the save-file state when each
-			game started; green deltas show what was earned in that game (dimmed when unrecorded games sit
-			between two replays). The newest game's gains aren't known until a later replay is ingested.
+			game started; green deltas show what was earned in that game. When unrecorded games sit
+			between two replays, an in-between row shows what was earned across that stretch instead. The
+			newest game's gains aren't known until a later replay is ingested.
 		</p>
 	</div>
 
@@ -751,8 +765,15 @@
 		font-size: 10.5px;
 		margin-left: 4px;
 	}
-	.delta.approx {
+	tr.gap td {
+		padding-top: 3px;
+		padding-bottom: 3px;
+		background: var(--surface);
+	}
+	.gapinfo {
+		font: 500 10.5px/1.6 var(--mono);
 		color: var(--ink-3);
+		white-space: nowrap;
 	}
 
 	/* ---------- infobox ---------- */
