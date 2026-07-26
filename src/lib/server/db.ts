@@ -67,6 +67,20 @@ export interface ReadyDoc {
 	until: string; // ISO timestamp the flag expires (one hour later)
 }
 
+export interface PresenceDoc {
+	_id: string; // Battle.net account id (the OAuth `sub` claim) — one heartbeat each
+	battletag: string;
+	toon?: string;
+	avatar?: string;
+	status: 'menus' | 'lobby' | 'ingame';
+	uar: boolean;
+	players?: number;
+	displayTime?: number;
+	roster?: string[];
+	lobbyId?: number;
+	at: string; // ISO timestamp of the last heartbeat — stale after ~2 min
+}
+
 let client: MongoClient | null = null;
 
 export function dbConfigured(): boolean {
@@ -270,6 +284,39 @@ export async function setReady(doc: ReadyDoc): Promise<void> {
 export async function clearReady(sub: string): Promise<void> {
 	const d = await db();
 	await d.collection<ReadyDoc>('ready').deleteOne({ _id: sub });
+	invalidateCache();
+}
+
+/** Fresh lobby/ingame heartbeats (stale ones are ignored, cleaned lazily). */
+export async function getActivePresence(staleMs: number, now = Date.now()): Promise<PresenceDoc[]> {
+	return cached('presence', async () => {
+		const d = await db();
+		const cutoff = new Date(now - staleMs).toISOString();
+		return d
+			.collection<PresenceDoc>('presence')
+			.find({ at: { $gt: cutoff }, status: { $in: ['lobby', 'ingame'] } })
+			.sort({ at: 1 })
+			.toArray();
+	});
+}
+
+export async function getPresence(sub: string): Promise<PresenceDoc | null> {
+	const d = await db();
+	return d.collection<PresenceDoc>('presence').findOne({ _id: sub });
+}
+
+export async function upsertPresence(doc: PresenceDoc): Promise<void> {
+	const d = await db();
+	const col = d.collection<PresenceDoc>('presence');
+	await col.replaceOne({ _id: doc._id }, doc, { upsert: true });
+	// opportunistic cleanup — anything hours-stale is never read again
+	await col.deleteMany({ at: { $lt: new Date(Date.now() - 6 * 3_600_000).toISOString() } });
+	invalidateCache();
+}
+
+export async function deletePresence(sub: string): Promise<void> {
+	const d = await db();
+	await d.collection<PresenceDoc>('presence').deleteOne({ _id: sub });
 	invalidateCache();
 }
 

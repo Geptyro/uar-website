@@ -5,12 +5,28 @@
  * restarts the hour.
  */
 import { error, json } from '@sveltejs/kit';
-import { clearReady, dbConfigured, getReadyPlayers, setReady } from '$lib/server/db';
+import { clearReady, dbConfigured, getPresence, getReadyPlayers, setReady } from '$lib/server/db';
 import { publishReadyChange } from '$lib/server/events';
 import { READY_DURATION_MS, type ReadyPlayer } from '$lib/ready';
+import { PRESENCE_STALE_MS } from '$lib/presence';
 import type { RequestHandler } from './$types';
 
 export const prerender = false;
+
+// per-account toggle limit — flag/unflag flapping is visible to everyone
+// (SSE + notifications in the companion app), so keep it civil. In-memory
+// like the upload limiters: single always-on machine, restart clears it.
+const TOGGLE_LIMIT = 8;
+const TOGGLE_WINDOW_MS = 10 * 60 * 1000;
+const togglesBySub = new Map<string, number[]>();
+
+function toggleLimited(sub: string): boolean {
+	const list = (togglesBySub.get(sub) ?? []).filter((t) => Date.now() - t < TOGGLE_WINDOW_MS);
+	togglesBySub.set(sub, list);
+	if (list.length >= TOGGLE_LIMIT) return true;
+	list.push(Date.now());
+	return false;
+}
 
 async function state(
 	sub: string | undefined
@@ -38,6 +54,16 @@ export const POST: RequestHandler = async ({ locals }) => {
 	const s = locals.session;
 	if (!s) error(401, 'sign in with Battle.net to flag yourself as ready');
 	if (!dbConfigured()) error(503, 'player database not configured');
+	// playing ≠ available: block flagging while a fresh heartbeat says the
+	// player is in a game (a lobby is fine — that's recruiting)
+	const presence = await getPresence(s.sub);
+	if (
+		presence?.status === 'ingame' &&
+		Date.now() - Date.parse(presence.at) < PRESENCE_STALE_MS
+	) {
+		error(409, 'You are in a game — the flag comes back when it ends.');
+	}
+	if (toggleLimited(s.sub)) error(429, 'Too many ready toggles — give it a few minutes.');
 	const now = new Date();
 	await setReady({
 		_id: s.sub,
@@ -55,6 +81,7 @@ export const DELETE: RequestHandler = async ({ locals }) => {
 	const s = locals.session;
 	if (!s) error(401, 'not signed in');
 	if (!dbConfigured()) error(503, 'player database not configured');
+	if (toggleLimited(s.sub)) error(429, 'Too many ready toggles — give it a few minutes.');
 	await clearReady(s.sub);
 	publishReadyChange();
 	return json(await state(s.sub));

@@ -9,16 +9,23 @@
 	 */
 	import { onMount } from 'svelte';
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
+	import PresenceChip from '$lib/components/PresenceChip.svelte';
 	import { activeReady, minutesLeft, readyLevel, type ReadyPlayer } from '$lib/ready';
+	import { groupPresence, type PresenceEntry } from '$lib/presence';
 
 	let { signedIn }: { signedIn: boolean } = $props();
 
 	let players = $state<ReadyPlayer[]>([]);
+	let presence = $state<PresenceEntry[]>([]);
 	let myUntil = $state<string | null>(null);
 	let busy = $state(false);
 	let now = $state(0);
 
 	const active = $derived(activeReady(players, now));
+	const groups = $derived(groupPresence(presence));
+	const lobbies = $derived(groups.filter((g) => g.status === 'lobby' && g.uar));
+	const games = $derived(groups.filter((g) => g.status === 'ingame' && g.uar));
+	const statusOf = (battletag: string) => presence.find((p) => p.battletag === battletag)?.status;
 	const me = $derived(myUntil !== null && Date.parse(myUntil) > now);
 	const myMinutes = $derived(me ? minutesLeft(myUntil!, now) : null);
 	const level = $derived(myMinutes === null ? 'high' : readyLevel(myMinutes));
@@ -33,6 +40,12 @@
 		try {
 			const res = await fetch('/api/ready');
 			if (res.ok) apply(await res.json());
+		} catch {
+			// transient — keep the last known state
+		}
+		try {
+			const res = await fetch('/api/presence');
+			if (res.ok) presence = ((await res.json()) as { players: PresenceEntry[] }).players;
 		} catch {
 			// transient — keep the last known state
 		}
@@ -67,6 +80,60 @@
 		}
 	}
 </script>
+
+{#snippet groupList(list: typeof lobbies, gameClock: boolean)}
+	{#each list as g (g.key)}
+		<div class="grp">
+			<div class="grp-head">
+				{g.uar ? 'UAR' : ''}
+				{g.status === 'ingame' ? 'game' : 'lobby'} · {g.players}
+				player{g.players === 1 ? '' : 's'}{#if gameClock && g.displayTime}&nbsp;· {Math.floor(
+						g.displayTime / 60
+					)} min{/if}
+			</div>
+			{#each g.members as m (m.battletag)}
+				<div class="row">
+					<img class="portrait" src={m.avatar ?? anonPortrait} alt="" />
+					{#if m.toon}
+						<a class="tag-link" href="/players/{m.toon}">{m.battletag}</a>
+					{:else}
+						<span class="tag-link">{m.battletag}</span>
+					{/if}
+				</div>
+			{/each}
+			{#if g.players > g.members.length}
+				<div class="grp-more">+{g.players - g.members.length} more (not on UAR Tray)</div>
+			{/if}
+		</div>
+	{/each}
+{/snippet}
+
+{#if signedIn || active.length > 0 || lobbies.length > 0 || games.length > 0}
+	<div class="presence-row">
+		{#if lobbies.length > 0}
+			<div class="hover-wrap">
+				<PresenceChip kind="lobby" count={lobbies.length} />
+				<div class="pop">
+					<div class="pop-card">
+						<div class="pop-head">Open lobbies · {lobbies.length}</div>
+						{@render groupList(lobbies, false)}
+					</div>
+				</div>
+			</div>
+		{/if}
+		{#if games.length > 0}
+			<div class="hover-wrap">
+				<PresenceChip kind="game" count={games.length} />
+				<div class="pop">
+					<div class="pop-card">
+						<div class="pop-head">Games running · {games.length}</div>
+						{@render groupList(games, true)}
+					</div>
+				</div>
+			</div>
+		{/if}
+	</div>
+{/if}
 
 {#if signedIn || active.length > 0}
 	<div class="ready">
@@ -139,6 +206,11 @@
 								<a class="tag-link" href="/players/{p.toon}">{p.battletag}</a>
 							{:else}
 								<span class="tag-link">{p.battletag}</span>
+							{/if}
+							{#if statusOf(p.battletag) === 'lobby'}
+								<span class="mini-tag">in lobby</span>
+							{:else if statusOf(p.battletag) === 'ingame'}
+								<span class="mini-tag game">in game</span>
 							{/if}
 							<span class="left">{minutesLeft(p.until, now)} min</span>
 						</div>
@@ -341,5 +413,52 @@
 		font-variant-numeric: tabular-nums;
 		color: var(--ink-3);
 		flex-shrink: 0;
+	}
+
+	/* presence chips (open lobbies / running games) share the pop pattern */
+	.presence-row {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+	.hover-wrap {
+		position: relative;
+		display: flex;
+		align-items: center;
+	}
+	.hover-wrap:hover .pop,
+	.hover-wrap:focus-within .pop {
+		display: block;
+	}
+	.grp + .grp {
+		border-top: 1px solid var(--border);
+		margin-top: 4px;
+		padding-top: 4px;
+	}
+	.grp-head {
+		font-family: var(--mono);
+		font-size: 10px;
+		font-weight: 600;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--ink-3);
+		padding: 4px 8px 2px;
+	}
+	.grp-more {
+		font-size: 11.5px;
+		color: var(--ink-3);
+		padding: 2px 8px 4px;
+	}
+	.mini-tag {
+		font: 550 9.5px/1 var(--mono);
+		letter-spacing: 0.04em;
+		padding: 2.5px 7px;
+		border-radius: 99px;
+		color: var(--on-accent);
+		background: var(--item);
+		white-space: nowrap;
+	}
+	.mini-tag.game {
+		background: var(--mos);
 	}
 </style>
