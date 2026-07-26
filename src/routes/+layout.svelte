@@ -95,6 +95,13 @@
 			)
 		},
 		{
+			href: '/companion',
+			label: 'Companion app',
+			icon: icon(
+				'<rect x=\'2\' y=\'3\' width=\'20\' height=\'14\' rx=\'2\'/><line x1=\'8\' y1=\'21\' x2=\'16\' y2=\'21\'/><line x1=\'12\' y1=\'17\' x2=\'12\' y2=\'21\'/>'
+			)
+		},
+		{
 			href: '/feedback',
 			label: 'Feedback',
 			icon: icon('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>')
@@ -138,6 +145,7 @@
 		if (p === '/flow') return { section: '', title: 'Mission flow' };
 		if (p === '/changelog') return { section: '', title: 'Changelog' };
 		if (p === '/feedback') return { section: '', title: 'Feedback' };
+		if (p === '/companion') return { section: '', title: 'UAR Companion' };
 		if (p === '/account') return { section: '', title: 'Account' };
 		if (p === '/mos') return { section: 'MOS', title: 'Classes compared' };
 		if (p.startsWith('/mos/')) {
@@ -213,12 +221,7 @@
 				{:else}
 					<span class="brand-sub">Field reference · EU</span>
 				{/if}
-				<a
-					class="brand-sub app-dl"
-					href="https://github.com/Geptyro/uar-companion/releases/latest"
-					rel="external"
-					title="Download the UAR companion app — auto-uploads your replays, shows who's ready and which lobbies are open (Windows / Linux / macOS)"
-				>
+				<a class="brand-sub app-dl" href="/companion" title="Get the desktop companion app">
 					companion app
 				</a>
 			</span>
