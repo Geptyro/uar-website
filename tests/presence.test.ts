@@ -51,6 +51,49 @@ test('groupPresence: lobbyId first, roster fallback, solo last resort', () => {
 	assert.equal(byKey['solo:F#5'].members.length, 1);
 });
 
+test('groupPresence: a lobby reporter with no id joins the lobby we can see', () => {
+	// their battlelobby file did not parse — they are still in that lobby,
+	// and showing them as a second one is the bug this rule fixes
+	const groups = groupPresence([
+		entry({ battletag: 'A#1', lobbyId: 42, status: 'lobby', roster: ['A', 'B'] }),
+		entry({ battletag: 'B#2', status: 'lobby', roster: ['A', 'B', 'C'] })
+	]);
+	assert.equal(groups.length, 1);
+	assert.equal(groups[0].key, 'id:42');
+	assert.equal(groups[0].members.length, 2);
+});
+
+test('groupPresence: id-less lobby reporters form one lobby, not one each', () => {
+	// rosters differ because people joined between heartbeats
+	const groups = groupPresence([
+		entry({ battletag: 'A#1', status: 'lobby', roster: ['A', 'B'] }),
+		entry({ battletag: 'B#2', status: 'lobby', roster: ['A', 'B', 'C'] }),
+		entry({ battletag: 'C#3', status: 'lobby' })
+	]);
+	assert.equal(groups.length, 1);
+	assert.equal(groups[0].key, 'lobby:unidentified');
+	assert.equal(groups[0].members.length, 3);
+});
+
+test('groupPresence: several identified lobbies keep id-less reporters apart', () => {
+	// the one-lobby-at-a-time guess is only safe when one lobby is visible
+	const groups = groupPresence([
+		entry({ battletag: 'A#1', lobbyId: 1, status: 'lobby' }),
+		entry({ battletag: 'B#2', lobbyId: 2, status: 'lobby' }),
+		entry({ battletag: 'C#3', status: 'lobby' })
+	]);
+	assert.equal(groups.length, 3);
+	assert.ok(groups.some((g) => g.key === 'lobby:unidentified'));
+});
+
+test('groupPresence: concurrent games still separate on their rosters', () => {
+	const groups = groupPresence([
+		entry({ battletag: 'A#1', roster: ['A', 'B'], players: 2 }),
+		entry({ battletag: 'C#3', roster: ['C', 'D'], players: 2 })
+	]);
+	assert.equal(groups.length, 2, 'games run at the same time — never merge them');
+});
+
 test('groupPresence: ingame member upgrades a mixed group, clock takes the max', () => {
 	const groups = groupPresence([
 		entry({ battletag: 'A#1', lobbyId: 7, status: 'lobby' }),
