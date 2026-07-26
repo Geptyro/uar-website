@@ -5,7 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
-		"build": "vite build",
+		"build": "vite build && vite build --config vite.worker.config.ts",
 		"preview": "vite preview",
 		"release": "node scripts/release.ts",
 		"prepare": "svelte-kit sync || echo ''",

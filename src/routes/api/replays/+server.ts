@@ -2,7 +2,8 @@
  * Replay upload endpoint.
  *
  * Accepts an .SC2Replay (multipart form, field "replay"), parses and
- * validates it in-process (UAR map title, player save data present), then:
+ * validates it in a worker thread (UAR map title, player save data
+ * present) so uploads never block page requests, then:
  * - stores the replay blob in the Tigris bucket (replays/<name>)
  * - inserts a replay doc (with parsed sightings) into MongoDB
  * - rebuilds the players collection from all stored sightings
@@ -13,7 +14,7 @@
 
 import { json, error } from '@sveltejs/kit';
 import { createHash } from 'node:crypto';
-import { parseReplay, peekReplay } from '$lib/server/replay/extract';
+import { parseReplayOffThread, peekReplayOffThread } from '$lib/server/replay/offthread';
 import { decideIngest, canonicalName } from '$lib/server/replay/ingest';
 import { putObject } from '$lib/server/replay/s3';
 import {
@@ -83,7 +84,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 	// of game events
 	let peeked;
 	try {
-		peeked = peekReplay(data);
+		peeked = await peekReplayOffThread(data);
 	} catch (e) {
 		console.warn('upload peek failed:', e);
 		error(400, 'Not a readable StarCraft II replay.');
@@ -111,7 +112,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 
 		let parsed;
 		try {
-			parsed = parseReplay(name, data, mosIds);
+			parsed = await parseReplayOffThread(name, data, mosIds);
 		} catch (e) {
 			console.warn('upload parse failed:', e);
 			error(400, 'Not a readable StarCraft II replay.');
