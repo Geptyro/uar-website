@@ -9,8 +9,9 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
+import { parseEntry } from '../src/lib/changelog.ts';
 
 function git(...args: string[]): string {
 	return execFileSync('git', args, { encoding: 'utf8' }).trim();
@@ -49,9 +50,15 @@ if (untracked.length) {
 }
 
 mkdirSync(dir);
-for (const f of tracked) git('mv', f, join(dir, basename(f)));
+// notable = non-minor entries; the layout badge only shows its "new" dot
+// when a release has at least one
+let notable = 0;
+for (const f of tracked) {
+	if (parseEntry(readFileSync(f, 'utf8')).impact !== 'minor') notable++;
+	git('mv', f, join(dir, basename(f)));
+}
 const date = new Date().toISOString().slice(0, 10);
-writeFileSync(join(dir, 'release.json'), JSON.stringify({ date }) + '\n');
+writeFileSync(join(dir, 'release.json'), JSON.stringify({ date, notable }) + '\n');
 git('add', '--', join(dir, 'release.json'));
 execFileSync(
 	'git',

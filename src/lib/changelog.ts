@@ -10,10 +10,15 @@ export type EntryType = (typeof ENTRY_TYPES)[number];
 export const ENTRY_AREAS = ['wiki', 'players', 'replays', 'site'] as const;
 export type EntryArea = (typeof ENTRY_AREAS)[number];
 
+// Display order: major leads its release, minor trails (and renders compact).
+export const ENTRY_IMPACTS = ['major', 'normal', 'minor'] as const;
+export type EntryImpact = (typeof ENTRY_IMPACTS)[number];
+
 export interface ChangelogEntry {
 	title: string;
 	type: EntryType;
 	area: EntryArea;
+	impact: EntryImpact;
 	html: string;
 }
 
@@ -45,10 +50,28 @@ export function latestVersion(paths: string[]): string | null {
 	return best;
 }
 
+export interface VersionBadge {
+	version: string | null;
+	/** false when the latest release holds only minor entries — no dot then */
+	notable: boolean;
+}
+
+/** Badge data from a release.json glob map. Releases from before the impact
+ * field lack `notable` and count as notable. */
+export function latestVersionInfo(
+	files: Record<string, { date?: string; notable?: number }>
+): VersionBadge {
+	const version = latestVersion(Object.keys(files));
+	if (!version) return { version: null, notable: false };
+	const json = Object.entries(files).find(([p]) => p.includes(`/changelog/${version}/`))?.[1];
+	return { version, notable: json?.notable === undefined ? true : json.notable > 0 };
+}
+
 export interface ParsedEntry {
 	title: string;
 	type: EntryType;
 	area: EntryArea;
+	impact: EntryImpact;
 	body: string;
 }
 
@@ -69,7 +92,10 @@ export function parseEntry(raw: string): ParsedEntry {
 	const area = (ENTRY_AREAS as readonly string[]).includes(meta.area ?? '')
 		? (meta.area as EntryArea)
 		: 'site';
-	return { title: meta.title ?? '', type, area, body: body.trim() };
+	const impact = (ENTRY_IMPACTS as readonly string[]).includes(meta.impact ?? '')
+		? (meta.impact as EntryImpact)
+		: 'normal';
+	return { title: meta.title ?? '', type, area, impact, body: body.trim() };
 }
 
 function escapeHtml(s: string): string {
@@ -114,6 +140,7 @@ export function renderMarkdown(md: string): string {
 
 const typeRank = (t: EntryType) => ENTRY_TYPES.indexOf(t);
 const areaRank = (a: EntryArea) => ENTRY_AREAS.indexOf(a);
+const impactRank = (i: EntryImpact) => ENTRY_IMPACTS.indexOf(i);
 
 /**
  * Assemble releases (newest first) from raw glob maps:
@@ -131,7 +158,7 @@ export function buildChangelog(
 		const title = e.title || (path.split('/').pop() ?? '').replace(/\.md$/, '');
 		let list = byVersion.get(v);
 		if (!list) byVersion.set(v, (list = []));
-		list.push({ title, type: e.type, area: e.area, html: renderMarkdown(e.body) });
+		list.push({ title, type: e.type, area: e.area, impact: e.impact, html: renderMarkdown(e.body) });
 	}
 	const dates = new Map<string, string>();
 	for (const [path, json] of Object.entries(releaseFiles)) {
@@ -145,6 +172,7 @@ export function buildChangelog(
 			date: dates.get(version) ?? '',
 			entries: entries.sort(
 				(x, y) =>
+					impactRank(x.impact) - impactRank(y.impact) ||
 					typeRank(x.type) - typeRank(y.type) ||
 					areaRank(x.area) - areaRank(y.area) ||
 					x.title.localeCompare(y.title)

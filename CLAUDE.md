@@ -27,9 +27,10 @@ a Tigris bucket.
 
 Every user-visible change must include a `changelog/unreleased/*.md` entry in
 the same commit (frontmatter: `title`, `type: feature|improvement|fix|data`,
-`area: wiki|players|replays|site`; body written for players, not developers —
-see `changelog/unreleased/README.md`). `npm run release vX.Y.Z` rolls entries
-into `changelog/vX.Y.Z/` before tagging.
+`area: wiki|players|replays|site`, optional `impact: major|minor` — minor for
+tweaks players wouldn't notice unless told; body written for players, not
+developers — see `changelog/unreleased/README.md`). `npm run release vX.Y.Z`
+rolls entries into `changelog/vX.Y.Z/` before tagging.
 
 ## Dev & tests
 

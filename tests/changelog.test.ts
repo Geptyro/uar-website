@@ -4,13 +4,20 @@ import {
 	buildChangelog,
 	compareVersions,
 	latestVersion,
+	latestVersionInfo,
 	parseEntry,
 	renderMarkdown
 } from '../src/lib/changelog.ts';
 
 test('parseEntry reads frontmatter and body', () => {
 	const e = parseEntry('---\ntitle: Clans\ntype: feature\narea: players\n---\nClan pages.\n');
-	assert.deepEqual(e, { title: 'Clans', type: 'feature', area: 'players', body: 'Clan pages.' });
+	assert.deepEqual(e, {
+		title: 'Clans',
+		type: 'feature',
+		area: 'players',
+		impact: 'normal',
+		body: 'Clan pages.'
+	});
 });
 
 test('parseEntry falls back on missing or unknown fields', () => {
@@ -18,11 +25,18 @@ test('parseEntry falls back on missing or unknown fields', () => {
 		title: '',
 		type: 'improvement',
 		area: 'site',
+		impact: 'normal',
 		body: 'just a body'
 	});
-	const e = parseEntry('---\ntitle: X\ntype: bogus\narea: nowhere\n---\nbody');
+	const e = parseEntry('---\ntitle: X\ntype: bogus\narea: nowhere\nimpact: huge\n---\nbody');
 	assert.equal(e.type, 'improvement');
 	assert.equal(e.area, 'site');
+	assert.equal(e.impact, 'normal');
+});
+
+test('parseEntry reads explicit impact values', () => {
+	assert.equal(parseEntry('---\ntitle: X\nimpact: minor\n---\nb').impact, 'minor');
+	assert.equal(parseEntry('---\ntitle: X\nimpact: major\n---\nb').impact, 'major');
 });
 
 test('renderMarkdown handles paragraphs, lists and inline marks', () => {
@@ -80,4 +94,34 @@ test('buildChangelog groups by version, newest first, features before fixes', ()
 		['A feature', 'A fix']
 	);
 	assert.equal(releases[1].entries[0].html, '<p>Hi.</p>');
+});
+
+test('impact orders entries: major first, minor last', () => {
+	const [rel] = buildChangelog(
+		{
+			'/changelog/v1.0.0/a.md': '---\ntitle: Small\ntype: feature\nimpact: minor\n---\nx',
+			'/changelog/v1.0.0/b.md': '---\ntitle: Normal\ntype: feature\n---\nx',
+			'/changelog/v1.0.0/c.md': '---\ntitle: Big\ntype: fix\nimpact: major\n---\nx'
+		},
+		{}
+	);
+	assert.deepEqual(
+		rel.entries.map((e) => e.title),
+		['Big', 'Normal', 'Small']
+	);
+});
+
+test('latestVersionInfo: notable count gates the dot, absent count is notable', () => {
+	assert.deepEqual(
+		latestVersionInfo({
+			'/changelog/v0.9.0/release.json': { date: 'x', notable: 2 },
+			'/changelog/v0.10.0/release.json': { date: 'x', notable: 0 }
+		}),
+		{ version: 'v0.10.0', notable: false }
+	);
+	assert.deepEqual(latestVersionInfo({ '/changelog/v0.7.1/release.json': { date: 'x' } }), {
+		version: 'v0.7.1',
+		notable: true
+	});
+	assert.deepEqual(latestVersionInfo({}), { version: null, notable: false });
 });

@@ -23,3 +23,7 @@ https only).
 - `type`: `feature` (new), `improvement` (existing thing got better),
   `fix` (something wrong is now right), `data` (game-data refresh/expansion).
 - `area`: `wiki` | `players` | `replays` | `site`.
+- `impact` (optional): `major` = flagship, players shouldn't miss it (rare —
+  at most one or two per release); `minor` = players wouldn't notice unless
+  told — kept off the overview widget and the new-version dot, listed as a
+  compact "Also:" line on /changelog. Omit for everything in between.

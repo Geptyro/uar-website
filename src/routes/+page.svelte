@@ -3,6 +3,11 @@
 	import StatIcon from '$lib/components/StatIcon.svelte';
 	import ChangeChip from '$lib/components/ChangeChip.svelte';
 	import { latestRelease } from '$lib/changelog-data';
+
+	// minor entries stay off the widget; the changelog page lists them
+	const wnEntries = latestRelease
+		? latestRelease.entries.filter((e) => e.impact !== 'minor')
+		: [];
 	import DescCard from '$lib/components/DescCard.svelte';
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
 
@@ -53,11 +58,15 @@
 		{#if latestRelease.date}<time class="wn-date" datetime={latestRelease.date}>{latestRelease.date}</time>{/if}
 		<a class="wn-all" href="/changelog">Full changelog →</a>
 	</div>
-	<ul class="wn-list">
-		{#each latestRelease.entries as e (e.title)}
-			<li><ChangeChip type={e.type} /> {e.title}</li>
-		{/each}
-	</ul>
+	{#if wnEntries.length}
+		<ul class="wn-list">
+			{#each wnEntries as e (e.title)}
+				<li class:major={e.impact === 'major'}><ChangeChip type={e.type} /> {e.title}</li>
+			{/each}
+		</ul>
+	{:else}
+		<p class="wn-empty">Small fixes and tweaks — see the full changelog.</p>
+	{/if}
 </section>
 {/if}
 
@@ -304,6 +313,15 @@
 		gap: 8px;
 		font-size: 13px;
 		color: var(--ink-2);
+	}
+	.wn-list li.major {
+		font-weight: 600;
+		color: var(--ink);
+	}
+	.wn-empty {
+		margin: 9px 0 0;
+		font-size: 12.5px;
+		color: var(--ink-3);
 	}
 	.boards {
 		display: grid;

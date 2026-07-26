@@ -17,8 +17,8 @@
 			{#if rel.date}<time datetime={rel.date}>{rel.date}</time>{/if}
 		</header>
 		<div class="entries">
-			{#each rel.entries as e (e.title)}
-				<article class="card entry">
+			{#each rel.entries.filter((e) => e.impact !== 'minor') as e (e.title)}
+				<article class="card entry" class:major={e.impact === 'major'}>
 					<header>
 						<ChangeChip type={e.type} />
 						<h3>{e.title}</h3>
@@ -30,6 +30,14 @@
 					</div>
 				</article>
 			{/each}
+			{#if rel.entries.some((e) => e.impact === 'minor')}
+				<p class="also">
+					Also: {rel.entries
+						.filter((e) => e.impact === 'minor')
+						.map((e) => e.title)
+						.join(' · ')}
+				</p>
+			{/if}
 		</div>
 	</section>
 {/each}
@@ -60,10 +68,18 @@
 		flex-direction: column;
 		gap: 10px;
 	}
+	.entry.major {
+		border-left: 3px solid var(--accent);
+	}
 	.entry header {
 		display: flex;
 		align-items: baseline;
 		gap: 10px;
+	}
+	.also {
+		margin: 2px 0 0;
+		font-size: 12px;
+		color: var(--ink-3);
 	}
 	.entry h3 {
 		margin: 0;

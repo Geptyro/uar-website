@@ -6,7 +6,7 @@
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { mosList, mosById } from '$lib/mos';
-	import { latestVersion } from '$lib/changelog';
+	import { latestVersionInfo } from '$lib/changelog';
 
 	let { children } = $props();
 
@@ -160,9 +160,13 @@
 	});
 
 	// Changelog badge: latest released version + a dot when it's new to this visitor.
-	const siteVersion = latestVersion(
-		Object.keys(import.meta.glob('/changelog/v*/release.json', { eager: true }))
+	const badge = latestVersionInfo(
+		import.meta.glob('/changelog/v*/release.json', { eager: true, import: 'default' }) as Record<
+			string,
+			{ notable?: number }
+		>
 	);
+	const siteVersion = badge.version;
 	let newChanges = $state(false);
 	$effect(() => {
 		if (!siteVersion) return;
@@ -171,7 +175,7 @@
 			localStorage.setItem('uar:seen-version', siteVersion);
 			newChanges = false;
 		} else {
-			newChanges = seen !== siteVersion;
+			newChanges = badge.notable && seen !== siteVersion;
 		}
 	});
 </script>
