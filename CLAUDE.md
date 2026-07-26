@@ -10,10 +10,11 @@ a Tigris bucket.
 
 - NEVER `git add -A` or stage by directory — parallel sessions share this
   working tree. Stage explicit files only, and only what your task touched.
-- Release = push tag `vX.Y.Z`, but ONLY after CI is green on the pushed
-  commit. A local build cannot catch parallel-WIP contamination (the files
-  exist locally); only clean-checkout CI can. Check `git tag` first — other
-  sessions may have consumed version numbers.
+- Release = `npm run release vX.Y.Z` (rolls up the changelog, tags, pushes
+  main + tag in one step). deploy.yml re-runs full CI on the tagged commit
+  and only deploys when green, so a tag cannot ship a broken tree — but a
+  local build still cannot catch parallel-WIP contamination (the files exist
+  locally); only clean-checkout CI can, so keep commits self-contained.
 - Prod is never a test bench. Test uploads/ingest against the local docker
   rig, not uar.cedricdessalles.dev.
 - `src/lib/data/*.json` is generated (extractor in `../` for game data,

@@ -1,10 +1,11 @@
 /**
- * Roll changelog/unreleased/ entries into a version folder and commit
- * (pathspec-limited to changelog/, so parallel-session WIP is never swept).
+ * Release in one step: roll changelog/unreleased/ entries into a version
+ * folder, commit (pathspec-limited to changelog/, so parallel-session WIP is
+ * never swept), tag, and push main + tag. Safe to run without waiting for
+ * CI: deploy.yml re-runs full CI on the tagged commit and only deploys when
+ * it passes — a bad tag fails in Actions instead of shipping.
  *
  * Usage:  npm run release v0.8.0
- * Then:   git push origin main — wait for CI green — then
- *         git tag v0.8.0 && git push origin v0.8.0
  */
 
 import { execFileSync } from 'node:child_process';
@@ -20,6 +21,7 @@ if (!/^v\d+\.\d+\.\d+$/.test(version)) {
 	console.error('Usage: npm run release vX.Y.Z');
 	process.exit(1);
 }
+git('fetch', '--tags', '--quiet', 'origin');
 if (git('tag', '-l', version)) {
 	console.error(`Tag ${version} already exists — pick the next version (check \`git tag\`).`);
 	process.exit(1);
@@ -57,6 +59,8 @@ execFileSync(
 	{ stdio: 'inherit' }
 );
 
-console.log(`\n${version}: ${tracked.length} entr${tracked.length === 1 ? 'y' : 'ies'} rolled up.`);
-console.log('Next: git push origin main — wait for CI green — then:');
-console.log(`  git tag ${version} && git push origin ${version}`);
+git('tag', version);
+execFileSync('git', ['push', 'origin', 'main', version], { stdio: 'inherit' });
+
+console.log(`\n${version}: ${tracked.length} entr${tracked.length === 1 ? 'y' : 'ies'} rolled up, tagged, pushed.`);
+console.log('Deploy runs after CI passes on the tag — watch the Actions "Deploy" run.');

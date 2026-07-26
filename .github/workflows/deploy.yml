@@ -1,8 +1,10 @@
 name: Deploy
 
 # Deploys the private Fly app `uar-website` on a version tag (vX.Y.Z).
-# Pushing to main does NOT deploy — cut a tag to release:
-#   git tag v0.1.0 && git push origin v0.1.0
+# Pushing to main does NOT deploy — `npm run release vX.Y.Z` cuts and
+# pushes the tag. The verify job re-runs full CI on the tagged commit and
+# the deploy only starts if it passes, so a tag can never ship a broken
+# tree (v0.5.1/v0.5.3 both did, when tags raced CI).
 #
 # Deploy logic lives in the shared template Geptyro/github-workflows.
 # bootstrap: true — the template idempotently creates the app + private
@@ -17,7 +19,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  verify:
+    uses: ./.github/workflows/ci.yml
+
   deploy:
+    needs: verify
     uses: Geptyro/github-workflows/.github/workflows/fly-deploy.yml@main
     with:
       app: uar-website
