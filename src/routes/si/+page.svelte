@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { skillIdentifiers, mosById, mosName, type Si } from '$lib/mos';
+	import { skillIdentifiers, mosById, mosName, siXpLabel, type Si } from '$lib/mos';
 
 	let filter = $state<'all' | 'universal' | 'class'>('all');
 
@@ -13,15 +13,6 @@
 	const grid = $derived(skillIdentifiers.filter((s) => !s.special && matches(s)));
 	const special = $derived(skillIdentifiers.filter((s) => s.special && matches(s)));
 
-	function xpLabel(si: Si): string {
-		const tracks = [
-			['EN', si.xp.en],
-			['WO', si.xp.wo],
-			['CO', si.xp.co]
-		].filter(([, v]) => (v as number) > 1);
-		if (!tracks.length) return '';
-		return tracks.map(([t, v]) => `${t} ${(v as number).toLocaleString('en')}`).join(' · ');
-	}
 </script>
 
 <svelte:head>
@@ -69,8 +60,8 @@
 				</a>
 			{/if}
 		</header>
-		{#if xpLabel(si)}
-			<div class="xp">{xpLabel(si)} XP</div>
+		{#if siXpLabel(si)}
+			<div class="xp">{siXpLabel(si)} XP</div>
 		{/if}
 		{#if si.desc}<p class="desc">{si.desc}</p>{/if}
 	</article>

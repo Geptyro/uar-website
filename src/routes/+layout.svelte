@@ -571,6 +571,16 @@
 		--top-pad-x: 14px;
 		--burger-w: 34px;
 		--mark-w: 32px;
+		/* The three layers that overlap each other, in one place and in order.
+		   Anything floating must clear every piece of chrome or it gets sliced
+		   by the rail, which is fixed and so painted late whatever the source
+		   order. --z-float is read by uar-shared's HoverPop as well, so the
+		   top-bar pops land on the same layer as our own tooltips. (Sticky
+		   table headers are not on this scale: they stack inside their own
+		   scroller and never meet the chrome.) */
+		--z-scrim: 45;
+		--z-nav: 50;
+		--z-float: 60;
 		--sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
 		--mono: 'JetBrains Mono Variable', ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace;
 	}
@@ -1337,7 +1347,7 @@
 	.scrim {
 		position: fixed;
 		inset: var(--topbar-h) 0 0 0;
-		z-index: 45;
+		z-index: var(--z-scrim);
 		border: 0;
 		padding: 0;
 		background: rgb(10 12 8 / 0.5);
@@ -1657,7 +1667,7 @@
 			top: var(--topbar-h);
 			bottom: 0;
 			left: 0;
-			z-index: 50;
+			z-index: var(--z-nav);
 			width: var(--side-w);
 		}
 		.shell.nav-open .sidebar {

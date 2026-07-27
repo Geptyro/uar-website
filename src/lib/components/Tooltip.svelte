@@ -11,6 +11,21 @@
 	 *     <span class="chip">…</span>
 	 *   </Tooltip>
 	 *
+	 * `href` makes the whole thing a link to the subject's own page, and puts
+	 * that link at the foot of the card as well. The two input methods want
+	 * opposite things from a tap, so they get opposite things:
+	 *
+	 *   mouse — hover reads the card, click goes straight through to the page
+	 *   finger — no hover exists, so a tap opens the card and the link in it is
+	 *            the way through; the anchor's own navigation is suppressed
+	 *
+	 * A card with a link in it is interactive: it takes the pointer, it survives
+	 * the trip across the gap from the anchor, and it does not claim
+	 * role="tooltip" — a tooltip may not contain a link.
+	 *
+	 * (Don't pass `href` around content that is already a link — the anchor
+	 * becomes an <a> and anchors cannot nest.)
+	 *
 	 * The card is position:fixed and flipped/clamped against the viewport by the
 	 * shared placer, so it escapes the scrolling main column and .tablewrap
 	 * overflow instead of being clipped by them, and never hangs off a screen
@@ -24,6 +39,10 @@
 		tip,
 		label = '',
 		text = '',
+		/** the thing's own page — rendered as a link at the foot of the card */
+		href = '',
+		linkText = '',
+		/** a fixed side, or 'entry' — see entrySide below */
 		placement = 'top',
 		delay = 80,
 		maxWidth = 300,
@@ -35,7 +54,9 @@
 		tip?: Snippet;
 		label?: string;
 		text?: string;
-		placement?: Placement;
+		href?: string;
+		linkText?: string;
+		placement?: Placement | 'entry';
 		delay?: number;
 		maxWidth?: number;
 		focusable?: boolean;
@@ -43,10 +64,14 @@
 	} = $props();
 
 	const id = $props.id();
-	const empty = $derived(!tip && !label && !text);
+	const empty = $derived(!tip && !label && !text && !href);
+	/** a card you can reach into, rather than one that only reads */
+	const interactive = $derived(!!href);
+	/** a real <a>, so a mouse click, a middle-click and Enter all just work */
+	const asLink = $derived(!!href && !disabled);
 	/** wrapped content that isn't focusable on its own needs a real button, so
 	    keyboard and touch reach the tooltip too */
-	const asButton = $derived(focusable && !disabled && !empty);
+	const asButton = $derived(!asLink && focusable && !disabled && !empty);
 
 	let anchor = $state<HTMLElement>();
 	let card = $state<HTMLElement>();
@@ -58,6 +83,31 @@
 	let y = $state(0);
 	let arrow = $state(0);
 	let timer: ReturnType<typeof setTimeout> | undefined;
+	/**
+	 * With `placement="entry"` the card opens on the side the pointer came in
+	 * through, which is the side it came *from* — so it lands behind the travel,
+	 * not across it. Sweeping a grid left to right, each card falls on the tiles
+	 * already read rather than over the ones about to be hovered. Keyboard and
+	 * touch have no travel to read, so they keep the default side.
+	 */
+	let entry = $state<Placement>('top');
+
+	function edgeEntered(r: DOMRect, x: number, y: number): Placement {
+		const d: Record<Placement, number> = {
+			left: x - r.left,
+			right: r.right - x,
+			top: y - r.top,
+			bottom: r.bottom - y
+		};
+		return (Object.keys(d) as Placement[]).reduce((a, b) => (d[b] < d[a] ? b : a));
+	}
+
+	function enter(e: MouseEvent) {
+		if (placement === 'entry' && anchor) {
+			entry = edgeEntered(anchor.getBoundingClientRect(), e.clientX, e.clientY);
+		}
+		show();
+	}
 
 	function show(instant = false) {
 		if (disabled || empty) return;
@@ -72,6 +122,20 @@
 		placed = false;
 	}
 
+	/** an interactive card must survive the pointer crossing the gap to it */
+	function leave() {
+		clearTimeout(timer);
+		if (!interactive) return hide();
+		timer = setTimeout(hide, 140);
+	}
+
+	/** ...and must not close on the way to the link inside it */
+	function leaveFocus(e: FocusEvent) {
+		const to = e.relatedTarget as Node | null;
+		if (interactive && to && (anchor?.contains(to) || card?.contains(to))) return;
+		hide();
+	}
+
 	function place() {
 		if (!anchor || !card) return;
 		const r = placeFloating({
@@ -81,7 +145,7 @@
 				width: document.documentElement.clientWidth,
 				height: document.documentElement.clientHeight
 			},
-			placement
+			placement: placement === 'entry' ? entry : placement
 		});
 		x = r.x;
 		y = r.y;
@@ -106,15 +170,35 @@
 
 	$effect(() => () => clearTimeout(timer));
 
+	/** what opened the last interaction — a finger's tap must not also navigate */
+	let byTouch = false;
+
 	/** touch has no hover: tap toggles, and a tap elsewhere closes */
 	function onpointerdown(e: PointerEvent) {
-		if (e.pointerType !== 'touch') return;
+		byTouch = e.pointerType === 'touch';
+		if (!byTouch) return;
+		// a fresh tap reads the card from the default side, not from wherever the
+		// pointer last entered with a mouse
+		entry = 'top';
 		if (open) hide();
 		else show(true);
 	}
 
+	/**
+	 * A mouse click goes through to the page — that is what the anchor is for.
+	 * A tap does not: it just opened the card, and the card's own link is the
+	 * way on. Keyboard activation reports detail 0 and always goes through.
+	 */
+	function onclick(e: MouseEvent) {
+		if (asLink && byTouch && e.detail > 0) e.preventDefault();
+	}
+
 	function onwindowpointerdown(e: PointerEvent) {
-		if (open && anchor && !anchor.contains(e.target as Node)) hide();
+		if (!open || !anchor) return;
+		const t = e.target as Node;
+		// a tap on the card is a tap on its link, not a tap outside
+		if (anchor.contains(t) || card?.contains(t)) return;
+		hide();
 	}
 </script>
 
@@ -126,34 +210,47 @@
 />
 
 <svelte:element
-	this={asButton ? 'button' : 'span'}
+	this={asLink ? 'a' : asButton ? 'button' : 'span'}
 	class="tt"
 	bind:this={anchor}
-	{...asButton ? { type: 'button' } : {}}
+	{...asLink ? { href } : asButton ? { type: 'button' } : {}}
 	aria-describedby={open ? id : undefined}
-	onmouseenter={() => show()}
-	onmouseleave={hide}
+	onmouseenter={enter}
+	onmouseleave={leave}
 	onfocusin={() => show(true)}
-	onfocusout={hide}
+	onfocusout={leaveFocus}
 	{onpointerdown}
+	{onclick}
 >
 	{@render children()}
 </svelte:element>
 
 {#if open}
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		{id}
-		role="tooltip"
+		role={interactive ? undefined : 'tooltip'}
 		class="tt-card {side}"
 		class:placed
+		class:interactive
 		bind:this={card}
 		style="left: {x}px; top: {y}px; max-width: {maxWidth}px; --arrow: {arrow}px"
+		onmouseenter={() => show(true)}
+		onmouseleave={leave}
+		onfocusout={leaveFocus}
 	>
 		{#if tip}
 			{@render tip()}
 		{:else}
 			{#if label}<b class="tt-label">{label}</b>{/if}
 			{#if text}<span class="tt-text">{text}</span>{/if}
+		{/if}
+		{#if href}
+			<!-- the anchor is already this link for a mouse and a keyboard; in the
+			     card it exists for the finger that has no other way through, so it
+			     stays out of the tab order rather than offering the same
+			     destination twice -->
+			<a class="tt-link" {href} tabindex="-1">{linkText || 'Open'} →</a>
 		{/if}
 		<span class="tt-arrow" aria-hidden="true"></span>
 	</div>
@@ -172,11 +269,12 @@
 		color: inherit;
 		font: inherit;
 		text-align: inherit;
+		text-decoration: none;
 		cursor: inherit;
 	}
 	.tt-card {
 		position: fixed;
-		z-index: 60;
+		z-index: var(--z-float, 60);
 		display: flex;
 		flex-direction: column;
 		gap: 4px;
@@ -196,6 +294,25 @@
 	}
 	.tt-card.placed {
 		opacity: 1;
+	}
+	/* only a card with something to click takes the pointer back */
+	.tt-card.interactive {
+		pointer-events: auto;
+	}
+	/* the way through to the thing's own page, on its own rule at the foot —
+	   the same shape the overview's "Full changelog →" uses */
+	.tt-link {
+		margin-top: 2px;
+		padding-top: 7px;
+		border-top: 1px solid var(--border);
+		font-size: 12px;
+		font-weight: 550;
+		color: var(--accent);
+		text-decoration: none;
+	}
+	.tt-link:hover {
+		text-decoration: underline;
+		text-underline-offset: 3px;
 	}
 	.tt-label {
 		font-size: 13px;

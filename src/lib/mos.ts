@@ -181,6 +181,24 @@ export function siFor(mosId: string): Si[] {
 	return skillIdentifiers.filter((s) => s.mos === mosId);
 }
 
+/**
+ * The per-track XP an SI costs, as "EN 600 · WO 1,200". A threshold of 1 means
+ * "no gate on that track", so it is left out; an empty string means the SI is
+ * not bought with XP at all (the special-achievement row).
+ */
+export function siXpLabel(si: Si): string {
+	return (
+		[
+			['EN', si.xp.en],
+			['WO', si.xp.wo],
+			['CO', si.xp.co]
+		] as const
+	)
+		.filter(([, v]) => v > 1)
+		.map(([t, v]) => `${t} ${v.toLocaleString('en')}`)
+		.join(' · ');
+}
+
 // hybrids (Cyborg, Prototype: Biological · Mechanical) group with the infantry;
 // "Mechanical classes" means the pure vehicles
 const BIO_IDS = allMos.filter((m) => m.unitType !== 'Mechanical').map((m) => m.id);

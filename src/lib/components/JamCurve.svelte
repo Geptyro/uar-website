@@ -84,21 +84,26 @@
 		{/if}
 	</svg>
 
-	<!-- the plotted values, reachable without hover -->
-	<table class="sr-only">
-		<caption>Jam chance per shot by seconds since the last jam</caption>
-		<thead>
-			<tr><th>Seconds since last jam</th><th>Chance per shot</th></tr>
-		</thead>
-		<tbody>
-			{#each steps as s, i (s.from)}
-				<tr>
-					<td>{s.from}–{s.to === XMAX ? `${LAST}+` : s.to}</td>
-					<td>1 in {n(shotsPerJam(chances[i]))}</td>
-				</tr>
-			{/each}
-		</tbody>
-	</table>
+	<!-- the plotted values, reachable without hover. The hiding box has to be a
+	     plain block: a table cannot be squeezed under its min-content width, so
+	     `.sr-only` on the <table> itself left a ~338px box hanging off the page
+	     and every phone got a sideways scroll -->
+	<div class="sr-only">
+		<table>
+			<caption>Jam chance per shot by seconds since the last jam</caption>
+			<thead>
+				<tr><th>Seconds since last jam</th><th>Chance per shot</th></tr>
+			</thead>
+			<tbody>
+				{#each steps as s, i (s.from)}
+					<tr>
+						<td>{s.from}–{s.to === XMAX ? `${LAST}+` : s.to}</td>
+						<td>1 in {n(shotsPerJam(chances[i]))}</td>
+					</tr>
+				{/each}
+			</tbody>
+		</table>
+	</div>
 
 	<figcaption>
 		{#if hovered}
@@ -162,14 +167,19 @@
 		color: var(--ink);
 		font-variant-numeric: tabular-nums;
 	}
+	/* Hidden in flow, not out of it. `position: absolute` had no positioned
+	   ancestor here, so the box anchored to the document instead of the
+	   scrolling column and grew the page's scroll area past the shell in both
+	   axes — a phantom margin below and to the right of every phone. A 1px box
+	   pulled back by its own margin costs no layout and cannot escape. */
 	.sr-only {
-		position: absolute;
+		position: relative;
 		width: 1px;
 		height: 1px;
 		padding: 0;
 		margin: -1px;
 		overflow: hidden;
-		clip: rect(0, 0, 0, 0);
+		clip-path: inset(50%);
 		white-space: nowrap;
 		border: 0;
 	}

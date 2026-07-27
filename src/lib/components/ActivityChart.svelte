@@ -115,22 +115,27 @@
 	</div>
 </div>
 
-<table class="sr-only">
-	<caption>Players in game per day (average and peak half-hour)</caption>
-	<thead>
-		<tr><th>Day</th><th>Average</th><th>Peak</th><th>Peak at</th></tr>
-	</thead>
-	<tbody>
-		{#each dayRows as r (r.day)}
-			<tr>
-				<th scope="row">{r.day}</th>
-				<td>{fmt(r.avg)}</td>
-				<td>{fmt(r.peak)}</td>
-				<td>{r.peakAt}</td>
-			</tr>
-		{/each}
-	</tbody>
-</table>
+<!-- the hiding box has to be a plain block: a table cannot be squeezed under
+     its min-content width, so `.sr-only` on the <table> itself left a ~356px
+     box hanging off the page and every phone got a sideways scroll -->
+<div class="sr-only">
+	<table>
+		<caption>Players in game per day (average and peak half-hour)</caption>
+		<thead>
+			<tr><th>Day</th><th>Average</th><th>Peak</th><th>Peak at</th></tr>
+		</thead>
+		<tbody>
+			{#each dayRows as r (r.day)}
+				<tr>
+					<th scope="row">{r.day}</th>
+					<td>{fmt(r.avg)}</td>
+					<td>{fmt(r.peak)}</td>
+					<td>{r.peakAt}</td>
+				</tr>
+			{/each}
+		</tbody>
+	</table>
+</div>
 
 <style>
 	.plot {
@@ -233,10 +238,18 @@
 	.tip-when {
 		margin-left: 5px;
 	}
+	/* Hidden in flow, not out of it. `position: absolute` had no positioned
+	   ancestor here, so the box anchored to the document instead of the
+	   scrolling column and grew the page's scroll area past the shell in both
+	   axes — a phantom margin below and to the right of every phone. A 1px box
+	   pulled back by its own margin costs no layout and cannot escape. */
 	.sr-only {
-		position: absolute;
+		position: relative;
 		width: 1px;
 		height: 1px;
+		margin: -1px;
+		padding: 0;
+		border: 0;
 		overflow: hidden;
 		clip-path: inset(50%);
 		white-space: nowrap;
