@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { careerXp } from '$lib/players';
 	import { mosById, mosName, mosPageId } from '$lib/mos';
+	import { fmtDuration } from '$lib/outcome';
+	import OutcomeMark from '$lib/components/OutcomeMark.svelte';
 
 	let { data } = $props();
 	const r = $derived(data.replay);
@@ -9,11 +11,6 @@
 
 	function fmtSize(bytes: number): string {
 		return bytes >= 1e6 ? `${(bytes / 1e6).toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`;
-	}
-
-	function fmtDuration(loops: number): string {
-		const s = Math.round(loops / 16);
-		return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 	}
 
 	const players = $derived([...r.players].sort((a, b) => careerXp(b) - careerXp(a)));
@@ -27,6 +24,13 @@
 	<div class="tile"><b>{when}</b><span>game date · UTC</span></div>
 	<div class="tile"><b>{r.players.length}</b><span>profiles</span></div>
 	<div class="tile"><b>{fmtDuration(r.durationLoops)}</b><span>recorded</span></div>
+	<div class="tile">
+		<b class="outcome">
+			<OutcomeMark outcome={r.outcome} size="lg" />
+			{r.outcome === 'win' ? 'Won' : r.outcome === 'loss' ? 'Lost' : '—'}
+		</b>
+		<span>result</span>
+	</div>
 	<div class="tile"><b>{fmtSize(r.size)}</b><span>file size</span></div>
 </div>
 
@@ -34,6 +38,10 @@
 	<span class="mono">{r.title}</span> · base build <span class="mono">{r.baseBuild}</span> ·
 	recording length is the uploader's client recording — a leaver's replay is shorter than the
 	full game.
+	{#if !r.outcome}
+		The result is unknown for now: this recording stopped before the game ended, and none of its
+		players has uploaded a later game yet.
+	{/if}
 </p>
 
 {#if r.blobPruned}
@@ -104,6 +112,11 @@
 <style>
 	.meta {
 		margin-top: 12px;
+	}
+	.outcome {
+		display: flex;
+		align-items: center;
+		gap: 7px;
 	}
 	.dl {
 		display: inline-block;

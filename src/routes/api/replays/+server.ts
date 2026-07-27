@@ -148,6 +148,9 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 			sha256,
 			lobbyId: parsed.lobbyId,
 			durationLoops: parsed.durationLoops,
+			// only when the recording saw the game end; games it cannot answer
+			// are settled later from the players' save-file win counters
+			...(parsed.outcome ? { outcome: parsed.outcome } : {}),
 			sightings: parsed.sightings
 		};
 		// replaceReplayDoc writes the doc whole, so a longer recording of a

@@ -4,6 +4,7 @@
 import rawProgression from './data/progression.json';
 import { rankTracks, type Rank } from './mos';
 import { camos, decals } from './unlocks';
+import type { Outcome } from './outcome';
 
 export interface Unlocks {
 	camos: number[];
@@ -134,6 +135,10 @@ export interface ReplayMeta {
 	/** Size of the recorded file in bytes. Kept as part of the game's record
 	 * even once the file itself is no longer stored (see blobPruned). */
 	size: number;
+	/** Recording length in game loops (16 per game-second). */
+	durationLoops: number;
+	/** Absent until one source or the other can settle it — see lib/outcome.ts. */
+	outcome?: Outcome;
 	/** The file was released by the retention sweep — the game is still on
 	 * record, but there is nothing to download. */
 	blobPruned?: boolean;
@@ -166,6 +171,8 @@ export interface ReplayDetail {
 	size: number;
 	/** Recording length in game loops (16 per game-second). */
 	durationLoops: number;
+	/** Null while neither source can settle it — see lib/outcome.ts. */
+	outcome: Outcome | null;
 	/**
 	 * The blob was dropped by the retention sweep, so there is nothing to
 	 * download. Everything else on this page still comes from the stored

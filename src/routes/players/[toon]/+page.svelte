@@ -17,6 +17,8 @@
 	import DescCard from '$lib/components/DescCard.svelte';
 	import Tooltip from '$lib/components/Tooltip.svelte';
 	import Pager from '$lib/components/Pager.svelte';
+	import OutcomeMark from '$lib/components/OutcomeMark.svelte';
+	import { fmtDuration } from '$lib/outcome';
 	import { PER_PAGE, pageNumber } from '$lib/paging';
 	import { page as currentPage } from '$app/state';
 
@@ -469,6 +471,8 @@
 				<thead>
 					<tr>
 						<th>Game date</th>
+						<th title="Won, lost, or not known yet">Result</th>
+						<th class="num">Length</th>
 						<th>Class</th>
 						<th class="num">Enlisted</th>
 						<th class="num">Warrant</th>
@@ -486,7 +490,7 @@
 							<tr class="gap">
 								<td
 									class="gapinfo"
-									colspan="2"
+									colspan="4"
 									title="only the game below is a recorded replay; the rest weren't"
 								>
 									⋯ over {span} games
@@ -499,12 +503,21 @@
 								{/each}
 							</tr>
 						{/if}
+						{@const facts = data.replayFacts[h.file]}
 						<tr>
 							<td class="mono">
 								<a href="/replays/{h.file.replace(/\.SC2Replay$/, '')}" title="View replay"
 									>{fmtDate(h.playedAt)}</a
 								>
 							</td>
+							<td class="histresult">
+								{#if facts?.outcome}<OutcomeMark outcome={facts.outcome} />{:else}<span
+										class="unknown"
+										title="Not known yet — this game's recording stopped early and no later game has been uploaded"
+										>·</span
+									>{/if}
+							</td>
+							<td class="num mono">{facts ? fmtDuration(facts.durationLoops) : ''}</td>
 							<td class="histclass">
 								{#each h.mos as id (id)}
 									{@const chip = mosById.get(id)}
@@ -807,6 +820,14 @@
 	}
 	.histclass .class-icon {
 		margin-right: 3px;
+	}
+	.histresult {
+		width: 1%;
+		white-space: nowrap;
+	}
+	.histresult .unknown {
+		color: var(--ink-3);
+		cursor: help;
 	}
 
 	/* ---------- unlock grids: classes, SIs, medals, camos, decals ----------

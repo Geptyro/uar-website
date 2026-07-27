@@ -76,6 +76,9 @@ test('fixture 20260723-1802: solo game, no bank preload', () => {
 	assert.deepEqual(parsed, expected('20260723-1802'));
 	assert.equal(parsed.title, 'Undead Assault reborn');
 	assert.equal(parsed.sightings.length, 0);
+	// the one hero died and the recording ends there: the map's game-over
+	// condition (every hero down) held when the replay stopped
+	assert.equal(parsed.outcome, 'loss');
 });
 
 test('fixture 20260723-1808: full bank decode matches snapshot', () => {
@@ -86,6 +89,9 @@ test('fixture 20260723-1808: full bank decode matches snapshot', () => {
 	assert.equal(s.toon, '2-S2-1-1809580');
 	assert.equal(s.xpEn, 48316);
 	assert.equal(parsed.playedAt, '2026-07-23T18:08:14Z');
+	// left during class selection — no hero was ever born, so the replay
+	// carries no evidence either way
+	assert.equal(parsed.outcome, null);
 });
 
 test('peekReplay agrees with the full parse (cheap dedupe path)', () => {
@@ -164,6 +170,7 @@ function fakeReplay(file: string, playedAt: string, sightings: ReplaySighting[])
 			protocolExact: true,
 			lobbyId: 42,
 			durationLoops: 1000,
+			outcome: null,
 			sightings
 		},
 		size: 1000

@@ -66,6 +66,7 @@ for (const file of files) {
 			sha256: createHash('sha256').update(data).digest('hex'),
 			lobbyId: parsed.lobbyId,
 			durationLoops: parsed.durationLoops,
+			...(parsed.outcome ? { outcome: parsed.outcome } : {}),
 			sightings: parsed.sightings
 		});
 		console.log(`  doc     ${name} inserted (${parsed.sightings.length} profiles)`);

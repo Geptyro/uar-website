@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import Pager from '$lib/components/Pager.svelte';
+	import OutcomeMark from '$lib/components/OutcomeMark.svelte';
+	import { fmtDuration } from '$lib/outcome';
 
 	let { data, children } = $props();
 	const replays = $derived(data.replays); // already newest-first from the server
@@ -24,9 +26,13 @@
 				{@const id = replayId(r.file)}
 				<li>
 					<a href="/replays/{id}" class:active={page.params.id === id}>
-						<span class="rdate">{r.playedAt.slice(0, 16).replace('T', ' ')}</span>
+						<span class="rdate">
+							{r.playedAt.slice(0, 16).replace('T', ' ')}
+							<OutcomeMark outcome={r.outcome} />
+						</span>
 						<span class="rmeta">
-							{r.players} profile{r.players === 1 ? '' : 's'} ·
+							{r.players} profile{r.players === 1 ? '' : 's'}{#if r.durationLoops}
+								· <span class="rdur">{fmtDuration(r.durationLoops)}</span>{/if} ·
 							<span class:struck={r.blobPruned}>{fmtSize(r.size)}</span
 							>{#if r.blobPruned}<span
 									class="notstored"
@@ -121,6 +127,9 @@
 		box-shadow: inset 2.5px 0 0 var(--accent);
 	}
 	.rdate {
+		display: flex;
+		align-items: center;
+		gap: 6px;
 		font-family: var(--mono);
 		font-size: 12px;
 		font-variant-numeric: tabular-nums;
@@ -133,6 +142,10 @@
 	.rmeta {
 		font-size: 11px;
 		color: var(--ink-3);
+	}
+	.rmeta .rdur {
+		font-family: var(--mono);
+		font-variant-numeric: tabular-nums;
 	}
 	/* the size stays part of the game's record, but the bytes are gone — strike
 	   it so the row does not advertise a download that is not there */

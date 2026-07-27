@@ -56,6 +56,27 @@ export interface ReplaySighting {
 	file: string;
 }
 
+/** How a game ended, as far as the replay itself can tell. */
+export type ReplayOutcome = 'win' | 'loss';
+
+/**
+ * End-of-game markers, both read from tracker events.
+ *
+ * Win: the map's ending cinematic spawns a "Planet" prop (MapScript.galaxy,
+ * gf_IniGameEndCinematic and gf_InvasionGameEndCinematicSuccess). Every path
+ * that reaches it goes on to gf_RegularGameCompleted — the function that
+ * increments the players' win counter — and no losing path spawns it.
+ *
+ * Loss: the map's game-over condition is libNtve_gf_UnitGroupIsDead on the
+ * hero group. It replaces each fallen hero with a DeadHeroIndicator unit
+ * (DeadHeroIndicator2 for vehicles), removed again on revive, so "every hero
+ * owner had one when the recording stopped" is that same condition. Hero
+ * deaths alone would not do: revives are not recorded as births, so counting
+ * hero deaths reads a won game where everyone died once as a wipe.
+ */
+const WIN_PROP = 'Planet';
+const DEAD_HERO = 'DeadHeroIndicator';
+
 export interface ParsedReplay {
 	file: string;
 	playedAt: string;
@@ -74,6 +95,11 @@ export interface ParsedReplay {
 	/** Recording length in game loops (16 per game-second) — a leaver's
 	 * recording is shorter than one that saw the game end. */
 	durationLoops: number;
+	/**
+	 * How the game ended, or null when the recording stopped mid-game (the
+	 * uploader left early, which is the common case for a leaver's copy).
+	 */
+	outcome: ReplayOutcome | null;
 	sightings: ReplaySighting[];
 }
 
@@ -171,9 +197,15 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 		scanBanks(decodeReplayGameEvents(protocol, archive.readFile('replay.game.events')!));
 	}
 
-	// class picks: each player's hero unit(s) born, from tracker events
+	// class picks (each player's hero unit(s) born) and the end-of-game
+	// markers, from tracker events
 	const playerToUser = new Map<number, number>();
 	const mosPlayed = new Map<number, string[]>();
+	let endCinematic = false;
+	const heroOwners = new Set<number>();
+	/** unit tag -> owning player, for the dead-hero markers standing right now */
+	const markers = new Map<string, number>();
+	const markedPlayers = new Set<number>();
 	for (const ev of decodeReplayTrackerEvents(protocol, archive.readFile('replay.tracker.events')!)) {
 		const t = ev._event as string;
 		if (t.endsWith('SPlayerSetupEvent')) {
@@ -182,14 +214,35 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 			}
 		} else if (t.endsWith('SUnitBornEvent')) {
 			const unit = utf(ev.m_unitTypeName);
-			const uid = playerToUser.get(ev.m_controlPlayerId as number);
+			const pid = ev.m_controlPlayerId as number;
+			const uid = playerToUser.get(pid);
+			if (unit === WIN_PROP) endCinematic = true;
+			if (unit.startsWith(DEAD_HERO)) {
+				markers.set(`${ev.m_unitTagIndex}/${ev.m_unitTagRecycle}`, pid);
+				markedPlayers.add(pid);
+			}
 			if (mosIds.has(unit) && uid !== undefined) {
+				heroOwners.add(pid);
 				if (!mosPlayed.has(uid)) mosPlayed.set(uid, []);
 				const list = mosPlayed.get(uid)!;
 				if (!list.includes(unit)) list.push(unit);
 			}
+		} else if (t.endsWith('SUnitDiedEvent')) {
+			const tag = `${ev.m_unitTagIndex}/${ev.m_unitTagRecycle}`;
+			const pid = markers.get(tag);
+			if (pid !== undefined) {
+				markers.delete(tag);
+				// revived: this player is only still down if another of their
+				// markers is standing (heroes with more than one body)
+				if (![...markers.values()].includes(pid)) markedPlayers.delete(pid);
+			}
 		}
 	}
+	const outcome: ReplayOutcome | null = endCinematic
+		? 'win'
+		: heroOwners.size > 0 && [...heroOwners].every((p) => markedPlayers.has(p))
+			? 'loss'
+			: null;
 
 	const sightings: ReplaySighting[] = [];
 	for (const [uid, bank] of banks) {
@@ -224,6 +277,7 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 		protocolExact: hasProtocol(baseBuild),
 		lobbyId: initdata.m_syncLobbyState.m_gameDescription.m_randomValue as number,
 		durationLoops: header.m_elapsedGameLoops as number,
+		outcome,
 		sightings
 	};
 }

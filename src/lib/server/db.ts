@@ -17,6 +17,7 @@
 import { MongoClient, type Db } from 'mongodb';
 import type { Sc2Profile } from './bnet.ts';
 import { buildPlayersData, type ReplaySighting } from './replay/extract.ts';
+import { replayOutcomes, type Outcome } from '../outcome.ts';
 import { bucketConfigured, deleteObject } from './replay/s3.ts';
 import { prunableReplays } from '../replayRetention.ts';
 import { withLock } from '../mutex.ts';
@@ -39,6 +40,13 @@ export interface ReplayDoc {
 	/** Recording length in game loops; a longer recording of the same lobby
 	 * replaces a shorter one. */
 	durationLoops?: number;
+	/**
+	 * What the parser read out of the replay file itself. Absent on games
+	 * ingested before outcomes were read, and on recordings that stopped
+	 * mid-game — `replayOutcomes` settles those from the save-file counters
+	 * instead, so this is a hint, not the answer.
+	 */
+	outcome?: Outcome;
 	/**
 	 * When the bucket blob was dropped by the retention sweep, ISO. Absent
 	 * means the bytes are still downloadable. The doc itself is never
@@ -163,29 +171,80 @@ export async function getReplaysList(): Promise<
 		size: number;
 		durationLoops: number;
 		blobPruned: boolean;
+		outcome?: Outcome;
 	}[]
 > {
 	return cached('replays', async () => {
 		const d = await db();
+		// inclusion projection: outcomes need each game's win counters, which
+		// live on the sightings — reading the three fields that settle them is
+		// far cheaper than carrying the sightings whole
 		const docs = await d
 			.collection<ReplayDoc>('replays')
-			.find({}, { projection: { sightings: 0 } })
+			.find(
+				{},
+				{
+					projection: {
+						playedAt: 1,
+						players: 1,
+						size: 1,
+						durationLoops: 1,
+						blobPrunedAt: 1,
+						outcome: 1,
+						'sightings.toon': 1,
+						'sightings.winsByMode': 1,
+						'sightings.gamesPlayed': 1
+					}
+				}
+			)
 			.sort({ playedAt: 1 })
 			.toArray();
+		const outcomes = replayOutcomes(
+			docs.map((r) => ({
+				file: r._id,
+				playedAt: r.playedAt,
+				outcome: r.outcome,
+				sightings: (r.sightings ?? []).map((s) => ({
+					toon: s.toon,
+					wins: (s.winsByMode ?? []).reduce((a, b) => a + b, 0),
+					gamesPlayed: s.gamesPlayed
+				}))
+			}))
+		);
 		return docs.map((r) => ({
 			file: r._id,
 			playedAt: r.playedAt,
 			players: r.players,
 			size: r.size,
 			durationLoops: r.durationLoops ?? 0,
-			blobPruned: Boolean(r.blobPrunedAt)
+			blobPruned: Boolean(r.blobPrunedAt),
+			...(outcomes[r._id] ? { outcome: outcomes[r._id] } : {})
 		}));
 	});
 }
 
+/**
+ * file -> outcome and recording length, for pages that show individual games
+ * without loading the whole list (a profile's replay history, one replay's
+ * page). Shares the cached list read above, so it costs nothing extra.
+ */
+export async function getReplayFacts(): Promise<
+	Record<string, { durationLoops: number; outcome?: Outcome }>
+> {
+	const rows = await getReplaysList();
+	const map: Record<string, { durationLoops: number; outcome?: Outcome }> = {};
+	for (const r of rows) {
+		map[r.file] = { durationLoops: r.durationLoops, ...(r.outcome ? { outcome: r.outcome } : {}) };
+	}
+	return map;
+}
+
 export async function getReplay(file: string): Promise<ReplayDetail | null> {
 	const d = await db();
-	const doc = await d.collection<ReplayDoc>('replays').findOne({ _id: file });
+	const [doc, facts] = await Promise.all([
+		d.collection<ReplayDoc>('replays').findOne({ _id: file }),
+		getReplayFacts()
+	]);
 	if (!doc) return null;
 	return {
 		file: doc._id,
@@ -194,6 +253,7 @@ export async function getReplay(file: string): Promise<ReplayDetail | null> {
 		baseBuild: doc.baseBuild,
 		size: doc.size,
 		durationLoops: doc.durationLoops ?? 0,
+		outcome: facts[file]?.outcome ?? null,
 		blobPruned: Boolean(doc.blobPrunedAt),
 		// project sightings down to what the page shows — unlocks etc. stay server-side
 		players: doc.sightings.map((s) => ({
@@ -549,6 +609,7 @@ export async function rebuildPlayers(): Promise<number> {
 				protocolExact: true,
 				lobbyId: r.lobbyId ?? 0,
 				durationLoops: r.durationLoops ?? 0,
+				outcome: r.outcome ?? null,
 				sightings: r.sightings
 			},
 			size: r.size
