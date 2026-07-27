@@ -1,7 +1,34 @@
 <script lang="ts">
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
+	import { onMount } from 'svelte';
 
 	let { data } = $props();
+
+	/* Theme. null = follow the device, which is what the site did before this
+	   existed. app.html pins the choice on <html> before the first paint; this
+	   only has to keep the button state and the stored value in step. */
+	const THEME_KEY = 'uar:theme';
+	type Theme = 'light' | 'dark' | null;
+	const themes: { id: Theme; label: string; hint: string }[] = [
+		{ id: null, label: 'System', hint: 'Follow the device setting' },
+		{ id: 'light', label: 'Light', hint: 'Always light' },
+		{ id: 'dark', label: 'Dark', hint: 'Always dark' }
+	];
+	let theme = $state<Theme>(null);
+	onMount(() => {
+		const saved = localStorage.getItem(THEME_KEY);
+		theme = saved === 'light' || saved === 'dark' ? saved : null;
+	});
+	function pickTheme(next: Theme) {
+		theme = next;
+		if (next) {
+			localStorage.setItem(THEME_KEY, next);
+			document.documentElement.dataset.theme = next;
+		} else {
+			localStorage.removeItem(THEME_KEY);
+			delete document.documentElement.dataset.theme;
+		}
+	}
 
 	const regionName = (id: number) =>
 		({ 1: 'Americas', 2: 'Europe', 3: 'Asia' })[id] ?? `Region ${id}`;
@@ -102,6 +129,28 @@
 		your player pages are no longer marked as verified.
 	</p>
 {/if}
+
+<!-- outside the Battle.net branch on purpose: the theme is yours whether or
+     not you have linked an account -->
+<h2 class="section">Appearance</h2>
+<div class="card box theme">
+	<div class="theme-pick">
+		{#each themes as t (t.label)}
+			<button
+				class="chip"
+				aria-pressed={theme === t.id}
+				title={t.hint}
+				onclick={() => pickTheme(t.id)}
+			>
+				{t.label}
+			</button>
+		{/each}
+	</div>
+	<p class="note fineprint">
+		Kept in this browser only — sign-in has nothing to do with it, and other devices keep their
+		own setting.
+	</p>
+</div>
 
 <style>
 	.quote.error {

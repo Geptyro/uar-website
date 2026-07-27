@@ -272,9 +272,12 @@
 	   stacked, the column leads. Its two widgets sit side by side while there
 	   is room for them, one under the other on a phone. */
 	@media (max-width: 1080px) {
+		/* one column, still a grid: a column flex box would take align-items
+		   from the rule above and size each half to its widest child instead
+		   of the page, which is how the tables dragged a scrollbar onto the
+		   whole page */
 		.layout {
-			display: flex;
-			flex-direction: column;
+			grid-template-columns: minmax(0, 1fr);
 		}
 		.infobox {
 			order: -1;

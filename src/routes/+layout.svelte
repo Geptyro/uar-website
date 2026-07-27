@@ -107,13 +107,6 @@
 			)
 		},
 		{
-			href: '/items',
-			label: 'Items',
-			icon: icon(
-				'<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>'
-			)
-		},
-		{
 			href: '/si',
 			label: 'Skill IDs',
 			icon: icon(
@@ -197,7 +190,6 @@
 			const id = decodeURIComponent(p.slice(7));
 			return { section: 'Entities', title: id };
 		}
-		if (p === '/items') return { section: '', title: 'Items & equipment' };
 		if (p === '/si') return { section: '', title: 'Skill Identifiers' };
 		if (p === '/ranks') return { section: '', title: 'Rank sets' };
 		if (p === '/medals') return { section: '', title: 'Medals & decals' };
@@ -349,17 +341,37 @@
 							</a>
 						</div>
 					{:else}
-						<a
-							class="account-btn"
-							class:on={page.url.pathname === '/account'}
-							href="/account"
-							title="Connect your Battle.net account"
-						>
-							<svg class="bnet-icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
-								<path d="M18.94 8.296C15.9 6.892 11.534 6 7.426 6.332c.206-1.36.714-2.308 1.548-2.508 1.148-.275 2.4.48 3.594 1.854.782.102 1.71.28 2.355.429C12.747 2.013 9.828-.282 7.607.565c-1.688.644-2.553 2.97-2.448 6.094-2.2.468-3.915 1.3-5.013 2.495-.056.065-.181.227-.137.305.034.058.146-.008.194-.04 1.274-.89 2.904-1.373 5.027-1.676.303 3.333 1.713 7.56 4.055 10.952-1.28.502-2.356.536-2.946-.087-.812-.856-.784-2.318-.19-4.04a26.764 26.764 0 0 1-.807-2.254c-2.459 3.934-2.986 7.61-1.143 9.11 1.402 1.14 3.847.725 6.502-.926 1.505 1.672 3.083 2.74 4.667 3.094.084.015.287.043.332-.034.034-.06-.08-.124-.131-.149-1.408-.657-2.64-1.828-3.964-3.515 2.735-1.929 5.691-5.263 7.457-8.988 1.076.86 1.64 1.773 1.398 2.595-.336 1.131-1.615 1.84-3.403 2.185a27.697 27.697 0 0 1-1.548 1.826c4.634.16 8.08-1.22 8.458-3.565.286-1.786-1.295-3.696-4.053-5.17.696-2.139.832-4.04.346-5.588-.029-.08-.106-.27-.196-.27-.068 0-.067.13-.063.187.135 1.547-.263 3.2-1.062 5.19zm-8.533 9.869c-1.96-3.145-3.09-6.849-3.082-10.594 3.702-.124 7.474.748 10.714 2.627-1.743 3.269-4.385 6.1-7.633 7.966h.001z" />
-							</svg>
-							<span class="acct-tag">Connect</span>
-						</a>
+						<!-- signed out the chip keeps its shape: the settings end-cap is
+						     there either way, because the theme lives behind it and it
+						     has nothing to do with being signed in -->
+						<div class="acct-chip">
+							<a
+								class="acct-main connect"
+								class:on={page.url.pathname === '/account'}
+								href="/account"
+								title="Connect your Battle.net account"
+							>
+								<svg class="bnet-icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+									<path d="M18.94 8.296C15.9 6.892 11.534 6 7.426 6.332c.206-1.36.714-2.308 1.548-2.508 1.148-.275 2.4.48 3.594 1.854.782.102 1.71.28 2.355.429C12.747 2.013 9.828-.282 7.607.565c-1.688.644-2.553 2.97-2.448 6.094-2.2.468-3.915 1.3-5.013 2.495-.056.065-.181.227-.137.305.034.058.146-.008.194-.04 1.274-.89 2.904-1.373 5.027-1.676.303 3.333 1.713 7.56 4.055 10.952-1.28.502-2.356.536-2.946-.087-.812-.856-.784-2.318-.19-4.04a26.764 26.764 0 0 1-.807-2.254c-2.459 3.934-2.986 7.61-1.143 9.11 1.402 1.14 3.847.725 6.502-.926 1.505 1.672 3.083 2.74 4.667 3.094.084.015.287.043.332-.034.034-.06-.08-.124-.131-.149-1.408-.657-2.64-1.828-3.964-3.515 2.735-1.929 5.691-5.263 7.457-8.988 1.076.86 1.64 1.773 1.398 2.595-.336 1.131-1.615 1.84-3.403 2.185a27.697 27.697 0 0 1-1.548 1.826c4.634.16 8.08-1.22 8.458-3.565.286-1.786-1.295-3.696-4.053-5.17.696-2.139.832-4.04.346-5.588-.029-.08-.106-.27-.196-.27-.068 0-.067.13-.063.187.135 1.547-.263 3.2-1.062 5.19zm-8.533 9.869c-1.96-3.145-3.09-6.849-3.082-10.594 3.702-.124 7.474.748 10.714 2.627-1.743 3.269-4.385 6.1-7.633 7.966h.001z" />
+								</svg>
+								<span class="acct-tag">Connect</span>
+							</a>
+							<a
+								class="acct-cog"
+								class:on={page.url.pathname === '/account'}
+								href="/account"
+								aria-label="Settings"
+								title="Settings"
+							>
+								<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+									stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+									<circle cx="12" cy="12" r="3" />
+									<path
+										d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
+									/>
+								</svg>
+							</a>
+						</div>
 					{/if}
 				</div>
 			</div>
@@ -496,16 +508,31 @@
 </div>
 
 <style>
-	/* ---------- design tokens ---------- */
+	/* ---------- design tokens ----------
+	   Light is the base. Dark arrives two ways and the list is the same in
+	   both: the device asks for it and you have not overridden it, or you
+	   picked Dark on /account (app.html pins data-theme on <html> before the
+	   first paint). Plain declarations rather than light-dark(), because the
+	   dev server ships the CSS as written and a browser without light-dark()
+	   would leave the switch doing nothing at all. Keep the two dark blocks
+	   identical — a token added to one and not the other goes wrong in only
+	   one of the two ways of being dark, which is a miserable thing to find. */
 	:global(:root) {
+		color-scheme: light;
 		--bg: #f1efe8;
 		--surface: #faf9f4;
 		--surface-2: #eae7dc;
-		--sidebar: #23281c;
-		--sidebar-2: #2b3122;
-		--sidebar-ink: #d8d6c6;
-		--sidebar-ink-2: #8f957d;
-		--sidebar-line: #3a4130;
+		/* The rail and the top bar are chrome, so they sit a step *below* the
+		   page rather than above it — the same relationship the dark theme has,
+		   read the other way up. They used to be dark green in both themes,
+		   which is what made light mode look half-finished. */
+		--sidebar: #e5e1d3;
+		--sidebar-2: #d8d3c1;
+		--sidebar-ink: #333829;
+		--sidebar-ink-2: #5f6550;
+		--sidebar-line: #ccc7b3;
+		/* the bar's strongest ink — the page heading and a hovered burger */
+		--sidebar-title: #1b1f14;
 		--border: #ddd8c9;
 		--border-strong: #b9b3a0;
 		--ink: #23271c;
@@ -547,8 +574,10 @@
 		--sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
 		--mono: 'JetBrains Mono Variable', ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace;
 	}
+	/* dark because the device asks for it — unless you have said otherwise */
 	@media (prefers-color-scheme: dark) {
-		:global(:root) {
+		:global(:root:not([data-theme='light'])) {
+			color-scheme: dark;
 			--bg: #14170f;
 			--surface: #1b1f16;
 			--surface-2: #23281c;
@@ -557,6 +586,7 @@
 			--sidebar-ink: #d3d1bf;
 			--sidebar-ink-2: #7c8269;
 			--sidebar-line: #262c1c;
+			--sidebar-title: #fff;
 			--border: #2d3324;
 			--border-strong: #454d38;
 			--ink: #e2e0d1;
@@ -574,6 +604,35 @@
 			--shadow-1: 0 1px 2px rgb(0 0 0 / 0.35);
 			--shadow-2: 0 2px 10px rgb(0 0 0 / 0.45);
 		}
+	}
+	/* dark because you picked it on /account, whatever the device says */
+	:global(:root[data-theme='dark']) {
+		color-scheme: dark;
+		--bg: #14170f;
+		--surface: #1b1f16;
+		--surface-2: #23281c;
+		--sidebar: #101309;
+		--sidebar-2: #1a1e12;
+		--sidebar-ink: #d3d1bf;
+		--sidebar-ink-2: #7c8269;
+		--sidebar-line: #262c1c;
+		--sidebar-title: #fff;
+		--border: #2d3324;
+		--border-strong: #454d38;
+		--ink: #e2e0d1;
+		--ink-2: #a3a891;
+		--ink-3: #757b65;
+		--accent: #8db566;
+		--accent-hover: #a0c77c;
+		--on-accent: #131608;
+		--mos: #7fadd1;
+		--hostile: #d97f61;
+		--item: #cfa95c;
+		--gold: #e2b757;
+		--scroll-thumb: #3c4430;
+		--scroll-thumb-hover: #4f5940;
+		--shadow-1: 0 1px 2px rgb(0 0 0 / 0.35);
+		--shadow-2: 0 2px 10px rgb(0 0 0 / 0.45);
 	}
 	/* ---------- base ---------- */
 	:global(*) {
@@ -780,7 +839,7 @@
 		color: var(--ink-2);
 	}
 
-	/* ---------- list pages: /players, /entities, /items ----------
+	/* ---------- list pages: /players and /entities ----------
 	   One shape for the three. The toolbar and the table header stay put and
 	   only the rows scroll, so the table reaches the bottom of the window
 	   instead of floating above it, and runs the full width of the content
@@ -1062,6 +1121,9 @@
 		color: var(--sidebar-ink);
 		border-bottom: 1px solid var(--sidebar-line);
 	}
+	/* The presence and ready chips (uar-shared) pick their own light/dark
+	   tones from prefers-color-scheme, which follows the root's color-scheme —
+	   so they turn with the bar they sit on, and need nothing from us. */
 	.burger {
 		display: grid;
 		place-items: center;
@@ -1078,7 +1140,7 @@
 	}
 	.burger:hover {
 		background: var(--sidebar-2);
-		color: #fff;
+		color: var(--sidebar-title);
 	}
 	/* Closed is the base state written here; the shell overrides these four
 	   variables while the nav is open, and the glyph takes the trip between
@@ -1178,13 +1240,15 @@
 	.crumb-icon.round {
 		border-radius: 50%;
 	}
-	/* an <h1> in the bar: the page's one heading, sized like a crumb */
+	/* an <h1> in the bar: the page's one heading, sized like a crumb. The
+	   brightest ink the bar has, whichever way the bar goes — a literal white
+	   only worked while the bar was always dark. */
 	.crumb-title {
 		margin: 0;
 		font-size: 15.5px;
 		font-weight: 650;
 		letter-spacing: -0.01em;
-		color: #fff;
+		color: var(--sidebar-title);
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -1194,21 +1258,11 @@
 		align-items: center;
 		gap: 8px;
 	}
-	/* Connect = same MOS blue as the logged-in chip, white Battle.net swirl */
-	.account-btn {
-		display: flex;
-		align-items: center;
-		gap: 7px;
-		background: var(--mos);
-		color: var(--on-accent);
-		border: 1px solid var(--mos);
-		border-radius: 99px;
-		height: 30px;
-		padding: 0 14px;
-		font: 500 12px/1 var(--mono);
-		text-decoration: none;
-		white-space: nowrap;
-		transition: all 120ms ease;
+	/* Connect = the same chip signed out, with the swirl where the portrait
+	   end-cap would be, so only the contents change between the two states */
+	.acct-main.connect {
+		padding-left: 13px;
+		border-radius: 99px 0 0 99px;
 	}
 	.bnet-icon {
 		flex-shrink: 0;
@@ -1272,10 +1326,6 @@
 	.acct-cog:hover,
 	.acct-cog.on {
 		background: color-mix(in srgb, var(--on-accent) 30%, var(--mos));
-	}
-	.account-btn:hover,
-	.account-btn.on {
-		filter: brightness(1.08);
 	}
 
 	.body {
@@ -1630,8 +1680,9 @@
 			gap: 0;
 			padding-right: 15px;
 		}
-		.account-btn {
-			padding: 0 9px;
+		/* with the word gone the swirl carries the button, centred in its half */
+		.acct-main.connect {
+			padding-left: 11px;
 		}
 	}
 

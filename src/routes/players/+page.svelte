@@ -154,7 +154,7 @@
 
 <style>
 	/* the page shape — toolbar put, rows scrolling, full-bleed table — is
-	   .datapage in the layout, shared with /entities and /items */
+	   .datapage in the layout, shared with /entities */
 	.career {
 		font-weight: 650;
 	}

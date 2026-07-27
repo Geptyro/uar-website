@@ -155,6 +155,16 @@
 	<title>{mos.name} — MOS — UAR Unit Database</title>
 </svelte:head>
 
+<!-- an item's card is its entity page; the handful that have no entity of
+     their own (mission props) are named but not linked -->
+{#snippet itemName(item: Item)}
+	{#if item.unit}
+		<a href="/entities/{item.unit}">{item.name}</a>
+	{:else}
+		<span>{item.name}</span>
+	{/if}
+{/snippet}
+
 <div class="layout">
 	<div class="main">
 		{#if mos.skills.length}
@@ -215,7 +225,7 @@
 									<tr>
 										<td class="wname namecell">
 											{#if item.icon}<img class="row-icon" src={item.icon} alt="" loading="lazy" />{/if}
-											<a href="/items#{item.id}">{item.name}</a>
+											{@render itemName(item)}
 										</td>
 										<td><span class="tag t-item">item</span></td>
 										<td class="num">{g.dmg ?? '?'}</td>
@@ -233,7 +243,7 @@
 								<tr>
 									<td class="wname namecell">
 										{#if item.icon}<img class="row-icon" src={item.icon} alt="" loading="lazy" />{/if}
-										<a href="/items#{item.id}">{item.name}</a>
+										{@render itemName(item)}
 									</td>
 									<td><span class="tag t-item">weapon buff</span></td>
 									<td class="num" colspan="4"></td>
@@ -281,7 +291,7 @@
 							<tr>
 								<td class="namecell">
 									{#if item.icon}<img class="row-icon" src={item.icon} alt="" loading="lazy" />{/if}
-									<a href="/items#{item.id}">{item.name}</a>
+									{@render itemName(item)}
 								</td>
 								<td class="num"
 									>{item.charges ? `${item.charges.start ?? '?'}/${item.charges.max}` : ''}</td
@@ -713,11 +723,14 @@
 			align-items: start;
 		}
 	}
-	/* on a phone the class card leads, ahead of the skill trees */
+	/* on a phone the class card leads, ahead of the skill trees. One column,
+	   still a grid: a column flex box would take align-items from the rule
+	   above and size each half to its widest child rather than the page,
+	   which puts a scrollbar under the whole thing. */
 	@media (max-width: 899.98px) {
 		.layout {
-			display: flex;
-			flex-direction: column;
+			display: grid;
+			grid-template-columns: minmax(0, 1fr);
 		}
 		.infobox {
 			order: -1;

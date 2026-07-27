@@ -127,7 +127,7 @@
 
 <style>
 	/* the page shape — toolbar put, rows scrolling, full-bleed table — is
-	   .datapage in the layout, shared with /players and /items */
+	   .datapage in the layout, shared with /players */
 	td.namecell {
 		white-space: nowrap;
 	}

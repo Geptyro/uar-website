@@ -56,7 +56,6 @@
 					<span class="tag t-item">{item.type}</span>
 					{#if item.charges}<span class="mono dim">charges {item.charges.start ?? '?'}/{item.charges.max}</span>{/if}
 					{#if item.allowed !== null}<span class="tag t-mos">{allowedLabel(item)}</span>{/if}
-					<a href="/items#{item.id}">full item card →</a>
 				</div>
 				{#if item.mods.length}
 					<ul class="mods">
@@ -199,10 +198,6 @@
 		align-items: center;
 		gap: 8px;
 		font-size: 12.5px;
-	}
-	.itemfacts a {
-		font-family: var(--mono);
-		font-size: 11px;
 	}
 	.mods {
 		margin: 0;
