@@ -169,7 +169,38 @@
 </div>
 
 <aside class="infobox">
-	<!-- Prestige is the rarest thing a player does, so it heads the column,
+	<!-- Every board on this page is only as good as the replays we get, so the
+	     one thing a visitor can *do* about that heads the column — green and
+	     filled, the only call to action on the page. -->
+	<a class="promo" href="/companion">
+		<span class="promo-label">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+				stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+				<rect x="2" y="3" width="20" height="14" rx="2" />
+				<line x1="8" y1="21" x2="16" y2="21" />
+				<line x1="12" y1="17" x2="12" y2="21" />
+			</svg>
+			Help the stats
+		</span>
+		<!-- short enough to hold one line in a 290px column: at 13.5px the box
+		     fits ~36 characters, and a headline that wraps to a two-word second
+		     line is the loudest ragged edge on the card -->
+		<strong class="promo-title">Every game counts — once uploaded.</strong>
+		<span class="promo-text">
+			<b>UAR Companion</b> is a tray app that:
+		</span>
+		<!-- one line each, verb first, near enough the same length: in a 290px
+		     column a bullet that wraps leaves a short second line, and three of
+		     those read as six ragged lines rather than three points -->
+		<ul class="promo-list">
+			<li>pings you when a lobby opens</li>
+			<li>uploads your replays for you</li>
+			<li>flags you ready in one click</li>
+		</ul>
+		<span class="promo-cta">Get the app — Windows, Linux, macOS →</span>
+	</a>
+
+	<!-- Prestige is the rarest thing a player does, so it heads the boards,
 	     then the games those boards were aggregated from, and what shipped
 	     under them. Same 7-day window as the weekly boards. -->
 	{#if data.weekly.prestiged.length}
@@ -293,6 +324,112 @@
 			gap: 12px;
 			align-items: start;
 		}
+	}
+
+	/* the only ask on the page, so it is the only thing that goes green: a
+	   tinted card with an accent edge, and a filled bar at its foot so it
+	   reads as a button and not another read-only widget */
+	.promo {
+		display: block;
+		background:
+			linear-gradient(150deg, color-mix(in srgb, var(--accent) 16%, transparent), transparent 65%),
+			var(--accent-soft);
+		border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+		border-radius: var(--r);
+		padding: 10px var(--card-pad-x) 11px;
+		text-decoration: none;
+		color: inherit;
+		transition:
+			border-color 140ms ease,
+			box-shadow 140ms ease,
+			transform 140ms ease;
+	}
+	.promo:hover {
+		border-color: var(--accent);
+		box-shadow: var(--shadow-2);
+		transform: translateY(-1px);
+	}
+	.promo-label {
+		display: flex;
+		align-items: center;
+		gap: 5px;
+		font-family: var(--mono);
+		font-size: 10px;
+		font-weight: 650;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		color: var(--accent);
+	}
+	.promo-label svg {
+		width: 13px;
+		height: 13px;
+		flex-shrink: 0;
+	}
+	/* two tight lines rather than a full line and one orphaned word — the card
+	   is 290px and the headline is the only thing set at this size */
+	.promo-title {
+		display: block;
+		margin: 6px 0 5px;
+		font-size: 13.5px;
+		font-weight: 650;
+		line-height: 1.3;
+		letter-spacing: -0.01em;
+		color: var(--ink);
+		text-wrap: balance;
+	}
+	/* the lead-in and the bullets are one block of copy, so they share a size
+	   and a leading — anything else reads as a jump between them */
+	.promo-text {
+		display: block;
+		font-size: 12.5px;
+		line-height: 1.45;
+		color: var(--ink-2);
+	}
+	.promo-text b {
+		color: var(--ink);
+		font-weight: 600;
+	}
+	.promo-list {
+		list-style: none;
+		margin: 7px 0 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		font-size: 12.5px;
+		line-height: 1.45;
+		color: var(--ink-2);
+	}
+	/* the tick is a flex item aligned on the text's own baseline — hanging it
+	   with position/top lands it wherever the glyph's box happens to start,
+	   which is what left every mark sitting slightly high */
+	.promo-list li {
+		display: flex;
+		align-items: baseline;
+		gap: 7px;
+		text-wrap: pretty;
+	}
+	.promo-list li::before {
+		content: '✓';
+		flex: none;
+		width: 9px;
+		font-size: 11px;
+		font-weight: 700;
+		color: var(--accent);
+	}
+	.promo-cta {
+		display: block;
+		margin-top: 10px;
+		border-radius: var(--r-sm);
+		background: var(--accent);
+		color: var(--on-accent);
+		padding: 7px 9px;
+		font-size: 12px;
+		font-weight: 600;
+		text-align: center;
+	}
+	.promo:hover .promo-cta {
+		background: var(--accent-hover);
 	}
 
 	/* the one place the site goes gold, with a sheen across it. In the column
