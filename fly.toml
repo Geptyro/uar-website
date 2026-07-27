@@ -19,6 +19,11 @@ primary_region = 'cdg'
   ORIGIN = 'https://uar.cedricdessalles.dev'
   # replay uploads are up to ~16MB; adapter-node defaults to 512K
   BODY_SIZE_LIMIT = '16M'
+  # arm the replay retention sweep: after each player rebuild, drop bucket
+  # blobs no player still needs as a bank backup (see lib/replayRetention.ts).
+  # A feature flag, not a credential — kept here so it is versioned and shows
+  # up in a diff, rather than buried in the APP_SECRETS blob.
+  REPLAY_PRUNE = '1'
 
 [http_service]
   internal_port = 8080
