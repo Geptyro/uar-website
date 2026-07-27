@@ -10,6 +10,7 @@
 		: [];
 	import DescCard from '$lib/components/DescCard.svelte';
 	import ActivityChart from '$lib/components/ActivityChart.svelte';
+	import RecentGames from '$lib/components/RecentGames.svelte';
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
 
 	let { data } = $props();
@@ -168,8 +169,9 @@
 </div>
 
 <aside class="infobox">
-	<!-- Prestige is the rarest thing a player does, so it heads the column;
-	     what shipped comes under it. Same 7-day window as the weekly boards. -->
+	<!-- Prestige is the rarest thing a player does, so it heads the column,
+	     then the games those boards were aggregated from, and what shipped
+	     under them. Same 7-day window as the weekly boards. -->
 	{#if data.weekly.prestiged.length}
 		<section class="prestige">
 			<div class="pr-label">
@@ -199,6 +201,10 @@
 				{/each}
 			</ul>
 		</section>
+	{/if}
+
+	{#if data.recent.length}
+		<RecentGames games={data.recent} />
 	{/if}
 
 	{#if latestRelease}
