@@ -21,6 +21,7 @@ import {
 	dbConfigured,
 	replayExists,
 	replayExistsBySha,
+	findReplayBySha,
 	getReplayByLobby,
 	insertReplayDoc,
 	replaceReplayDoc,
@@ -76,8 +77,17 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 
 	const data = new Uint8Array(await file.arrayBuffer());
 	const sha256 = createHash('sha256').update(data).digest('hex');
-	if (await replayExistsBySha(sha256)) {
-		error(409, 'This exact replay file is already ingested.');
+	// Known files stay known after their blob is pruned — the sha is on the
+	// doc, not the bucket. Say "processed" rather than "stored" so a player
+	// whose file we no longer keep is not told it never arrived.
+	const known = await findReplayBySha(sha256);
+	if (known) {
+		error(
+			409,
+			known.blobPruned
+				? `This replay was already processed (${known.playedAt}). The file itself is no longer stored — every player in that game has a more recent replay — but the game is on record.`
+				: 'This exact replay file is already ingested.'
+		);
 	}
 
 	// cheap header/details peek: validate + dedupe before decoding megabytes
@@ -106,7 +116,12 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 			existing ? false : await replayExists(canonicalName(peeked.playedAt))
 		);
 		if (decision.kind === 'duplicate') {
-			error(409, `This game (${peeked.playedAt}) is already ingested.`);
+			error(
+				409,
+				existing?.blobPruned
+					? `This game (${peeked.playedAt}) was already processed. The replay file is no longer stored — every player in it has a more recent replay — but the game is on record.`
+					: `This game (${peeked.playedAt}) is already ingested.`
+			);
 		}
 		const name = decision.name;
 
@@ -135,6 +150,9 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 			durationLoops: parsed.durationLoops,
 			sightings: parsed.sightings
 		};
+		// replaceReplayDoc writes the doc whole, so a longer recording of a
+		// game whose blob was pruned drops blobPrunedAt along with it — the
+		// putObject above has already restored the bytes it refers to.
 		if (decision.kind === 'replace') await replaceReplayDoc(doc);
 		else await insertReplayDoc(doc);
 		return {

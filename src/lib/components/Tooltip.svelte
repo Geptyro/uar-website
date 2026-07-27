@@ -11,13 +11,13 @@
 	 *     <span class="chip">…</span>
 	 *   </Tooltip>
 	 *
-	 * The card is position:fixed and flipped/clamped against the viewport, so it
-	 * escapes the scrolling main column and .tablewrap overflow instead of being
-	 * clipped by them.
+	 * The card is position:fixed and flipped/clamped against the viewport by the
+	 * shared placer, so it escapes the scrolling main column and .tablewrap
+	 * overflow instead of being clipped by them, and never hangs off a screen
+	 * edge on a phone.
 	 */
 	import type { Snippet } from 'svelte';
-
-	type Placement = 'top' | 'bottom' | 'left' | 'right';
+	import { placeFloating, type Placement } from 'uar-shared/place';
 
 	let {
 		children,
@@ -72,53 +72,21 @@
 		placed = false;
 	}
 
-	const opposite: Record<Placement, Placement> = {
-		top: 'bottom',
-		bottom: 'top',
-		left: 'right',
-		right: 'left'
-	};
-
 	function place() {
 		if (!anchor || !card) return;
-		const a = anchor.getBoundingClientRect();
-		const c = card.getBoundingClientRect();
-		const gap = 8;
-		const pad = 8;
-		const vw = document.documentElement.clientWidth;
-		const vh = document.documentElement.clientHeight;
-
-		const fits: Record<Placement, boolean> = {
-			top: a.top - c.height - gap >= pad,
-			bottom: a.bottom + c.height + gap <= vh - pad,
-			left: a.left - c.width - gap >= pad,
-			right: a.right + c.width + gap <= vw - pad
-		};
-		const s =
-			([placement, opposite[placement], 'top', 'bottom', 'right', 'left'] as Placement[]).find(
-				(p) => fits[p]
-			) ?? placement;
-
-		let nx: number;
-		let ny: number;
-		if (s === 'top' || s === 'bottom') {
-			nx = a.left + a.width / 2 - c.width / 2;
-			ny = s === 'top' ? a.top - c.height - gap : a.bottom + gap;
-		} else {
-			nx = s === 'left' ? a.left - c.width - gap : a.right + gap;
-			ny = a.top + a.height / 2 - c.height / 2;
-		}
-		x = Math.min(Math.max(pad, nx), Math.max(pad, vw - c.width - pad));
-		y = Math.min(Math.max(pad, ny), Math.max(pad, vh - c.height - pad));
-
-		// the arrow tracks the anchor's centre, which the clamp above may have
-		// pushed away from the card's centre
-		const along =
-			s === 'top' || s === 'bottom' ? a.left + a.width / 2 - x : a.top + a.height / 2 - y;
-		const span = s === 'top' || s === 'bottom' ? c.width : c.height;
-		arrow = Math.min(Math.max(10, along), Math.max(10, span - 10));
-
-		side = s;
+		const r = placeFloating({
+			anchor: anchor.getBoundingClientRect(),
+			card: card.getBoundingClientRect(),
+			viewport: {
+				width: document.documentElement.clientWidth,
+				height: document.documentElement.clientHeight
+			},
+			placement
+		});
+		x = r.x;
+		y = r.y;
+		side = r.side;
+		arrow = r.arrow;
 		placed = true;
 	}
 

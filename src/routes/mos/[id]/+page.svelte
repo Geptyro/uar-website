@@ -709,8 +709,19 @@
 		.infobox {
 			margin: 16px 0 4px;
 			display: grid;
-			grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+			grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
 			align-items: start;
+		}
+	}
+	/* on a phone the class card leads, ahead of the skill trees */
+	@media (max-width: 899.98px) {
+		.layout {
+			display: flex;
+			flex-direction: column;
+		}
+		.infobox {
+			order: -1;
+			margin: 0 0 18px;
 		}
 	}
 
@@ -725,7 +736,7 @@
 
 	.cards {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
 		gap: 12px;
 	}
 	.card h3 {

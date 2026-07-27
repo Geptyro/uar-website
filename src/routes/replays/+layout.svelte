@@ -26,7 +26,14 @@
 					<a href="/replays/{id}" class:active={page.params.id === id}>
 						<span class="rdate">{r.playedAt.slice(0, 16).replace('T', ' ')}</span>
 						<span class="rmeta">
-							{r.players} profile{r.players === 1 ? '' : 's'} · {fmtSize(r.size)}
+							{r.players} profile{r.players === 1 ? '' : 's'} ·
+							<span class:struck={r.blobPruned}>{fmtSize(r.size)}</span
+							>{#if r.blobPruned}<span
+									class="notstored"
+									title="File no longer stored — the game is still on record"
+								>
+									· not stored</span
+								>{/if}
 						</span>
 					</a>
 				</li>
@@ -126,6 +133,16 @@
 	.rmeta {
 		font-size: 11px;
 		color: var(--ink-3);
+	}
+	/* the size stays part of the game's record, but the bytes are gone — strike
+	   it so the row does not advertise a download that is not there */
+	.rmeta .struck {
+		text-decoration: line-through;
+		opacity: 0.6;
+	}
+	.rmeta .notstored {
+		opacity: 0.75;
+		font-style: italic;
 	}
 
 	.rmain {

@@ -36,7 +36,16 @@
 	full game.
 </p>
 
-<a class="dl" href="/replays/{r.file}" download rel="external">Download {r.file} ⬇</a>
+{#if r.blobPruned}
+	<p class="note pruned">
+		The replay file is no longer stored. Every player in this game has since recorded a more
+		recent one, so this copy was released to save space — replay files are kept as a progression
+		backup, and only your latest game is needed for that. Everything shown on this page comes
+		from the game's stored record and stays.
+	</p>
+{:else}
+	<a class="dl" href="/replays/{r.file}" download rel="external">Download {r.file} ⬇</a>
+{/if}
 
 <h2 class="section">Players in this game</h2>
 <div class="tablewrap">
@@ -108,6 +117,11 @@
 	}
 	.dl:hover {
 		background: var(--accent-hover);
+	}
+	.pruned {
+		max-width: 640px;
+		border-left: 2px solid var(--border);
+		padding-left: 12px;
 	}
 	.namecell .clan {
 		font-family: var(--mono);

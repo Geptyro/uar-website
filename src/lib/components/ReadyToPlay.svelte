@@ -12,7 +12,7 @@
 	import { activeReady, minutesLeft, readyLevel, type ReadyPlayer } from '$lib/ready';
 	import { splitPresence, type PresenceEntry } from '$lib/presence';
 
-	let { signedIn }: { signedIn: boolean } = $props();
+	let { signedIn, compact = false }: { signedIn: boolean; compact?: boolean } = $props();
 
 	let players = $state<ReadyPlayer[]>([]);
 	let presence = $state<PresenceEntry[]>([]);
@@ -96,6 +96,7 @@
 	href={(m: PresenceEntry) => (m.toon ? `/players/${m.toon}` : null)}
 	{known}
 	toonHref={(toon: string) => `/players/${toon}`}
+	{compact}
 />
 
 {#if signedIn || active.length > 0}
@@ -111,6 +112,7 @@
 				lockedStatus={myStatus ?? 'lobby'}
 				ontoggle={(on: boolean) => send(on ? 'POST' : 'DELETE')}
 				guestHref="/account"
+				{compact}
 			/>
 		{/snippet}
 		{#if active.length > 0}

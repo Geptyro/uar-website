@@ -3,7 +3,9 @@
 	import '@fontsource-variable/jetbrains-mono';
 	import favicon from '$lib/assets/favicon.svg';
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
+	import cdMark from '$lib/assets/cd-mark.svg';
 	import { page } from '$app/state';
+	import { afterNavigate } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { mosList, mosById } from '$lib/mos';
 	import { latestVersionInfo } from '$lib/changelog';
@@ -11,9 +13,60 @@
 
 	let { children } = $props();
 
+	/* Nav: one burger at every width. Wide screens dock the sidebar and
+	   remember whether you collapsed it; narrow ones slide it in over the
+	   content and close it again on navigation. `navOpen === null` means
+	   "not decided yet" — the CSS default (docked when wide) then holds, so
+	   the prerendered markup can't flash the wrong state. */
+	const WIDE = '(min-width: 900px)';
+	/* Below this the chips go icon + count, so the bar stays on one line. */
+	const COMPACT_CHIPS = '(max-width: 1100px)';
+	const NAV_KEY = 'uar:nav-open';
+
+	let wide = $state(true);
+	let compactChips = $state(false);
+	let navOpen = $state<boolean | null>(null);
+	const drawer = $derived(navOpen === true && !wide);
+
+	onMount(() => {
+		const wideMq = matchMedia(WIDE);
+		const chipsMq = matchMedia(COMPACT_CHIPS);
+		const syncNav = () => {
+			wide = wideMq.matches;
+			// a phone always starts closed; a desktop restores your last choice
+			navOpen = wide ? localStorage.getItem(NAV_KEY) !== '0' : false;
+		};
+		const syncChips = () => (compactChips = chipsMq.matches);
+		syncNav();
+		syncChips();
+		wideMq.addEventListener('change', syncNav);
+		chipsMq.addEventListener('change', syncChips);
+		return () => {
+			wideMq.removeEventListener('change', syncNav);
+			chipsMq.removeEventListener('change', syncChips);
+		};
+	});
+
+	function toggleNav() {
+		navOpen = !(navOpen ?? wide);
+		if (wide) localStorage.setItem(NAV_KEY, navOpen ? '1' : '0');
+	}
+
+	// picking a destination closes the overlay; the docked sidebar stays put.
+	// Both hooks earn their keep: afterNavigate catches links inside the page,
+	// the click handler catches a tap on the page you are already on.
+	const closeDrawer = () => {
+		if (!wide) navOpen = false;
+	};
+	afterNavigate(closeDrawer);
+
 	// Feather-style stroke icons, same visual language as the account cog.
 	const icon = (paths: string) =>
 		`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+
+	const changelogIcon = icon(
+		'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>'
+	);
 
 	const nav = [
 		{
@@ -139,7 +192,12 @@
 		}
 		if (p.startsWith('/players/')) {
 			const pl = page.data.player as { name?: string } | undefined;
-			return { section: 'Players', title: pl?.name ?? p.slice(9) };
+			return {
+				section: 'Players',
+				title: pl?.name ?? p.slice(9),
+				icon: (page.data.avatarUrl as string | null) ?? undefined,
+				round: true
+			};
 		}
 		if (p === '/map') return { section: '', title: 'Map & missions' };
 		if (p === '/flow') return { section: '', title: 'Mission flow' };
@@ -150,7 +208,7 @@
 		if (p === '/mos') return { section: 'MOS', title: 'Classes compared' };
 		if (p.startsWith('/mos/')) {
 			const m = mosById.get(decodeURIComponent(p.slice(5)));
-			return { section: 'MOS', title: m?.name ?? p.slice(5) };
+			return { section: 'MOS', title: m?.name ?? p.slice(5), icon: m?.icon };
 		}
 		return { section: '', title: '' };
 	});
@@ -205,94 +263,153 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
-<div class="shell">
+<div class="shell" class:nav-open={navOpen === true} class:nav-closed={navOpen === false}>
 	<header class="topbar">
-		<div class="brand">
-			<a class="brand-home" href="/" aria-label="Overview">
-				<span class="brand-mark">UAR</span>
-			</a>
-			<span class="brand-text">
-				<a class="brand-title" href="/">Undead Assault Reborn</a>
-				{#if siteVersion}
-					<a class="brand-sub ver" href="/changelog" title="Changelog">
-						{siteVersion}
-						{#if newChanges}<span class="ver-dot" aria-hidden="true"></span>{/if}
-					</a>
+		<button
+			class="burger"
+			onclick={toggleNav}
+			aria-label={drawer ? 'Close menu' : 'Open menu'}
+			aria-expanded={navOpen ?? wide}
+			aria-controls="site-nav"
+			title="Menu"
+		>
+			<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
+				stroke-width="2" stroke-linecap="round" aria-hidden="true">
+				{#if drawer}
+					<line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
 				{:else}
-					<span class="brand-sub">Field reference · EU</span>
+					<line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" />
+					<line x1="3" y1="18" x2="21" y2="18" />
 				{/if}
-			</span>
-		</div>
+			</svg>
+		</button>
+		<a class="brand-home" href="/" aria-label="Undead Assault Reborn — overview">
+			<span class="brand-mark">UAR</span>
+		</a>
+		<!-- the page heading lives here, and it is the page's <h1>: one heading,
+		     in the one place the design shows it -->
 		<div class="page-crumb">
 			{#if pageTitle.section}<span class="crumb-section">{pageTitle.section} /</span>{/if}
-			<span class="crumb-title">{pageTitle.title}</span>
+			{#if pageTitle.icon}
+				<img class="crumb-icon" class:round={pageTitle.round} src={pageTitle.icon} alt="" />
+			{/if}
+			{#if pageTitle.title}<h1 class="crumb-title">{pageTitle.title}</h1>{/if}
 		</div>
 		{#if me !== undefined}
-			<ReadyToPlay signedIn={me.battletag != null} />
-			<div class="acct-group">
-				{#if me.battletag}
-					<div class="acct-chip">
+			<div class="top-right">
+				<ReadyToPlay signedIn={me.battletag != null} compact={compactChips} />
+				<div class="acct-group">
+					{#if me.battletag}
+						<div class="acct-chip">
+							<a
+								class="acct-main"
+								class:on={me.toon != null && page.url.pathname === `/players/${me.toon}`}
+								href={me.toon ? `/players/${me.toon}` : '/account'}
+								title={me.toon ? 'Your player profile' : 'Your Battle.net account'}
+							>
+								<img class="acct-avatar" src={me.avatar ?? anonPortrait} alt="" />
+								<span class="acct-tag">{me.battletag}</span>
+							</a>
+							<a
+								class="acct-cog"
+								class:on={page.url.pathname === '/account'}
+								href="/account"
+								aria-label="Account settings"
+								title="Account settings"
+							>
+								<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+									stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+									<circle cx="12" cy="12" r="3" />
+									<path
+										d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
+									/>
+								</svg>
+							</a>
+						</div>
+					{:else}
 						<a
-							class="acct-main"
-							class:on={me.toon != null && page.url.pathname === `/players/${me.toon}`}
-							href={me.toon ? `/players/${me.toon}` : '/account'}
-							title={me.toon ? 'Your player profile' : 'Your Battle.net account'}
-						>
-							<img class="acct-avatar" src={me.avatar ?? anonPortrait} alt="" />
-							{me.battletag}
-						</a>
-						<a
-							class="acct-cog"
+							class="account-btn"
 							class:on={page.url.pathname === '/account'}
 							href="/account"
-							aria-label="Account settings"
-							title="Account settings"
+							title="Connect your Battle.net account"
 						>
-							<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
-								stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-								<circle cx="12" cy="12" r="3" />
-								<path
-									d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.09a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
-								/>
+							<svg class="bnet-icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+								<path d="M18.94 8.296C15.9 6.892 11.534 6 7.426 6.332c.206-1.36.714-2.308 1.548-2.508 1.148-.275 2.4.48 3.594 1.854.782.102 1.71.28 2.355.429C12.747 2.013 9.828-.282 7.607.565c-1.688.644-2.553 2.97-2.448 6.094-2.2.468-3.915 1.3-5.013 2.495-.056.065-.181.227-.137.305.034.058.146-.008.194-.04 1.274-.89 2.904-1.373 5.027-1.676.303 3.333 1.713 7.56 4.055 10.952-1.28.502-2.356.536-2.946-.087-.812-.856-.784-2.318-.19-4.04a26.764 26.764 0 0 1-.807-2.254c-2.459 3.934-2.986 7.61-1.143 9.11 1.402 1.14 3.847.725 6.502-.926 1.505 1.672 3.083 2.74 4.667 3.094.084.015.287.043.332-.034.034-.06-.08-.124-.131-.149-1.408-.657-2.64-1.828-3.964-3.515 2.735-1.929 5.691-5.263 7.457-8.988 1.076.86 1.64 1.773 1.398 2.595-.336 1.131-1.615 1.84-3.403 2.185a27.697 27.697 0 0 1-1.548 1.826c4.634.16 8.08-1.22 8.458-3.565.286-1.786-1.295-3.696-4.053-5.17.696-2.139.832-4.04.346-5.588-.029-.08-.106-.27-.196-.27-.068 0-.067.13-.063.187.135 1.547-.263 3.2-1.062 5.19zm-8.533 9.869c-1.96-3.145-3.09-6.849-3.082-10.594 3.702-.124 7.474.748 10.714 2.627-1.743 3.269-4.385 6.1-7.633 7.966h.001z" />
 							</svg>
+							<span class="acct-tag">Connect</span>
 						</a>
-					</div>
-				{:else}
-					<a
-						class="account-btn"
-						class:on={page.url.pathname === '/account'}
-						href="/account"
-						title="Connect your Battle.net account"
-					>
-						<svg class="bnet-icon" viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
-							<path d="M18.94 8.296C15.9 6.892 11.534 6 7.426 6.332c.206-1.36.714-2.308 1.548-2.508 1.148-.275 2.4.48 3.594 1.854.782.102 1.71.28 2.355.429C12.747 2.013 9.828-.282 7.607.565c-1.688.644-2.553 2.97-2.448 6.094-2.2.468-3.915 1.3-5.013 2.495-.056.065-.181.227-.137.305.034.058.146-.008.194-.04 1.274-.89 2.904-1.373 5.027-1.676.303 3.333 1.713 7.56 4.055 10.952-1.28.502-2.356.536-2.946-.087-.812-.856-.784-2.318-.19-4.04a26.764 26.764 0 0 1-.807-2.254c-2.459 3.934-2.986 7.61-1.143 9.11 1.402 1.14 3.847.725 6.502-.926 1.505 1.672 3.083 2.74 4.667 3.094.084.015.287.043.332-.034.034-.06-.08-.124-.131-.149-1.408-.657-2.64-1.828-3.964-3.515 2.735-1.929 5.691-5.263 7.457-8.988 1.076.86 1.64 1.773 1.398 2.595-.336 1.131-1.615 1.84-3.403 2.185a27.697 27.697 0 0 1-1.548 1.826c4.634.16 8.08-1.22 8.458-3.565.286-1.786-1.295-3.696-4.053-5.17.696-2.139.832-4.04.346-5.588-.029-.08-.106-.27-.196-.27-.068 0-.067.13-.063.187.135 1.547-.263 3.2-1.062 5.19zm-8.533 9.869c-1.96-3.145-3.09-6.849-3.082-10.594 3.702-.124 7.474.748 10.714 2.627-1.743 3.269-4.385 6.1-7.633 7.966h.001z" />
-						</svg>
-						Connect
-					</a>
-				{/if}
+					{/if}
+				</div>
 			</div>
 		{/if}
 	</header>
 
 	<div class="body">
-		<aside class="sidebar">
+		{#if drawer}
+			<button class="scrim" aria-label="Close menu" onclick={() => (navOpen = false)}></button>
+		{/if}
+		<aside class="sidebar" id="site-nav">
 			<nav aria-label="Main">
+				{#if siteVersion}
+					<!-- the release the site is running, above everything else: the dot
+					     is the only loud part, and only until you have read it -->
+					<a
+						class="nav-ver"
+						href="/changelog"
+						class:active={page.url.pathname === '/changelog'}
+						onclick={closeDrawer}
+						title={newChanges
+							? `Changelog — ${siteVersion} is new`
+							: `Changelog — running ${siteVersion}`}
+					>
+						<span class="nav-icon">
+							{@html changelogIcon}
+							{#if newChanges}<span class="ver-dot" aria-hidden="true"></span>{/if}
+						</span>
+						<span class="nav-label">Changelog</span>
+						<span class="ver-code">{siteVersion}</span>
+					</a>
+				{/if}
 				{#each nav as item (item.href)}
-					<a href={item.href} class:active={isActive(item.href)}>
+					<!-- title, not just text: collapsed to the rail the label is gone
+					     from the box and from the accessibility tree with it -->
+					<a
+						href={item.href}
+						class:active={isActive(item.href)}
+						onclick={closeDrawer}
+						title={item.label}
+					>
 						<span class="nav-icon">{@html item.icon}</span>
-						{item.label}
+						<span class="nav-label">{item.label}</span>
 					</a>
 				{/each}
 			</nav>
 
-			<div class="side-label">
-				MOS · <a class="side-label-link" href="/mos" class:active={page.url.pathname === '/mos'}
-					>Compare all</a
-				>
-			</div>
+			<div class="side-label">MOS</div>
 			<nav class="mos-nav" aria-label="MOS classes">
+				<a
+					class="mos-all"
+					href="/mos"
+					class:active={page.url.pathname === '/mos'}
+					onclick={closeDrawer}
+					title="Compare all classes"
+				>
+					<span class="nav-icon">
+						<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+							stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							<line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" />
+							<line x1="6" y1="20" x2="6" y2="14" />
+						</svg>
+					</span>
+					<span class="nav-label">Compare all</span>
+				</a>
 				{#each mosList as m (m.id)}
-					<a href="/mos/{m.id}" class:active={page.url.pathname === `/mos/${m.id}`}>
+					<a
+						href="/mos/{m.id}"
+						class:active={page.url.pathname === `/mos/${m.id}`}
+						onclick={closeDrawer}
+						title={m.mos ? `${m.name} · ${m.mos}` : m.name}
+					>
 						{#if m.icon}
 							<img class="mos-icon" src={m.icon} alt="" loading="lazy" />
 						{:else}
@@ -305,19 +422,39 @@
 			</nav>
 
 			<div class="side-foot">
-				Unofficial fan reference — map by Znimu#743.
-				<a class="author" href="https://cedricdessalles.dev" target="_blank" rel="noopener">
-					Built by Cédric Dessalles ↗
-				</a>
-				<a class="gh" href="https://github.com/Geptyro/uar-website" target="_blank" rel="noopener">
-					<svg viewBox="0 0 16 16" aria-hidden="true">
-						<path
-							fill-rule="evenodd"
-							d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
-						/>
-					</svg>
-					Source on GitHub ↗
-				</a>
+				<!-- the full name lives here now: the top bar keeps only the mark, so
+				     the crumb and the chips get that space back -->
+				<b class="foot-title">Undead Assault Reborn</b>
+				<span class="foot-note">Unofficial fan reference — map by Znimu#743.</span>
+				<!-- collapsed, the credit keeps only its two marks: they carry the
+				     link on their own, the prose does not -->
+				<div class="foot-links">
+					<a
+						class="author"
+						href="https://cedricdessalles.dev"
+						target="_blank"
+						rel="noopener"
+						title="Built by Cédric Dessalles"
+					>
+						<img class="cd-mark" src={cdMark} alt="" />
+						<span class="author-label">Built by Cédric Dessalles ↗</span>
+					</a>
+					<a
+						class="gh"
+						href="https://github.com/Geptyro/uar-website"
+						target="_blank"
+						rel="noopener"
+						title="Source on GitHub"
+					>
+						<svg viewBox="0 0 16 16" aria-hidden="true">
+							<path
+								fill-rule="evenodd"
+								d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
+							/>
+						</svg>
+						<span class="gh-label">Source on GitHub ↗</span>
+					</a>
+				</div>
 			</div>
 		</aside>
 
@@ -363,6 +500,17 @@
 		--r: 8px;
 		--r-lg: 12px;
 		--topbar-h: 52px;
+		/* shell metrics the top bar and the content both measure against */
+		--rail-w: 58px;
+		--content-pad-x: 36px;
+		/* inner padding of cards and panels — one place, so narrow screens
+		   can claw back the width every card was spending twice over */
+		--card-pad-x: 14px;
+		--card-pad-y: 12px;
+		--top-gap: 10px;
+		--top-pad-x: 14px;
+		--burger-w: 34px;
+		--mark-w: 32px;
 		--sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
 		--mono: 'JetBrains Mono Variable', ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace;
 	}
@@ -702,38 +850,119 @@
 	}
 
 	/* ---------- shell: topbar over (sidebar | main) ---------- */
+
+	/* The nav has one shape in two sizes, and the whole difference is these
+	   variables — declared here so the top bar can line its heading up with
+	   the content under it, and animate along with the sidebar.
+	   The rail is the floor: every mode either keeps it or widens it, so a
+	   new label cannot forget to fold away (which is what broke the changelog
+	   row when the list was maintained by hand). */
 	.shell {
+		--side-w: var(--rail-w);
+		--side-pad-x: 8px;
+		--label-display: none;
+		--nav-justify: center;
+		--nav-pad-x: 0px;
+		--nav-pad-y: 5px;
+		--label-align: center;
+		--foot-dir: row;
+		--side-scrollbar: none;
+		--side-sb-w: 0px;
+		/* with no labels to line up against, the icons take the room back */
+		--nav-slot: 28px;
+		--nav-glyph: 20px;
+
 		display: flex;
 		flex-direction: column;
 		width: 100%;
 		height: 100dvh;
 	}
+	/* Expanded, in two halves: wide screens unless you collapsed the nav,
+	   narrow screens only while the drawer is open. Keep them in step. */
+	@media (min-width: 900px) {
+		.shell:not(.nav-closed) {
+			--side-w: 240px;
+			--side-pad-x: 12px;
+			--label-display: block;
+			--nav-justify: flex-start;
+			--nav-pad-x: 10px;
+			--nav-pad-y: 7px;
+			--label-align: left;
+			--foot-dir: column;
+			--side-scrollbar: thin;
+			--side-sb-w: 10px;
+			--nav-slot: 22px;
+			--nav-glyph: 16px;
+		}
+	}
+	@media (max-width: 899.98px) {
+		.shell {
+			--content-pad-x: 16px;
+		}
+		/* --side-w stays the rail: the panel overlays the content, so the
+		   gutter under it must not move */
+		.shell.nav-open {
+			--side-pad-x: 12px;
+			--label-display: block;
+			--nav-justify: flex-start;
+			--nav-pad-x: 10px;
+			--nav-pad-y: 7px;
+			--label-align: left;
+			--foot-dir: column;
+			--side-scrollbar: thin;
+			--side-sb-w: 10px;
+			--nav-slot: 22px;
+			--nav-glyph: 16px;
+		}
+	}
 
+	/* one line, always: only the crumb may shrink, everything else is nowrap
+	   and flex:none, and the chips go compact before the bar runs out of room */
 	.topbar {
 		flex: 0 0 var(--topbar-h);
 		display: flex;
 		align-items: center;
-		gap: 18px;
-		padding: 0 18px 0 14px;
+		gap: var(--top-gap);
+		padding: 0 var(--top-pad-x);
 		background: var(--sidebar);
 		color: var(--sidebar-ink);
 		border-bottom: 1px solid var(--sidebar-line);
 	}
-	.brand {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		width: 226px;
-		flex-shrink: 0;
+	.burger {
+		display: grid;
+		place-items: center;
+		flex: none;
+		width: var(--burger-w);
+		height: 34px;
+		padding: 0;
+		background: none;
+		color: var(--sidebar-ink);
+		border: 1px solid transparent;
+		border-radius: var(--r-sm);
+		cursor: pointer;
+		transition: background 120ms ease, color 120ms ease;
+	}
+	.burger:hover {
+		background: var(--sidebar-2);
+		color: #fff;
 	}
 	.brand-home {
 		display: flex;
+		flex: none;
 		text-decoration: none;
+	}
+	.top-right {
+		display: flex;
+		align-items: center;
+		flex: none;
+		/* holds the bar's right end even when the crumb is hidden */
+		margin-left: auto;
+		gap: 10px;
 	}
 	.brand-mark {
 		display: grid;
 		place-items: center;
-		width: 32px;
+		width: var(--mark-w);
 		height: 32px;
 		border-radius: var(--r-sm);
 		background: var(--accent);
@@ -741,39 +970,24 @@
 		font: 700 11px/1 var(--mono);
 		letter-spacing: 0.03em;
 	}
-	.brand-text {
-		display: flex;
-		flex-direction: column;
-		min-width: 0;
-	}
-	.brand-title {
-		font-size: 13px;
-		font-weight: 650;
-		color: #fff;
-		white-space: nowrap;
-		text-decoration: none;
-	}
-	.brand-sub {
-		display: inline-flex;
-		align-items: center;
-		gap: 5px;
-		align-self: flex-start;
-		font-family: var(--mono);
-		font-size: 9px;
-		letter-spacing: 0.16em;
-		text-transform: uppercase;
-		color: var(--sidebar-ink-2);
-		text-decoration: none;
-	}
-	a.brand-sub:hover {
-		color: var(--sidebar-ink);
-	}
+	/* The only elastic item in the bar — and it starts where the page content
+	   starts, so the heading sits directly above its own column. What is
+	   already spent on the left of it (padding, burger, mark, the gaps) comes
+	   off; max() keeps it honest when the rail is narrower than that. */
 	.page-crumb {
 		display: flex;
 		align-items: baseline;
 		gap: 7px;
 		min-width: 0;
-		flex: 1;
+		flex: 1 1 auto;
+		margin-left: max(
+			0px,
+			calc(
+				var(--side-w) + var(--content-pad-x) - var(--top-pad-x) - var(--burger-w) -
+					var(--mark-w) - var(--top-gap) * 2
+			)
+		);
+		transition: margin-left 180ms ease;
 	}
 	.crumb-section {
 		font-family: var(--mono);
@@ -783,7 +997,22 @@
 		color: var(--sidebar-ink-2);
 		white-space: nowrap;
 	}
+	/* the subject's portrait, level with the heading rather than its baseline */
+	.crumb-icon {
+		width: 24px;
+		height: 24px;
+		align-self: center;
+		flex: none;
+		object-fit: cover;
+		border-radius: var(--r-sm);
+		border: 1px solid var(--sidebar-line);
+	}
+	.crumb-icon.round {
+		border-radius: 50%;
+	}
+	/* an <h1> in the bar: the page's one heading, sized like a crumb */
 	.crumb-title {
+		margin: 0;
 		font-size: 15.5px;
 		font-weight: 650;
 		letter-spacing: -0.01em;
@@ -886,16 +1115,58 @@
 		display: flex;
 		min-height: 0;
 	}
+	/* dims the content behind the open drawer; tapping it closes */
+	.scrim {
+		position: fixed;
+		inset: var(--topbar-h) 0 0 0;
+		z-index: 45;
+		border: 0;
+		padding: 0;
+		background: rgb(10 12 8 / 0.5);
+		cursor: pointer;
+	}
 
 	.sidebar {
-		flex: 0 0 240px;
+		flex: 0 0 var(--side-w);
 		display: flex;
 		flex-direction: column;
-		background: var(--sidebar);
+		/* Once the scrollbar is hidden the rail gives no sign that it scrolls,
+		   so its edges carry it: a soft highlight top and bottom, over which
+		   the content slides and which it covers on arrival (the first two
+		   layers ride with the content, the next two are pinned to the box).
+		   No JS, and honest — each edge shows only while there is more that
+		   way. */
+		background:
+			linear-gradient(var(--sidebar) 30%, transparent) local top / 100% 26px no-repeat,
+			linear-gradient(transparent, var(--sidebar) 70%) local bottom / 100% 26px no-repeat,
+			linear-gradient(color-mix(in srgb, var(--accent) 45%, transparent), transparent) scroll top /
+				100% 16px no-repeat,
+			linear-gradient(transparent, color-mix(in srgb, var(--accent) 45%, transparent)) scroll
+				bottom / 100% 16px no-repeat,
+			var(--sidebar);
 		color: var(--sidebar-ink);
 		overflow-y: auto;
-		padding: 14px 12px;
+		/* the labels are clipped by the box as it narrows, so the collapse
+		   reads as the words sliding away behind the icons */
+		overflow-x: hidden;
+		padding: 14px var(--side-pad-x);
 		scrollbar-color: var(--sidebar-line) transparent;
+		scrollbar-width: var(--side-scrollbar);
+		transition: flex-basis 180ms ease, width 180ms ease, padding 180ms ease;
+	}
+	.nav-label,
+	.ver-code,
+	.mos-name,
+	.mos-code,
+	.foot-title,
+	.foot-note,
+	.author-label,
+	.gh-label {
+		display: var(--label-display);
+	}
+	/* three characters — the group keeps its heading even in the rail */
+	.side-label {
+		text-align: var(--label-align);
 	}
 
 	nav {
@@ -906,42 +1177,47 @@
 	nav a {
 		display: flex;
 		align-items: center;
+		justify-content: var(--nav-justify);
 		gap: 9px;
 		font-size: 13px;
 		font-weight: 500;
 		text-decoration: none;
 		color: var(--sidebar-ink);
-		padding: 7px 10px;
+		padding: var(--nav-pad-y) var(--nav-pad-x);
 		border-radius: var(--r-sm);
-		transition: background 120ms ease, color 120ms ease;
+		/* a row never wraps or reflows mid-animation; it just gets cut off */
+		overflow: hidden;
+		white-space: nowrap;
+		transition: background 120ms ease, color 120ms ease, padding 180ms ease;
 	}
 	nav a:hover {
 		background: var(--sidebar-2);
 	}
 	nav a.active {
-		background: var(--sidebar-2);
-		color: #fff;
-		box-shadow: inset 2.5px 0 0 var(--accent);
+		background: var(--accent);
+		color: var(--on-accent);
 	}
 
-	/* 22px slot matches .mos-icon so labels in both nav groups line up */
+	/* the slot matches .mos-icon so labels in both nav groups line up */
 	.nav-icon {
 		display: grid;
 		place-items: center;
-		width: 22px;
+		width: var(--nav-slot);
+		transition: width 180ms ease;
 		flex-shrink: 0;
 		color: var(--sidebar-ink-2);
 		transition: color 120ms ease;
 	}
 	.nav-icon :global(svg) {
-		width: 16px;
-		height: 16px;
+		width: var(--nav-glyph);
+		height: var(--nav-glyph);
+		transition: width 180ms ease, height 180ms ease;
 	}
 	nav a:hover .nav-icon {
 		color: var(--sidebar-ink);
 	}
 	nav a.active .nav-icon {
-		color: var(--accent);
+		color: inherit;
 	}
 
 	.side-label {
@@ -950,26 +1226,18 @@
 		letter-spacing: 0.2em;
 		text-transform: uppercase;
 		color: var(--sidebar-ink-2);
-		padding: 18px 10px 6px;
-	}
-	.side-label-link {
-		color: inherit;
-		text-decoration: none;
-	}
-	.side-label-link:hover,
-	.side-label-link.active {
-		color: var(--sidebar-ink);
-		text-decoration: underline;
-		text-underline-offset: 3px;
+		padding: calc(var(--nav-pad-y) * 2 + 4px) var(--nav-pad-x) 6px;
+		transition: padding 180ms ease;
 	}
 	.mos-nav a {
-		padding: 4.5px 10px;
+		padding: calc(var(--nav-pad-y) - 2.5px) var(--nav-pad-x);
 		font-weight: 450;
 	}
 	.mos-icon {
-		width: 22px;
-		height: 22px;
+		width: var(--nav-slot);
+		height: var(--nav-slot);
 		object-fit: cover;
+		transition: width 180ms ease, height 180ms ease;
 		border-radius: var(--r-sm);
 		flex-shrink: 0;
 	}
@@ -990,23 +1258,46 @@
 		flex-shrink: 0;
 	}
 	.mos-nav a.active .mos-code {
-		color: var(--accent);
+		color: color-mix(in srgb, currentColor 75%, transparent);
 	}
 
 	.side-foot {
 		margin-top: auto;
-		padding: 18px 10px 0;
+		padding: calc(var(--nav-pad-y) * 2 + 4px) var(--nav-pad-x) 0;
 		font-size: 10.5px;
 		color: var(--sidebar-ink-2);
 		line-height: 1.5;
 	}
-	.side-foot .author {
+	.foot-title {
 		display: block;
+		font-size: 12px;
+		font-weight: 650;
+		color: var(--sidebar-ink);
+	}
+	/* stacked with the words, side by side without them */
+	.foot-links {
+		display: flex;
+		flex-direction: var(--foot-dir);
+		align-items: var(--nav-justify);
+		justify-content: var(--nav-justify);
+		gap: 8px;
 		margin-top: 6px;
+	}
+	.side-foot .author {
+		display: flex;
+		align-items: center;
+		gap: 6px;
 		color: var(--sidebar-ink);
 		text-decoration: none;
 		font-weight: 550;
 		transition: color 120ms ease;
+	}
+	.cd-mark {
+		width: calc(var(--nav-glyph) - 3px);
+		height: calc(var(--nav-glyph) - 3px);
+		border-radius: 3px;
+		flex-shrink: 0;
+		transition: width 180ms ease, height 180ms ease;
 	}
 	.side-foot .author:hover {
 		color: var(--accent-hover);
@@ -1017,7 +1308,6 @@
 		display: flex;
 		align-items: center;
 		gap: 6px;
-		margin-top: 6px;
 		color: var(--sidebar-ink);
 		text-decoration: none;
 		font-weight: 550;
@@ -1029,16 +1319,50 @@
 		text-underline-offset: 3px;
 	}
 	.side-foot .gh svg {
-		width: 13px;
-		height: 13px;
+		width: calc(var(--nav-glyph) - 3px);
+		height: calc(var(--nav-glyph) - 3px);
+		transition: width 180ms ease, height 180ms ease;
 		fill: currentColor;
 		flex-shrink: 0;
 	}
+	/* changelog row: quiet by default, the version reading like a MOS code */
+	.nav-label {
+		flex: 1;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.ver-code {
+		font-family: var(--mono);
+		font-size: 9.5px;
+		color: var(--sidebar-ink-2);
+		flex-shrink: 0;
+	}
+	.nav-ver.active .ver-code {
+		color: color-mix(in srgb, currentColor 75%, transparent);
+	}
+	/* unread release: a dot on the icon — visible in the rail too, and gone
+	   for good once the changelog has been opened */
+	.nav-icon {
+		position: relative;
+	}
 	.ver-dot {
+		position: absolute;
+		top: -1px;
+		right: 0;
 		width: 5px;
 		height: 5px;
 		border-radius: 50%;
 		background: var(--accent);
+		box-shadow: 0 0 0 2px var(--sidebar);
+	}
+	nav a:hover .ver-dot {
+		box-shadow: 0 0 0 2px var(--sidebar-2);
+	}
+	/* on the selected row the dot inverts, or it would vanish into the accent */
+	nav a.active .ver-dot {
+		background: var(--on-accent);
+		box-shadow: 0 0 0 2px var(--accent);
 	}
 
 	main {
@@ -1047,42 +1371,118 @@
 		overflow-y: auto;
 	}
 	.content {
-		--content-pad-x: 36px;
 		--content-pad-top: 26px;
 		--content-pad-bottom: 72px;
 		padding: var(--content-pad-top) var(--content-pad-x) var(--content-pad-bottom);
 	}
 
-	@media (max-width: 820px) {
-		:global(body) {
-			overflow: auto;
+	/* On a phone every nested box was charging desktop padding: the content
+	   column, then the card, then the table cell. Trim the shared ones — the
+	   components that use --card-pad-* follow along. */
+	@media (max-width: 899.98px) {
+		:global(:root) {
+			--card-pad-x: 10px;
+			--card-pad-y: 10px;
 		}
-		.shell {
-			height: auto;
+		:global(.card) {
+			padding: var(--card-pad-y) var(--card-pad-x);
+		}
+		:global(.tile) {
+			padding: 9px 12px 8px;
+			min-width: 78px;
+		}
+		:global(table.data th) {
+			padding: 9px 9px;
+		}
+		:global(table.data td) {
+			padding: 6px 9px;
+		}
+		:global(h2.section) {
+			margin: 24px 0 10px;
+		}
+		:global(.quote) {
+			padding: 11px 12px;
+		}
+	}
+
+	/* Narrow: the rail stays put and opening it lays the full panel over the
+	   content, so the gutter under it never moves and the page does not
+	   reflow behind the drawer. */
+	@media (max-width: 899.98px) {
+		.body {
+			padding-left: var(--rail-w);
+		}
+		.sidebar {
+			position: fixed;
+			top: var(--topbar-h);
+			bottom: 0;
+			left: 0;
+			z-index: 50;
+			width: var(--side-w);
+		}
+		.shell.nav-open .sidebar {
+			width: min(280px, 82vw);
+			border-right: 1px solid var(--sidebar-line);
+			box-shadow: var(--shadow-2);
+		}
+		.content {
+			--content-pad-top: 16px;
+			--content-pad-bottom: 24px;
+		}
+	}
+
+	/* the account chip keeps its portrait, the battletag goes */
+	@media (max-width: 700px) {
+		.acct-tag {
+			display: none;
+		}
+		.acct-main {
+			gap: 0;
+			padding-right: 15px;
+		}
+		.account-btn {
+			padding: 0 9px;
+		}
+	}
+
+	/* Phone: the bar takes a second row. The burger drops to it and sits in a
+	   rail-wide slot — directly above the rail's icons, with the heading
+	   starting on the content's own left edge — which leaves the whole first
+	   row to the mark and the status chips. */
+	@media (max-width: 620px) {
+		:global(:root) {
+			--topbar-h: 78px;
 		}
 		.topbar {
 			flex-wrap: wrap;
-			padding: 10px 14px;
-			gap: 10px;
+			align-content: center;
+			column-gap: 0;
+			row-gap: 2px;
+			padding: 5px var(--top-pad-x) 5px 0;
+		}
+		.brand-home {
+			order: 1;
+			margin-left: var(--top-pad-x);
+		}
+		.top-right {
+			order: 1;
+			gap: 8px;
+		}
+		/* the row break */
+		.topbar::after {
+			content: '';
+			order: 2;
+			flex-basis: 100%;
+			height: 0;
+		}
+		.burger {
+			order: 3;
+			width: var(--rail-w);
 		}
 		.page-crumb {
-			order: 3;
-			flex-basis: 100%;
-		}
-		.body {
-			flex-direction: column;
-		}
-		.sidebar {
-			flex: none;
-			max-height: 40dvh;
-		}
-		main {
-			overflow: visible;
-		}
-		.content {
-			--content-pad-x: 16px;
-			--content-pad-top: 20px;
-			--content-pad-bottom: 48px;
+			order: 4;
+			margin-left: 0;
+			padding-left: var(--content-pad-x);
 		}
 	}
 </style>

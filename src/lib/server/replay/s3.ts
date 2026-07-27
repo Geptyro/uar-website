@@ -52,6 +52,20 @@ export async function getObject(key: string): Promise<Response | null> {
 	return res;
 }
 
+/**
+ * Delete a blob. Used only by the retention sweep (see db.ts) — the replay
+ * doc it belongs to is kept, so this drops bytes, never a game's record.
+ * Treats 404 as success: the goal state is "object absent".
+ */
+export async function deleteObject(key: string): Promise<void> {
+	const cfg = config();
+	if (!cfg) throw new Error('replay bucket is not configured');
+	const res = await cfg.client.fetch(objectUrl(cfg, key), { method: 'DELETE' });
+	if (!res.ok && res.status !== 404) {
+		throw new Error(`S3 DELETE ${key}: ${res.status} ${await res.text()}`);
+	}
+}
+
 export async function objectExists(key: string): Promise<boolean> {
 	const cfg = config();
 	if (!cfg) return false;

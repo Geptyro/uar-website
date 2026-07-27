@@ -14,6 +14,7 @@
 	import { medals, camos, decals } from '$lib/unlocks';
 	import { skillIdentifiers, mosById, mosList } from '$lib/mos';
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
+	import DescCard from '$lib/components/DescCard.svelte';
 	import Pager from '$lib/components/Pager.svelte';
 	import { PER_PAGE, pageNumber } from '$lib/paging';
 	import { page as currentPage } from '$app/state';
@@ -36,6 +37,12 @@
 		return Array.from({ length: end - start }, (_, i) => end - 1 - i);
 	});
 	const p = $derived(data.player);
+
+	// History is oldest first, so the tail is this player's most recent game.
+	// Retention pins every player's latest replay (see lib/replayRetention.ts),
+	// so this file is the one blob we guarantee is still downloadable — which
+	// is what makes it usable as a progression backup.
+	const latestReplay = $derived(p.history.at(-1)?.file ?? null);
 
 	const tracks = $derived(
 		[
@@ -138,6 +145,14 @@
 	function fmtDate(iso: string): string {
 		return iso.slice(0, 10);
 	}
+
+	function fmtPlaytime(seconds: number): string {
+		if (seconds >= 3600) {
+			const h = seconds / 3600;
+			return `${h >= 10 ? Math.round(h) : h.toFixed(1)} h`;
+		}
+		return `${Math.max(1, Math.round(seconds / 60))} min`;
+	}
 </script>
 
 <svelte:head>
@@ -207,9 +222,7 @@
 
 			{#if classesPlayed.length}
 				<section>
-					<h2 class="section">
-						Classes played <span class="counthint">in ingested replays</span>
-					</h2>
+					<h2 class="section">Classes played</h2>
 					<div class="tablewrap">
 						<table class="data modes">
 							<thead>
@@ -219,16 +232,18 @@
 								{#each classesPlayed as c (c.id)}
 									<tr>
 										<td class="classcell">
-											{#if c.info?.icon}<img
-													class="class-icon"
-													src={c.info.icon}
-													alt=""
-													loading="lazy"
-												/>{/if}
 											{#if c.info}
-												<a href="/mos/{c.id}">{c.info.name}</a>
+												<a class="classlink" href="/mos/{c.id}" title={c.info.name}>
+													{#if c.info.icon}<img
+															class="class-icon"
+															src={c.info.icon}
+															alt=""
+															loading="lazy"
+														/>{/if}
+													<span class="class-name">{c.info.name}</span>
+												</a>
 											{:else}
-												{c.id}
+												<span class="class-name">{c.id}</span>
 											{/if}
 										</td>
 										<td class="num">{c.games}</td>
@@ -477,7 +492,55 @@
 				<dt>Last seen</dt>
 				<dd class="mono">{fmtDate(p.lastSeen)}</dd>
 			</dl>
+
+			{#if latestReplay}
+				<a class="dl-latest" href="/replays/{latestReplay}" download rel="external">
+					Download latest replay ⬇
+				</a>
+				<p class="dl-hint">
+					Your most recent game. Keep it — if you ever lose your save, this is what restores
+					your progression.
+				</p>
+			{/if}
 		</div>
+
+		{#if data.teammates.length}
+			<DescCard label="Played with">
+				<ol class="top-list">
+					{#each data.teammates as t, i (t.toon || t.name)}
+						<li>
+							<div class="prow">
+								<img class="pportrait" src={t.avatarUrl || anonPortrait} alt="" loading="lazy" />
+								{#if t.clan}<span class="pclan">&lt;{t.clan}&gt;</span>{/if}
+								{#if t.toon}
+									<a class="pname" href="/players/{t.toon}">{t.name}</a>
+								{:else}
+									<span class="pname">{t.name}</span>
+								{/if}
+								<span class="ptime" title="{t.games} game{t.games === 1 ? '' : 's'} together"
+									>{fmtPlaytime(t.seconds)}</span
+								>
+							</div>
+							<div class="pfoot">
+								<span class="pos">{i + 1}</span>
+								<div class="pbar">
+									{#if t.seconds > 0}
+										<div
+											class="pbar-fill"
+											style="width: {(100 * t.seconds) / data.teammates[0].seconds}%"
+										></div>
+									{/if}
+								</div>
+							</div>
+						</li>
+					{/each}
+				</ol>
+				<p class="top-note">
+					Recorded time in games shared with {p.name}, across ingested replays. Hover a row for
+					the game count.
+				</p>
+			</DescCard>
+		{/if}
 
 		{#if playerGear.length}
 			<div class="card box">
@@ -544,13 +607,13 @@
 	/* ---------- rank cards ---------- */
 	.rankcards {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+		grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
 		gap: 12px;
 	}
 	.rankcard {
 		border: 1px solid var(--border);
 		border-radius: 8px;
-		padding: 12px 14px;
+		padding: var(--card-pad-y) var(--card-pad-x);
 		background: var(--surface);
 	}
 	.rc-head {
@@ -604,7 +667,7 @@
 	/* ---------- wins by mode + classes played ---------- */
 	.duo {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+		grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
 		gap: 0 24px;
 		align-items: start;
 	}
@@ -619,6 +682,20 @@
 	}
 	.barcell {
 		width: 160px;
+	}
+	/* On a phone the class name gives way to its icon — the bar and the count
+	   carry the row, and both tables stay inside the content column. */
+	@media (max-width: 899.98px) {
+		.classlink .class-name {
+			display: none;
+		}
+		/* 1% shrinks the cell to its icon; 100% makes the bar absorb the rest */
+		.classcell {
+			width: 1%;
+		}
+		.barcell {
+			width: 100%;
+		}
 	}
 	.modebar {
 		height: 8px;
@@ -635,7 +712,7 @@
 	/* ---------- medals ---------- */
 	.medals {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
 		gap: 8px 16px;
 	}
 	.medal {
@@ -827,11 +904,32 @@
 	.box {
 		padding: 8px 0;
 	}
+	.dl-latest {
+		display: block;
+		margin: 10px 14px 0;
+		padding: 7px 12px;
+		border-radius: var(--r-sm);
+		background: var(--accent);
+		color: var(--on-accent);
+		font-weight: 650;
+		font-size: 12px;
+		text-align: center;
+		text-decoration: none;
+	}
+	.dl-latest:hover {
+		background: var(--accent-hover);
+	}
+	.dl-hint {
+		margin: 6px 14px 2px;
+		font-size: 11px;
+		line-height: 1.45;
+		color: var(--ink-3);
+	}
 	.idhead {
 		display: flex;
 		align-items: center;
 		gap: 12px;
-		padding: 6px 14px 4px;
+		padding: 6px var(--card-pad-x) 4px;
 	}
 	.portrait-lg {
 		width: 56px;
@@ -863,7 +961,7 @@
 	}
 	.facts {
 		margin: 8px 0 0;
-		padding: 0 14px;
+		padding: 0 var(--card-pad-x);
 	}
 	.facts dt {
 		float: left;
@@ -906,13 +1004,100 @@
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
 		color: var(--ink-3);
-		padding: 4px 14px 2px;
+		padding: 4px var(--card-pad-x) 2px;
+	}
+
+	/* ---------- played with ---------- */
+	.top-list {
+		list-style: none;
+		margin: 2px 0 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 7px;
+	}
+	.top-list li {
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+		min-width: 0;
+	}
+	.prow {
+		display: flex;
+		align-items: baseline;
+		gap: 6px;
+		font-size: 12.5px;
+		min-width: 0;
+	}
+	.pportrait {
+		width: 22px;
+		height: 22px;
+		border-radius: var(--r-sm);
+		object-fit: cover;
+		border: 1px solid var(--border);
+		align-self: center;
+		flex-shrink: 0;
+	}
+	/* the rank labels the bar rather than the portrait */
+	.pfoot {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+	}
+	.pos {
+		font-family: var(--mono);
+		font-size: 10px;
+		line-height: 1;
+		color: var(--ink-3);
+		min-width: 15px;
+		text-align: right;
+		flex-shrink: 0;
+	}
+	.pclan {
+		color: var(--ink-3);
+		font-size: 11px;
+		flex-shrink: 0;
+	}
+	.pname {
+		font-weight: 550;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.ptime {
+		margin-left: auto;
+		font-family: var(--mono);
+		font-size: 11px;
+		color: var(--ink-2);
+		white-space: nowrap;
+		flex-shrink: 0;
+	}
+	/* shared time relative to the #1 teammate, zero-based */
+	.pbar {
+		flex: 1;
+		height: 3px;
+		border-radius: 99px;
+		background: var(--surface-2);
+		overflow: hidden;
+	}
+	.pbar-fill {
+		height: 100%;
+		min-width: 2px;
+		border-radius: inherit;
+		background: var(--accent);
+	}
+	.top-note {
+		margin: 10px 0 0;
+		font-size: 11px;
+		line-height: 1.5;
+		color: var(--ink-3);
 	}
 	.gear-head {
 		display: flex;
 		align-items: center;
 		gap: 8px;
-		padding: 6px 14px 3px;
+		padding: 6px var(--card-pad-x) 3px;
 		text-decoration: none;
 		color: inherit;
 	}
@@ -942,7 +1127,7 @@
 		color: var(--ink-3);
 	}
 	.gear {
-		padding: 2px 14px 6px;
+		padding: 2px var(--card-pad-x) 6px;
 		list-style: none;
 		margin: 0;
 		font-size: 12.5px;
@@ -973,8 +1158,11 @@
 		.layout {
 			grid-template-columns: 1fr;
 		}
+		/* stacked, the profile card leads: it is what you came to see, and it
+		   should not sit under a screenful of rank cards */
 		.infobox {
-			margin-top: 18px;
+			order: -1;
+			margin: 0 0 18px;
 		}
 	}
 </style>

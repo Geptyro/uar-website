@@ -106,7 +106,7 @@
 <style>
 	.features {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+		grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
 		gap: 12px;
 		max-width: 760px;
 	}
@@ -122,7 +122,7 @@
 	}
 	.downloads {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+		grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
 		gap: 12px;
 		max-width: 760px;
 		margin-bottom: 12px;

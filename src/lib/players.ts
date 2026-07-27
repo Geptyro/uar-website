@@ -76,6 +76,19 @@ export interface MosTopPlayer {
 	seconds: number;
 }
 
+/** One row of a profile's "played with" board (see server/teammates.ts). */
+export interface Teammate {
+	name: string;
+	clan: string;
+	toon: string;
+	/** SC2 portrait when the teammate linked their Battle.net account. */
+	avatarUrl?: string | null;
+	/** Ingested games the two players shared. */
+	games: number;
+	/** Total recorded time of those games, in seconds. */
+	seconds: number;
+}
+
 /** One row of the overview page's 7-day XP leaderboard. */
 export interface WeeklyXpEntry {
 	name: string;
@@ -118,8 +131,12 @@ export interface ReplayMeta {
 	file: string;
 	playedAt: string;
 	players: number;
-	/** File size in bytes; served for download at /replays/<file>. */
+	/** Size of the recorded file in bytes. Kept as part of the game's record
+	 * even once the file itself is no longer stored (see blobPruned). */
 	size: number;
+	/** The file was released by the retention sweep — the game is still on
+	 * record, but there is nothing to download. */
+	blobPruned?: boolean;
 }
 
 /** One player row of an individual replay page (/replays/[id]). */
@@ -149,6 +166,12 @@ export interface ReplayDetail {
 	size: number;
 	/** Recording length in game loops (16 per game-second). */
 	durationLoops: number;
+	/**
+	 * The blob was dropped by the retention sweep, so there is nothing to
+	 * download. Everything else on this page still comes from the stored
+	 * sightings — only the file itself is gone.
+	 */
+	blobPruned: boolean;
 	players: ReplayPlayer[];
 }
 

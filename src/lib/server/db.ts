@@ -17,9 +17,13 @@
 import { MongoClient, type Db } from 'mongodb';
 import type { Sc2Profile } from './bnet.ts';
 import { buildPlayersData, type ReplaySighting } from './replay/extract.ts';
+import { bucketConfigured, deleteObject } from './replay/s3.ts';
+import { prunableReplays } from '../replayRetention.ts';
+import { withLock } from '../mutex.ts';
 import { topPlayersByMos } from './playtime.ts';
+import { topTeammates } from './teammates.ts';
 import { weeklyBoards } from './weekly.ts';
-import type { MosTopPlayer, ReplayDetail, WeeklyBoards } from '../players.ts';
+import type { MosTopPlayer, ReplayDetail, Teammate, WeeklyBoards } from '../players.ts';
 
 export interface ReplayDoc {
 	_id: string; // file name, YYYYMMDD-HHMM.SC2Replay
@@ -35,6 +39,13 @@ export interface ReplayDoc {
 	/** Recording length in game loops; a longer recording of the same lobby
 	 * replaces a shorter one. */
 	durationLoops?: number;
+	/**
+	 * When the bucket blob was dropped by the retention sweep, ISO. Absent
+	 * means the bytes are still downloadable. The doc itself is never
+	 * deleted, so lobbyId/sha256/size/sightings survive as the game's record
+	 * (and keep the upload dedupe answering "known" — see replayExistsBySha).
+	 */
+	blobPrunedAt?: string;
 	sightings: ReplaySighting[];
 }
 
@@ -43,7 +54,7 @@ export interface FeedbackDoc {
 	message: string;
 	name?: string;
 	contact?: string;
-	/** Triage flags — written by the maintainer's feedbacks.sveld tool, not the site. */
+	/** Triage flags — written by the maintainer's admin.sveld tool, not the site. */
 	done?: boolean;
 	doneAt?: string; // ISO timestamp, set when flagged done
 }
@@ -145,7 +156,14 @@ export async function getPlayer(toon: string): Promise<Record<string, unknown> |
 }
 
 export async function getReplaysList(): Promise<
-	{ file: string; playedAt: string; players: number; size: number; durationLoops: number }[]
+	{
+		file: string;
+		playedAt: string;
+		players: number;
+		size: number;
+		durationLoops: number;
+		blobPruned: boolean;
+	}[]
 > {
 	return cached('replays', async () => {
 		const d = await db();
@@ -159,7 +177,8 @@ export async function getReplaysList(): Promise<
 			playedAt: r.playedAt,
 			players: r.players,
 			size: r.size,
-			durationLoops: r.durationLoops ?? 0
+			durationLoops: r.durationLoops ?? 0,
+			blobPruned: Boolean(r.blobPrunedAt)
 		}));
 	});
 }
@@ -175,6 +194,7 @@ export async function getReplay(file: string): Promise<ReplayDetail | null> {
 		baseBuild: doc.baseBuild,
 		size: doc.size,
 		durationLoops: doc.durationLoops ?? 0,
+		blobPruned: Boolean(doc.blobPrunedAt),
 		// project sightings down to what the page shows — unlocks etc. stay server-side
 		players: doc.sightings.map((s) => ({
 			name: s.name,
@@ -215,6 +235,31 @@ export async function getMosTopPlayers(mosId: string): Promise<MosTopPlayer[]> {
 	return byMos[mosId] ?? [];
 }
 
+/**
+ * Who this player has shared the most recorded game time with. Filtered to
+ * the player's own replays server-side, so this stays a small read even as
+ * the archive grows (unlike the boards above, which scan everything).
+ */
+export async function getTeammates(toon: string): Promise<Teammate[]> {
+	const d = await db();
+	const docs = await d
+		.collection<ReplayDoc>('replays')
+		.find(
+			{ 'sightings.toon': toon },
+			{
+				projection: {
+					playedAt: 1,
+					durationLoops: 1,
+					'sightings.toon': 1,
+					'sightings.name': 1,
+					'sightings.clan': 1
+				}
+			}
+		)
+		.toArray();
+	return topTeammates(docs, toon);
+}
+
 export async function getWeeklyBoards(): Promise<WeeklyBoards> {
 	return cached('weeklyBoards', async () => {
 		const d = await db();
@@ -247,19 +292,47 @@ export async function replayExists(file: string): Promise<boolean> {
 	return (await d.collection<ReplayDoc>('replays').findOne({ _id: file }, { projection: { _id: 1 } })) !== null;
 }
 
+/**
+ * Upload-skip check for the companion (GET /api/replays?sha256=).
+ *
+ * Load-bearing for retention: this must keep answering true for replays whose
+ * blob was pruned, or every companion would re-upload every pruned file on the
+ * next backfill and undo the sweep in a loop. The sha lives on the doc, and
+ * the doc is never deleted, so pruned games stay "known" — do not narrow this
+ * to "has a blob".
+ */
 export async function replayExistsBySha(sha256: string): Promise<boolean> {
 	const d = await db();
 	return (await d.collection<ReplayDoc>('replays').findOne({ sha256 }, { projection: { _id: 1 } })) !== null;
 }
 
-export async function getReplayByLobby(
-	lobbyId: number
-): Promise<{ _id: string; durationLoops: number } | null> {
+/** As above, plus what the upload endpoint needs to explain the rejection. */
+export async function findReplayBySha(
+	sha256: string
+): Promise<{ file: string; playedAt: string; blobPruned: boolean } | null> {
 	const d = await db();
 	const doc = await d
 		.collection<ReplayDoc>('replays')
-		.findOne({ lobbyId }, { projection: { _id: 1, durationLoops: 1 } });
-	return doc ? { _id: doc._id, durationLoops: doc.durationLoops ?? 0 } : null;
+		.findOne({ sha256 }, { projection: { _id: 1, playedAt: 1, blobPrunedAt: 1 } });
+	return doc
+		? { file: doc._id, playedAt: doc.playedAt, blobPruned: Boolean(doc.blobPrunedAt) }
+		: null;
+}
+
+export async function getReplayByLobby(
+	lobbyId: number
+): Promise<{ _id: string; durationLoops: number; blobPruned: boolean } | null> {
+	const d = await db();
+	const doc = await d
+		.collection<ReplayDoc>('replays')
+		.findOne({ lobbyId }, { projection: { _id: 1, durationLoops: 1, blobPrunedAt: 1 } });
+	return doc
+		? {
+				_id: doc._id,
+				durationLoops: doc.durationLoops ?? 0,
+				blobPruned: Boolean(doc.blobPrunedAt)
+			}
+		: null;
 }
 
 export async function replaceReplayDoc(doc: ReplayDoc): Promise<void> {
@@ -492,5 +565,89 @@ export async function rebuildPlayers(): Promise<number> {
 	}
 	await col.deleteMany({ _id: { $nin: players.map((p) => p.toon as string) } } as never);
 	invalidateCache();
+	// The retention sweep needs exactly the docs already in hand, so it costs
+	// no extra read. Deliberately not awaited: this call sits inside the
+	// ingest lock (see routes/api/replays), and bucket deletes must never
+	// hold an upload open. A failed delete just stays unpruned and the next
+	// rebuild retries it.
+	void sweepReplayBlobs(replayDocs).catch((e) => console.error('replay blob sweep failed:', e));
 	return players.length;
+}
+
+/**
+ * Drop bucket blobs that no player still needs as a bank backup, keeping
+ * every doc. Gated on REPLAY_PRUNE so the code can ship before the archive is
+ * settled enough to start deleting.
+ *
+ * Each file is deleted under the ingest lock, one at a time, because the sweep
+ * runs concurrently with uploads. Without it the `replace` path races us: an
+ * upload stores a longer recording of a known game just as we delete that
+ * game's blob, and since its sha256 now matches a stored doc the dedupe would
+ * refuse the re-upload — the better recording would be unrecoverable. Four
+ * companions backfilling the same shared lobbies makes that path common, not
+ * theoretical. Taking the lock per file (rather than for the whole sweep)
+ * keeps uploads interleaving between deletes instead of queueing behind all
+ * of them.
+ */
+let sweepRunning = false;
+
+export function pruneEnabled(): boolean {
+	return process.env.REPLAY_PRUNE === '1';
+}
+
+export async function sweepReplayBlobs(docs: ReplayDoc[]): Promise<number> {
+	if (!pruneEnabled() || !bucketConfigured() || sweepRunning) return 0;
+	sweepRunning = true;
+	try {
+		const files = prunableReplays(
+			docs.map((r) => ({
+				file: r._id,
+				playedAt: r.playedAt,
+				toons: r.sightings.map((s) => s.toon).filter(Boolean),
+				blobPruned: Boolean(r.blobPrunedAt)
+			})),
+			Number(process.env.REPLAY_KEEP_PER_PLAYER ?? 1)
+		);
+		if (!files.length) return 0;
+
+		// sha at decision time — if it changed, an upload replaced this game
+		// with a longer recording and the blob we meant to drop is not the
+		// blob that is there now
+		const shaAtDecision = new Map(docs.map((r) => [r._id, r.sha256]));
+
+		const d = await db();
+		const col = d.collection<ReplayDoc>('replays');
+		let done = 0;
+		for (const file of files) {
+			try {
+				done += await withLock('replay-ingest', async () => {
+					const cur = await col.findOne(
+						{ _id: file },
+						{ projection: { sha256: 1, blobPrunedAt: 1 } }
+					);
+					// re-checked under the lock: another sweep or an upload may
+					// have moved on since the set was computed
+					if (!cur || cur.blobPrunedAt) return 0;
+					if (cur.sha256 !== shaAtDecision.get(file)) return 0;
+					await deleteObject(`replays/${file}`);
+					// marked only after the bytes are actually gone, so a
+					// failure here leaves the file eligible for a retry
+					await col.updateOne(
+						{ _id: file },
+						{ $set: { blobPrunedAt: new Date().toISOString() } }
+					);
+					return 1;
+				});
+			} catch (e) {
+				console.error(`prune ${file} failed:`, e);
+			}
+		}
+		if (done) {
+			console.log(`replay blob sweep: pruned ${done}/${files.length}`);
+			invalidateCache();
+		}
+		return done;
+	} finally {
+		sweepRunning = false;
+	}
 }

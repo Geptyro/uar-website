@@ -361,7 +361,7 @@
 <style>
 	.timeline {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr));
 		gap: 6px 28px;
 	}
 	.tl-row {
@@ -559,7 +559,7 @@
 	}
 	.detail-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+		grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
 		gap: 14px;
 	}
 	.sub-label {

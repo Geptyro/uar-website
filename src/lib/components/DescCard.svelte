@@ -21,7 +21,7 @@
 
 <style>
 	.box.desc {
-		padding: 12px 14px;
+		padding: var(--card-pad-y) var(--card-pad-x);
 		overflow: hidden;
 	}
 	.box-label {

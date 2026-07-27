@@ -29,7 +29,8 @@
 </svelte:head>
 
 <p class="eyebrow">Account</p>
-<h1 class="page-title">Battle.net link</h1>
+<!-- h2: the page's <h1> is the heading in the top bar -->
+<h2 class="page-title">Battle.net link</h2>
 <p class="note">
 	Sign in with Battle.net to link your StarCraft&nbsp;II profiles to their UAR player pages.
 	Blizzard only shares your battletag and profile list — no email, no password, and the site

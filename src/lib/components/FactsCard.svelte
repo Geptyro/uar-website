@@ -72,7 +72,7 @@
 		align-items: baseline;
 		justify-content: space-between;
 		gap: 8px;
-		padding: 12px 14px 4px;
+		padding: var(--card-pad-y) var(--card-pad-x) 4px;
 	}
 	.box-title b {
 		font-size: 15px;
@@ -90,11 +90,11 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 6px;
-		padding: 4px 14px 0;
+		padding: 4px var(--card-pad-x) 0;
 	}
 	.facts {
 		margin: 8px 0 0;
-		padding: 0 14px;
+		padding: 0 var(--card-pad-x);
 	}
 	.facts dt {
 		float: left;

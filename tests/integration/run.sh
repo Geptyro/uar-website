@@ -5,9 +5,11 @@
 #   npm run test:integration        (requires docker; runs `npm run build` first)
 #
 # Covers: accept, exact-file dedupe (sha256, incl. the GET pre-check),
-# no-save-data rejection, junk rejection, and the replace-if-longer path
+# no-save-data rejection, junk rejection, the replace-if-longer path
 # (simulated by rewriting the stored doc's sha256/durationLoops — the only
-# way to emulate a second, longer recording of the same lobby without one).
+# way to emulate a second, longer recording of the same lobby without one),
+# and blob retention: a pruned replay still 410s, still answers the upload
+# pre-check, and is still recognised as already processed on re-upload.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
@@ -30,6 +32,11 @@ docker run -d --rm --name "uar-it-minio-$SUFFIX" -p "$SPORT:9000" \
 	quay.io/minio/minio server /data >/dev/null
 
 npm run build --silent >/dev/null
+# static/replays/*.SC2Replay is gitignored seed data — absent in CI, present on
+# a maintainer's machine, where adapter-node serves it ahead of the
+# /replays/[file] route and masks the bucket entirely. Match the clean checkout
+# so these checks exercise the route rather than a stale copy on disk.
+rm -f build/client/replays/*.SC2Replay
 
 for i in $(seq 1 30); do
 	curl -sf "http://localhost:$SPORT/minio/health/live" >/dev/null && break
@@ -98,6 +105,32 @@ R=$(curl -s "http://localhost:$APPPORT/players")
 check "/players SSR shows the player" 'KanaxStratz' "$R"
 R=$(curl -s -o /dev/null -w '%{http_code} %{size_download}' "http://localhost:$APPPORT/replays/20260723-1808.SC2Replay")
 check "download streams from bucket" "200 $(stat -c%s tests/fixtures/20260723-1808.SC2Replay)" "$R"
+
+# --- retention: a pruned blob keeps its record, its identity and its dedupe --
+# The sweep deletes bytes and stamps blobPrunedAt; reproduce that end state
+# directly rather than arranging a whole second game to unpin this one.
+SHA=$(sha256sum tests/fixtures/20260723-1808.SC2Replay | cut -d' ' -f1)
+node -e "
+const {MongoClient}=require('mongodb');
+(async()=>{const c=new MongoClient(process.env.MONGODB_URI);await c.connect();
+await c.db(process.env.MONGODB_DB).collection('replays').updateOne(
+  {_id:'20260723-1808.SC2Replay'},
+  {\$set:{sha256:'$SHA',blobPrunedAt:new Date().toISOString()}});
+await c.close();})()"
+# drop the bytes through the same helper the sweep uses, so this also covers
+# deleteObject against a real S3 endpoint
+node --input-type=module -e "
+const {deleteObject} = await import('./src/lib/server/replay/s3.ts');
+await deleteObject('replays/20260723-1808.SC2Replay');"
+
+R=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:$APPPORT/replays/20260723-1808.SC2Replay")
+check "pruned download -> 410 not 404" "410" "$R"
+# load-bearing: if this ever answers false, every companion re-uploads every
+# pruned file on its next backfill and the sweep undoes itself in a loop
+R=$(curl -s "http://localhost:$APPPORT/api/replays?sha256=$SHA")
+check "pruned replay still known to the upload pre-check" '"exists":true' "$R"
+R=$(upload tests/fixtures/20260723-1808.SC2Replay)
+check "re-upload of a pruned replay -> already processed" 'already processed' "$R"
 
 echo
 if [ "$FAILS" -gt 0 ]; then echo "FAILED: $FAILS check(s)"; exit 1; fi

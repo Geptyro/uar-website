@@ -283,7 +283,7 @@
 <style>
 	.layout {
 		display: grid;
-		grid-template-columns: minmax(420px, 1.2fr) minmax(360px, 1fr);
+		grid-template-columns: minmax(420px, 1.2fr) minmax(min(360px, 100%), 1fr);
 		gap: 28px;
 		align-items: start;
 	}
