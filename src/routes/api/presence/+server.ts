@@ -7,7 +7,11 @@
  * available); a lobby KEEPS it — someone forming a lobby is recruiting,
  * and the badge tells the roster where they are.
  * DELETE (cookie-auth): explicit clear (app quit / SC2 exit).
- * GET (public): fresh lobby/ingame entries for the status chips.
+ * GET (public): fresh lobby/ingame entries for the status chips, already
+ * grouped into lobbies/games. Grouping is the server's job: every client
+ * then draws the same picture, and a change to what counts as one game
+ * ships with a deploy instead of waiting for companion installs to update
+ * (`groups` is additive — clients that predate it still group locally).
  *
  * Changes broadcast on the ready SSE channel — clients refetch both
  * /api/ready and /api/presence on any 'change' event.
@@ -23,14 +27,16 @@ import {
 	upsertPresence
 } from '$lib/server/db';
 import { publishReadyChange } from '$lib/server/events';
-import { PRESENCE_STALE_MS, validateBeat, type PresenceEntry } from '$lib/presence';
+import { PRESENCE_STALE_MS, splitPresence, validateBeat, type PresenceEntry } from '$lib/presence';
 import type { RequestHandler } from './$types';
 
 export const prerender = false;
 
 export const GET: RequestHandler = async ({ locals, setHeaders }) => {
 	setHeaders({ 'cache-control': 'private, no-store' });
-	if (!dbConfigured()) return json({ players: [], me: null });
+	if (!dbConfigured()) {
+		return json({ players: [], me: null, known: {}, groups: { lobbies: [], games: [] } });
+	}
 	const docs = await getActivePresence(PRESENCE_STALE_MS);
 	// the widget colors its own chip by where the session user is
 	const mine = locals.session ? docs.find((d) => d._id === locals.session!.sub) : undefined;
@@ -55,7 +61,12 @@ export const GET: RequestHandler = async ({ locals, setHeaders }) => {
 		const directory = await getPlayerDirectory();
 		for (const name of names) if (directory[name]) known[name] = directory[name];
 	}
-	return json({ players, me: mine?.status ?? null, known });
+	return json({
+		players,
+		me: mine?.status ?? null,
+		known,
+		groups: splitPresence(players)
+	});
 };
 
 export const POST: RequestHandler = async ({ locals, request }) => {

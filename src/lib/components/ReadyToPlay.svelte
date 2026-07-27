@@ -10,12 +10,15 @@
 	import { onMount } from 'svelte';
 	import { PresenceChips, HoverPop, ReadyPlayers, ReadyChip } from 'uar-shared';
 	import { activeReady, minutesLeft, readyLevel, type ReadyPlayer } from '$lib/ready';
-	import { splitPresence, type PresenceEntry } from '$lib/presence';
+	import { splitPresence, type PresenceEntry, type PresenceGroup } from '$lib/presence';
+
+	type Split = { lobbies: PresenceGroup<PresenceEntry>[]; games: PresenceGroup<PresenceEntry>[] };
 
 	let { signedIn, compact = false }: { signedIn: boolean; compact?: boolean } = $props();
 
 	let players = $state<ReadyPlayer[]>([]);
 	let presence = $state<PresenceEntry[]>([]);
+	let groups = $state<Split | null>(null);
 	let known = $state<Record<string, { toon: string; avatar?: string }>>({});
 	let myStatus = $state<'lobby' | 'ingame' | null>(null);
 	let myUntil = $state<string | null>(null);
@@ -23,7 +26,8 @@
 	let now = $state(0);
 
 	const active = $derived(activeReady(players, now));
-	const split = $derived(splitPresence(presence));
+	// the server groups; a page left open across a deploy predates that field
+	const split = $derived(groups ?? splitPresence(presence));
 	const statusOf = (battletag: string) => presence.find((p) => p.battletag === battletag)?.status;
 	const myMinutes = $derived(
 		myUntil !== null && Date.parse(myUntil) > now ? minutesLeft(myUntil, now) : null
@@ -50,8 +54,10 @@
 					players: PresenceEntry[];
 					me: 'lobby' | 'ingame' | null;
 					known?: Record<string, { toon: string; avatar?: string }>;
+					groups?: Split;
 				};
 				presence = body.players;
+				groups = body.groups ?? null;
 				myStatus = body.me;
 				known = body.known ?? {};
 			}

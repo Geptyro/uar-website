@@ -86,3 +86,57 @@ test('groupPresence: game members share a lobby id, clock takes the max', () => 
 	assert.equal(groups[0].displayTime, 120, 'the furthest-along clock wins');
 	assert.equal(groups[0].players, 3);
 });
+
+test('groupPresence: one game whose members do not all have the id stays one game', () => {
+	// the battlelobby file that carries the id is unreadable on some installs,
+	// so a game mixes id-reporters and roster-only reporters — keying them
+	// apart showed a single running game as two
+	const groups = groupPresence([
+		entry({ battletag: 'A#1', lobbyId: 7, roster: ['A', 'B', 'C'], players: 3, displayTime: 300 }),
+		entry({ battletag: 'B#2', roster: ['A', 'B', 'C'], players: 3, displayTime: 290 })
+	]);
+	assert.equal(groups.length, 1);
+	assert.equal(groups[0].key, 'id:7', 'the id names the merged group');
+	assert.equal(groups[0].members.length, 2);
+	assert.equal(groups[0].players, 3, 'the roster size, not the reporter count');
+	assert.equal(groups[0].displayTime, 300);
+});
+
+test('groupPresence: the id-less reporter merges whichever way round it arrives', () => {
+	const groups = groupPresence([
+		entry({ battletag: 'B#2', roster: ['A', 'B', 'C'], players: 3 }),
+		entry({ battletag: 'A#1', lobbyId: 7, roster: ['A', 'B', 'C'], players: 3 })
+	]);
+	assert.equal(groups.length, 1);
+	assert.equal(groups[0].key, 'id:7');
+});
+
+test('groupPresence: a drifted roster still merges on the names it shares', () => {
+	// a leaver, or a hiccuped /game poll, leaves members disagreeing about the
+	// roster — demanding the whole set matched is what once split one lobby
+	const groups = groupPresence([
+		entry({ battletag: 'A#1', roster: ['A', 'B', 'C'], players: 3 }),
+		entry({ battletag: 'B#2', roster: ['A', 'B'], players: 2 })
+	]);
+	assert.equal(groups.length, 1);
+	assert.equal(groups[0].players, 3);
+});
+
+test('groupPresence: a rosterless reporter merges on selfName', () => {
+	const groups = groupPresence([
+		entry({ battletag: 'A#1', lobbyId: 7, roster: ['A', 'B'], players: 2 }),
+		entry({ battletag: 'B#2', selfName: 'B' })
+	]);
+	assert.equal(groups.length, 1);
+	assert.equal(groups[0].key, 'id:7');
+	assert.equal(groups[0].members.length, 2);
+});
+
+test('groupPresence: two lobby ids are two games, whatever the names say', () => {
+	// display names are not unique in SC2; distinct ids are hard evidence
+	const groups = groupPresence([
+		entry({ battletag: 'A#1', lobbyId: 7, roster: ['A', 'Bob'], players: 2 }),
+		entry({ battletag: 'C#3', lobbyId: 8, roster: ['C', 'Bob'], players: 2 })
+	]);
+	assert.equal(groups.length, 2, 'different ids never merge');
+});
