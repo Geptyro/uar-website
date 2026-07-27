@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { weeklyBoards, type WeeklyXpReplay } from '../src/lib/server/weekly.ts';
 
-// window starts 2026-07-19T12:00:00Z; baselines are trusted back to 07-16 12:00 (3d grace)
+// window starts 2026-07-19T12:00:00Z; nothing older than that ever counts
 const NOW = new Date('2026-07-26T12:00:00Z');
 
 const sighting = (
@@ -20,10 +20,10 @@ const replay = (playedAt: string, sightings: WeeklyXpReplay['sightings']): Weekl
 	sightings
 });
 
-test('xp: diffs newest sighting against the newest graced pre-window one', () => {
+test('xp: diffs the newest in-window sighting against the oldest in-window one', () => {
 	const replays = [
-		replay('2026-07-10T10:00:00Z', [sighting('t1', 'Alice', 1000, 10)]),
-		replay('2026-07-17T10:00:00Z', [sighting('t1', 'Alice', 6000, 12)]),
+		replay('2026-07-17T10:00:00Z', [sighting('t1', 'Alice', 1000, 10)]), // pre-window
+		replay('2026-07-20T10:00:00Z', [sighting('t1', 'Alice', 6000, 12)]),
 		replay('2026-07-25T10:00:00Z', [sighting('t1', 'Alice', 9000, 15, { clan: 'NEW' })])
 	];
 	assert.deepEqual(weeklyBoards(replays, NOW).xp, [
@@ -31,11 +31,24 @@ test('xp: diffs newest sighting against the newest graced pre-window one', () =>
 	]);
 });
 
-test('xp: players first seen inside the window diff against their oldest in-window sighting', () => {
+test('xp: a pre-window sighting is never the baseline, however recent it is', () => {
+	const replays = [
+		// one day before the window opens: anchoring here would credit Bruno's
+		// pre-window games (10 of them, 8000 XP) to "this week"
+		replay('2026-07-18T10:00:00Z', [sighting('t1', 'Bruno', 1000, 10)]),
+		replay('2026-07-21T10:00:00Z', [sighting('t1', 'Bruno', 9000, 20)]),
+		replay('2026-07-25T10:00:00Z', [sighting('t1', 'Bruno', 12000, 24)])
+	];
+	assert.deepEqual(weeklyBoards(replays, NOW).xp, [
+		{ name: 'Bruno', clan: '', toon: 't1', xpGained: 3000, games: 4 }
+	]);
+});
+
+test('xp: a single in-window sighting gives no span to diff over', () => {
 	const replays = [
 		replay('2026-07-20T10:00:00Z', [
 			sighting('t1', 'Alice', 500, 1),
-			sighting('t2', 'Bob', 9000, 50) // single sighting: no span to diff over
+			sighting('t2', 'Bob', 9000, 50) // never seen again this week
 		]),
 		replay('2026-07-24T10:00:00Z', [sighting('t1', 'Alice', 2500, 4)])
 	];
@@ -44,9 +57,8 @@ test('xp: players first seen inside the window diff against their oldest in-wind
 	]);
 });
 
-test('xp: a stale pre-window baseline is ignored in favor of in-window diffing', () => {
+test('months-old sightings stay out of both the xp board and the honor roll', () => {
 	const replays = [
-		// months-old baselines — crediting the gap to "this week" would be bogus
 		replay('2026-05-17T16:41:00Z', [
 			sighting('t1', 'Dani', 194075, 83),
 			sighting('t2', 'Cara', 1000, 10),
@@ -60,7 +72,7 @@ test('xp: a stale pre-window baseline is ignored in favor of in-window diffing',
 		replay('2026-07-25T20:15:00Z', [sighting('t2', 'Cara', 5000, 14)])
 	];
 	const boards = weeklyBoards(replays, NOW);
-	// Dani/Pres: one in-window sighting only → nothing honest to diff → hidden
+	// Dani/Pres: one in-window sighting only → nothing to diff → hidden
 	// Cara: diffs between her two in-window games, not against May
 	assert.deepEqual(boards.xp, [{ name: 'Cara', clan: '', toon: 't2', xpGained: 2000, games: 2 }]);
 	assert.deepEqual(boards.prestiged, []);
@@ -68,7 +80,7 @@ test('xp: a stale pre-window baseline is ignored in favor of in-window diffing',
 
 test('careerXp carries gains across a prestige reset, and the honor roll records it', () => {
 	const replays = [
-		replay('2026-07-17T10:00:00Z', [
+		replay('2026-07-20T10:00:00Z', [
 			{ toon: 't1', name: 'Alice', clan: '', xpEn: 250000, xpWo: 250000, xpCo: 250000, prestige: 0, gamesPlayed: 100, mos: [] }
 		]),
 		// prestiged and earned 3k on top of the fresh 50k tracks
@@ -85,7 +97,7 @@ test('excludes players not seen this week and zero-gain players', () => {
 	const replays = [
 		replay('2026-07-01T10:00:00Z', [sighting('t1', 'Idle', 1000, 5)]),
 		replay('2026-07-10T10:00:00Z', [sighting('t1', 'Idle', 9000, 9)]),
-		replay('2026-07-18T10:00:00Z', [sighting('t2', 'Flat', 500, 3)]),
+		replay('2026-07-20T10:00:00Z', [sighting('t2', 'Flat', 500, 3)]),
 		replay('2026-07-25T10:00:00Z', [sighting('t2', 'Flat', 500, 3)])
 	];
 	const boards = weeklyBoards(replays, NOW);
@@ -96,7 +108,7 @@ test('excludes players not seen this week and zero-gain players', () => {
 test('sorts by gain (ties: games) and applies the limit', () => {
 	const replays = [
 		replay(
-			'2026-07-18T10:00:00Z',
+			'2026-07-20T10:00:00Z',
 			Array.from({ length: 12 }, (_, i) => sighting(`t${i}`, `P${i}`, 0, 0))
 		),
 		replay(
@@ -114,7 +126,7 @@ test('sorts by gain (ties: games) and applies the limit', () => {
 
 test('prestiged: honor roll sorts by new level, no XP-gain requirement', () => {
 	const replays = [
-		replay('2026-07-17T10:00:00Z', [
+		replay('2026-07-20T10:00:00Z', [
 			sighting('t1', 'Alice', 250000, 10, { prestige: 2 }),
 			sighting('t2', 'Bob', 250000, 20, { prestige: 0 })
 		]),
