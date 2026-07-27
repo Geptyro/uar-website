@@ -91,6 +91,8 @@
 	 * touch have no travel to read, so they keep the default side.
 	 */
 	let entry = $state<Placement>('top');
+	/** opened by a tap rather than a hover — see the scroll handling below */
+	let byTap = false;
 
 	function edgeEntered(r: DOMRect, x: number, y: number): Placement {
 		const d: Record<Placement, number> = {
@@ -120,6 +122,7 @@
 		clearTimeout(timer);
 		open = false;
 		placed = false;
+		byTap = false;
 	}
 
 	/** an interactive card must survive the pointer crossing the gap to it */
@@ -157,14 +160,20 @@
 	$effect(() => {
 		if (!open) return;
 		place();
+		/**
+		 * A hovered card follows its anchor: the pointer is still on the thing,
+		 * and a card that vanished on a wheel nudge would be unreadable. A tapped
+		 * one closes instead — a finger has nothing holding it open, and on a
+		 * phone the card is the size of the content being scrolled past.
+		 */
+		const onScroll = () => (byTap ? hide() : place());
 		// the page scrolls inside <main>, so listen in the capture phase to catch
 		// every scrolling ancestor rather than just the window
-		const onMove = () => place();
-		window.addEventListener('scroll', onMove, true);
-		window.addEventListener('resize', onMove);
+		window.addEventListener('scroll', onScroll, true);
+		window.addEventListener('resize', place);
 		return () => {
-			window.removeEventListener('scroll', onMove, true);
-			window.removeEventListener('resize', onMove);
+			window.removeEventListener('scroll', onScroll, true);
+			window.removeEventListener('resize', place);
 		};
 	});
 
@@ -173,15 +182,41 @@
 	/** what opened the last interaction — a finger's tap must not also navigate */
 	let byTouch = false;
 
-	/** touch has no hover: tap toggles, and a tap elsewhere closes */
+	/** How far a finger may travel, and how long it may rest, and still be a tap. */
+	const TAP_SLOP_PX = 10;
+	const TAP_MS = 700;
+	/** where a finger went down, so a scroll is not read as a tap */
+	let down: { x: number; y: number; at: number } | null = null;
+
+	/**
+	 * Touch has no hover, so a tap is what opens the card — but a scroll starts
+	 * with a finger on the same tile, and acting on pointerdown opened a card
+	 * under every flick of the page. The decision waits for pointerup and only
+	 * counts a finger that stayed put: anything that travelled is the page
+	 * moving, and pointercancel is the browser saying so outright.
+	 */
 	function onpointerdown(e: PointerEvent) {
 		byTouch = e.pointerType === 'touch';
-		if (!byTouch) return;
+		down = byTouch ? { x: e.clientX, y: e.clientY, at: e.timeStamp } : null;
+	}
+
+	function onpointerup(e: PointerEvent) {
+		if (!down) return;
+		const travelled = Math.hypot(e.clientX - down.x, e.clientY - down.y);
+		const held = e.timeStamp - down.at;
+		down = null;
+		if (travelled > TAP_SLOP_PX || held > TAP_MS) return;
 		// a fresh tap reads the card from the default side, not from wherever the
 		// pointer last entered with a mouse
 		entry = 'top';
-		if (open) hide();
-		else show(true);
+		if (open) return hide();
+		byTap = true;
+		show(true);
+	}
+
+	/** the browser claimed the gesture for a scroll — there was no tap */
+	function onpointercancel() {
+		down = null;
 	}
 
 	/**
@@ -220,6 +255,8 @@
 	onfocusin={() => show(true)}
 	onfocusout={leaveFocus}
 	{onpointerdown}
+	{onpointerup}
+	{onpointercancel}
 	{onclick}
 >
 	{@render children()}
