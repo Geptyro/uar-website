@@ -659,6 +659,13 @@
 		font: 14px/1.55 var(--sans);
 		overflow: hidden;
 		-webkit-font-smoothing: antialiased;
+		/* Phones flash a translucent blue box over anything tappable. Every
+		   surface here draws its own press and hover states, so that box only
+		   ever arrives late and in the wrong colour — and on the profile's
+		   unlock tiles it lies outright, since a tap opens a card rather than
+		   following the link. The property inherits, so this is the one place
+		   it needs saying. */
+		-webkit-tap-highlight-color: transparent;
 	}
 	:global(code) {
 		font-family: var(--mono);

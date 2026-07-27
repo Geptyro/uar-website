@@ -308,11 +308,6 @@
 		text-align: inherit;
 		text-decoration: none;
 		cursor: inherit;
-		/* The browser flashes its blue "you followed a link" box over any
-		   tappable element, and over this one it says the wrong thing: a tap
-		   opens the card, only a click navigates. It also flashed on a scroll
-		   that merely started here. The card arriving is the acknowledgement. */
-		-webkit-tap-highlight-color: transparent;
 	}
 	.tt-card {
 		position: fixed;

@@ -1,9 +1,10 @@
 ---
-title: No blue flash when you tap a tile
+title: No blue flash when you tap
 type: fix
-area: players
-impact: minor
+area: site
 ---
-Tapping a class, medal or camo on a phone flashed the browser's blue
-"followed a link" box over it — including when you were only starting to
-scroll. The tile no longer claims that; the card opening is the answer.
+Tapping anything on a phone — a tile, a link, a chip — flashed the browser's
+blue "followed a link" box over it, arriving late and in a colour the site
+never uses. On the profile's unlock tiles it was wrong as well as ugly, since
+a tap there opens the card rather than following the link. Every surface
+already shows its own press state, so the box is gone.
