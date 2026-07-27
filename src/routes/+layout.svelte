@@ -1688,7 +1688,11 @@
 		}
 		.acct-main {
 			gap: 0;
-			padding-right: 15px;
+			/* The cog overlaps the chip by 15px, so this padding buys nothing
+			   until it passes that — at exactly 15px the portrait and the swirl
+			   ended up flush against the cog's edge with no air at all. Keep the
+			   9px of clearance the wide chip has. */
+			padding-right: 24px;
 		}
 		/* with the word gone the swirl carries the button, centred in its half */
 		.acct-main.connect {
