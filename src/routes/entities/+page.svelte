@@ -69,88 +69,65 @@
 	<title>All entities — UAR Unit Database</title>
 </svelte:head>
 
-<div class="controls">
-	<input
-		type="search"
-		placeholder="Search name, id, weapon…"
-		aria-label="Search entities"
-		bind:value={query}
-	/>
-	{#each categories as cat (cat)}
-		<button class="chip" aria-pressed={activeCats.has(cat)} onclick={() => toggleCat(cat)}>
-			{cat}
-		</button>
-	{/each}
-	<span class="count">{filtered.length} / {units.length}</span>
-</div>
-
-<div class="tablewrap">
-	<table class="data" style="min-width: 940px">
-		<thead>
-			<tr>
-				{#each columns as col (col.key)}
-					<th class:num={col.num} class="sortable" onclick={() => setSort(col.key)}>
-						{col.label}
-						<span class="dir">{sortKey === col.key ? (sortDir > 0 ? '↑' : '↓') : ''}</span>
-					</th>
-				{/each}
-				<th>Weapons (dmg · range · period)</th>
-			</tr>
-		</thead>
-		<tbody>
-			{#each filtered as u (u.id)}
-				<tr>
-					<td class="namecell">
-						{#if u.icon}<img class="row-icon" src={u.icon} alt="" loading="lazy" />{/if}
-						<a href="/entities/{u.id}">{u.name || '—'}</a>
-					</td>
-					<td class="mono">{u.id}</td>
-					<td><span class="tag {tagClass(u.category)}">{u.category}</span></td>
-					<td class="num">{u.life ?? ''}</td>
-					<td class="num">{u.armor ?? ''}</td>
-					<td class="num">{u.speed ?? ''}</td>
-					<td class="num">{u.energy ?? ''}</td>
-					<td class="mono wpns">{u.weapons.map(weaponLabel).join('; ')}</td>
-				</tr>
+<div class="datapage">
+	<div class="dtools">
+		<input
+			type="search"
+			placeholder="Search name, id, weapon…"
+			aria-label="Search entities"
+			bind:value={query}
+		/>
+		<div class="chips">
+			{#each categories as cat (cat)}
+				<button class="chip" aria-pressed={activeCats.has(cat)} onclick={() => toggleCat(cat)}>
+					{cat}
+				</button>
 			{/each}
-		</tbody>
-	</table>
+		</div>
+		<span class="rowcount right">{filtered.length} / {units.length}</span>
+	</div>
+
+	<div class="tablewrap rows">
+		<table class="data" style="min-width: 980px">
+			<thead>
+				<tr>
+					<th class="num">#</th>
+					{#each columns as col (col.key)}
+						<th class:num={col.num} class="sortable">
+							<button type="button" onclick={() => setSort(col.key)}>
+								{col.label}
+								<span class="dir">{sortKey === col.key ? (sortDir > 0 ? '↑' : '↓') : ''}</span>
+							</button>
+						</th>
+					{/each}
+					<th>Weapons (dmg · range · period)</th>
+				</tr>
+			</thead>
+			<tbody>
+				{#each filtered as u, i (u.id)}
+					<tr>
+						<td class="num rownum">{i + 1}</td>
+						<td class="namecell">
+							{#if u.icon}<img class="row-icon" src={u.icon} alt="" loading="lazy" />{/if}
+							<a href="/entities/{u.id}">{u.name || '—'}</a>
+						</td>
+						<td class="mono">{u.id}</td>
+						<td><span class="tag {tagClass(u.category)}">{u.category}</span></td>
+						<td class="num">{u.life ?? ''}</td>
+						<td class="num">{u.armor ?? ''}</td>
+						<td class="num">{u.speed ?? ''}</td>
+						<td class="num">{u.energy ?? ''}</td>
+						<td class="mono wpns">{u.weapons.map(weaponLabel).join('; ')}</td>
+					</tr>
+				{/each}
+			</tbody>
+		</table>
+	</div>
 </div>
 
 <style>
-	.controls {
-		position: sticky;
-		top: -26px;
-		z-index: 5;
-		background: var(--bg);
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: 7px;
-		padding: 10px 0 12px;
-	}
-	input[type='search'] {
-		width: 240px;
-	}
-	.count {
-		margin-left: auto;
-		font-family: var(--mono);
-		font-size: 11.5px;
-		color: var(--ink-3);
-		font-variant-numeric: tabular-nums;
-	}
-
-	th.sortable {
-		cursor: pointer;
-		user-select: none;
-	}
-	th.sortable:hover {
-		color: var(--ink);
-	}
-	.dir {
-		color: var(--accent);
-		font-size: 11px;
-	}
+	/* the page shape — toolbar put, rows scrolling, full-bleed table — is
+	   .datapage in the layout, shared with /players and /items */
 	td.namecell {
 		white-space: nowrap;
 	}

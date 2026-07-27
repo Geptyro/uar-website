@@ -435,11 +435,6 @@
 				</tbody>
 			</table>
 		</div>
-		<p class="note">
-			Values are the save-file state when each game started; green deltas are what that game
-			earned. A ⋯ row covers games that were never uploaded, and the newest game's gains only
-			appear once a later replay arrives.
-		</p>
 	</div>
 
 	<aside class="infobox">
@@ -497,10 +492,6 @@
 				<a class="dl-latest" href="/replays/{latestReplay}" download rel="external">
 					Download latest replay ⬇
 				</a>
-				<p class="dl-hint">
-					Your most recent game. Keep it — if you ever lose your save, this is what restores
-					your progression.
-				</p>
 			{/if}
 		</div>
 
@@ -918,12 +909,6 @@
 	}
 	.dl-latest:hover {
 		background: var(--accent-hover);
-	}
-	.dl-hint {
-		margin: 6px 14px 2px;
-		font-size: 11px;
-		line-height: 1.45;
-		color: var(--ink-3);
 	}
 	.idhead {
 		display: flex;

@@ -38,61 +38,8 @@
 	/>
 </svelte:head>
 
-<p class="note">
-	Every unit defined in the map and its <em>UAR data</em> dependency mod, with weapon stats
-	resolved and names joined from the English localization.
-</p>
-
-<div class="tiles">
-	{#each categories as cat (cat)}
-		<a class="tile" href="/entities?cat={encodeURIComponent(cat)}">
-			<b>{categoryCount(cat)}</b>
-			<span>{cat}</span>
-		</a>
-	{/each}
-</div>
-
-{#if latestRelease}
-<section class="whatsnew card">
-	<div class="wn-head">
-		<h2>What's new <span class="wn-ver">{latestRelease.version}</span></h2>
-		{#if latestRelease.date}<time class="wn-date" datetime={latestRelease.date}>{latestRelease.date}</time>{/if}
-		<a class="wn-all" href="/changelog">Full changelog →</a>
-	</div>
-	{#if wnEntries.length}
-		<ul class="wn-list">
-			{#each wnEntries as e (e.title)}
-				<li class:major={e.impact === 'major'}><ChangeChip type={e.type} /> {e.title}</li>
-			{/each}
-		</ul>
-	{:else}
-		<p class="wn-empty">Small fixes and tweaks — see the full changelog.</p>
-	{/if}
-</section>
-{/if}
-
-<h2 class="section">MOS · Player classes</h2>
-<div class="cards">
-	{#each mosUnits as u (u.id)}
-		<a class="card mos-card" href="/mos/{u.id}">
-			{#if u.icon}
-				<img class="card-icon" src={u.icon} alt="" loading="lazy" />
-			{:else}
-				<span class="card-icon placeholder"></span>
-			{/if}
-			<div class="card-body">
-				<h3>{u.name || u.id}</h3>
-				<div class="code">{u.mos ? `MOS ${u.mos}` : u.id}{u.role ? ` · ${u.role}` : ''}</div>
-				<div class="kv">
-					<span><StatIcon name="life" size={12} /><b>{u.life ?? '–'}</b></span>
-					<span><StatIcon name="armor" size={12} /><b>{u.armor ?? '–'}</b></span>
-					<span><StatIcon name="speed" size={12} /><b>{u.speed ?? '–'}</b></span>
-				</div>
-			</div>
-		</a>
-	{/each}
-</div>
-
+<div class="layout">
+<div class="main">
 {#if data.weekly.xp.length || data.weekly.classPicks.length}
 	<h2 class="section">This week · last 7 days</h2>
 	<div class="boards">
@@ -156,25 +103,6 @@
 				</ol>
 			</DescCard>
 		{/if}
-		{#if data.weekly.prestiged.length}
-			<DescCard label="Prestiged">
-				<ul class="top-list">
-					{#each data.weekly.prestiged as p (p.toon || p.name)}
-						<li>
-							<div class="prow">
-								{#if p.clan}<span class="pclan">&lt;{p.clan}&gt;</span>{/if}
-								{#if p.toon}
-									<a class="pname" href="/players/{p.toon}">{p.name}</a>
-								{:else}
-									<span class="pname">{p.name}</span>
-								{/if}
-								<span class="pxp">P{p.from} → P{p.to}</span>
-							</div>
-						</li>
-					{/each}
-				</ul>
-			</DescCard>
-		{/if}
 	</div>
 	<p class="top-note">Aggregated from ingested replays over the last 7 days.</p>
 {/if}
@@ -189,6 +117,28 @@
 		timezone.
 	</p>
 {/if}
+
+<h2 class="section">MOS · Player classes</h2>
+<div class="cards">
+	{#each mosUnits as u (u.id)}
+		<a class="card mos-card" href="/mos/{u.id}">
+			{#if u.icon}
+				<img class="card-icon" src={u.icon} alt="" loading="lazy" />
+			{:else}
+				<span class="card-icon placeholder"></span>
+			{/if}
+			<div class="card-body">
+				<h3>{u.name || u.id}</h3>
+				<div class="code">{u.mos ? `MOS ${u.mos}` : u.id}{u.role ? ` · ${u.role}` : ''}</div>
+				<div class="kv">
+					<span><StatIcon name="life" size={12} /><b>{u.life ?? '–'}</b></span>
+					<span><StatIcon name="armor" size={12} /><b>{u.armor ?? '–'}</b></span>
+					<span><StatIcon name="speed" size={12} /><b>{u.speed ?? '–'}</b></span>
+				</div>
+			</div>
+		</a>
+	{/each}
+</div>
 
 <h2 class="section">Heavy hostiles · 10,000+ HP</h2>
 <div class="tablewrap">
@@ -215,8 +165,230 @@
 		</tbody>
 	</table>
 </div>
+</div>
+
+<aside class="infobox">
+	<!-- Prestige is the rarest thing a player does, so it heads the column;
+	     what shipped comes under it. Same 7-day window as the weekly boards. -->
+	{#if data.weekly.prestiged.length}
+		<section class="prestige">
+			<div class="pr-label">
+				<span class="pr-star" aria-hidden="true">★</span> Prestiged
+				<span class="pr-when">· last 7 days</span>
+			</div>
+			<ul class="pr-list">
+				{#each data.weekly.prestiged as p (p.toon || p.name)}
+					<li class="pr-item">
+						<img
+							class="pr-portrait"
+							src={(p.toon && data.avatars[p.toon]) || anonPortrait}
+							alt=""
+							loading="lazy"
+						/>
+						<span class="pr-who">
+							{#if p.clan}<span class="pclan">&lt;{p.clan}&gt;</span>{/if}
+							{#if p.toon}
+								<a class="pname" href="/players/{p.toon}">{p.name}</a>
+							{:else}
+								<span class="pname">{p.name}</span>
+							{/if}
+						</span>
+						<span class="pr-jump">P{p.from} <span class="pr-arrow">→</span></span>
+						<b class="pr-level">P{p.to}</b>
+					</li>
+				{/each}
+			</ul>
+		</section>
+	{/if}
+
+	{#if latestRelease}
+		<section class="whatsnew card">
+			<div class="wn-head">
+				<h2>What's new <span class="wn-ver">{latestRelease.version}</span></h2>
+				{#if latestRelease.date}<time class="wn-date" datetime={latestRelease.date}
+						>{latestRelease.date}</time
+					>{/if}
+			</div>
+			{#if wnEntries.length}
+				<!-- type and headline are a pair, and a two-column grid lines every
+				     headline up on the same edge whatever the chip is called -->
+				<dl class="wn-list">
+					{#each wnEntries as e (e.title)}
+						<dt><ChangeChip type={e.type} /></dt>
+						<dd class:major={e.impact === 'major'}>{e.title}</dd>
+					{/each}
+				</dl>
+			{:else}
+				<p class="wn-empty">Small fixes and tweaks — see the full changelog.</p>
+			{/if}
+			<a class="wn-all" href="/changelog">Full changelog →</a>
+		</section>
+	{/if}
+
+	<!-- the roster by category: a way in to /entities, not a headline -->
+	<div class="tiles">
+		{#each categories as cat (cat)}
+			<a class="tile" href="/entities?cat={encodeURIComponent(cat)}">
+				<b>{categoryCount(cat)}</b>
+				<span>{cat}</span>
+			</a>
+		{/each}
+	</div>
+</aside>
+</div>
 
 <style>
+	/* the right column, the shape /mos and a player profile already use: a
+	   fixed rail beside the page, and on a phone it comes first — what
+	   happened this week is why you opened the site, and it should not sit
+	   under the whole roster */
+	.layout {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) 290px;
+		gap: 0 28px;
+		align-items: start;
+	}
+	.main {
+		min-width: 0;
+	}
+	/* the column now opens on a section heading, and its 34px of top margin
+	   is spacing between sections, not a gap under the top bar */
+	.main :global(h2.section:first-child) {
+		margin-top: 4px;
+	}
+	.infobox {
+		display: flex;
+		flex-direction: column;
+		gap: 14px;
+	}
+	/* in the column the counts line up in a grid rather than running on as a
+	   wrapped row, so the last one is not left hanging half a tile wide */
+	.infobox .tiles {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(min(125px, 100%), 1fr));
+		gap: 10px;
+	}
+	/* Below this the rail would starve the tables, so the page stacks — and
+	   stacked, the column leads. Its two widgets sit side by side while there
+	   is room for them, one under the other on a phone. */
+	@media (max-width: 1080px) {
+		.layout {
+			display: flex;
+			flex-direction: column;
+		}
+		.infobox {
+			order: -1;
+			margin: 0 0 18px;
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+			gap: 12px;
+			align-items: start;
+		}
+	}
+
+	/* the one place the site goes gold, with a sheen across it. In the column
+	   it reads as a roll of honour: no box around anyone, just a hairline
+	   between them and the new level as the one filled thing. */
+	.prestige {
+		background:
+			linear-gradient(150deg, color-mix(in srgb, var(--gold) 10%, transparent), transparent 60%),
+			var(--gold-soft);
+		border: 1px solid var(--gold-line);
+		border-radius: var(--r);
+		padding: 10px var(--card-pad-x) 11px;
+	}
+	.pr-label {
+		display: inline-flex;
+		align-items: baseline;
+		gap: 5px;
+		font-family: var(--mono);
+		font-size: 10px;
+		font-weight: 650;
+		letter-spacing: 0.14em;
+		text-transform: uppercase;
+		color: var(--gold);
+		white-space: nowrap;
+		margin-bottom: 4px;
+	}
+	.pr-star {
+		font-size: 15px;
+		line-height: 1;
+		color: var(--gold);
+	}
+	.pr-when {
+		font-weight: 400;
+		color: var(--ink-3);
+	}
+	.pr-list {
+		list-style: none;
+		display: flex;
+		flex-direction: column;
+		margin: 0;
+		padding: 0;
+	}
+	.pr-item {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 7px 0;
+		font-size: 12.5px;
+		min-width: 0;
+	}
+	.pr-item + .pr-item {
+		border-top: 1px solid var(--gold-line);
+	}
+	.pr-who {
+		display: flex;
+		align-items: baseline;
+		gap: 5px;
+		min-width: 0;
+		overflow: hidden;
+	}
+	/* name left, the jump right, whatever the column width */
+	.pr-jump {
+		margin-left: auto;
+	}
+	.pr-portrait {
+		width: 24px;
+		height: 24px;
+		border-radius: var(--r-sm);
+		object-fit: cover;
+		/* a ring rather than a border: it cannot eat into the portrait */
+		box-shadow: 0 0 0 1px var(--gold-line);
+		flex-shrink: 0;
+	}
+	/* the name carries no underline until you go for it — this is a list of
+	   people, and only one of them is the loud part */
+	.pr-item .pname {
+		color: inherit;
+		text-decoration: none;
+		font-weight: 600;
+	}
+	.pr-item .pname:hover {
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+	.pr-jump {
+		font-family: var(--mono);
+		font-size: 10.5px;
+		color: var(--ink-3);
+		white-space: nowrap;
+	}
+	.pr-arrow {
+		opacity: 0.6;
+	}
+	.pr-level {
+		font-family: var(--mono);
+		font-size: 11px;
+		font-weight: 700;
+		letter-spacing: 0.02em;
+		background: var(--gold);
+		color: var(--bg);
+		border-radius: var(--r-sm);
+		padding: 2px 7px;
+		white-space: nowrap;
+	}
+
 	.cards {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr));
@@ -275,13 +447,13 @@
 		font-weight: 600;
 		color: var(--ink-2);
 	}
-	.whatsnew {
-		margin-top: 14px;
-	}
+	/* in a 290px column the head cannot hold one line: let the date and the
+	   changelog link drop under the title rather than squeezing it */
 	.wn-head {
 		display: flex;
 		align-items: baseline;
-		gap: 10px;
+		flex-wrap: wrap;
+		gap: 2px 10px;
 	}
 	.wn-head h2 {
 		margin: 0;
@@ -297,11 +469,17 @@
 		margin-left: 3px;
 	}
 	.wn-date {
+		margin-left: auto;
 		font-size: 11px;
 		color: var(--ink-3);
 	}
+	/* the way out of the card sits at its foot, on its own rule — in a 290px
+	   column it cannot share the title's line without pushing it around */
 	.wn-all {
-		margin-left: auto;
+		display: block;
+		margin-top: 11px;
+		padding-top: 9px;
+		border-top: 1px solid var(--border);
 		font-size: 12px;
 		color: var(--accent);
 		text-decoration: none;
@@ -312,21 +490,23 @@
 		text-underline-offset: 3px;
 	}
 	.wn-list {
-		list-style: none;
-		margin: 9px 0 0;
-		padding: 0;
-		display: flex;
-		flex-direction: column;
-		gap: 6px;
-	}
-	.wn-list li {
-		display: flex;
+		display: grid;
+		/* the chip column takes the widest chip; every headline starts after it */
+		grid-template-columns: max-content minmax(0, 1fr);
 		align-items: baseline;
-		gap: 8px;
+		gap: 7px 9px;
+		margin: 10px 0 0;
+	}
+	.wn-list dt {
+		display: flex;
+	}
+	.wn-list dd {
+		margin: 0;
 		font-size: 13px;
+		line-height: 1.45;
 		color: var(--ink-2);
 	}
-	.wn-list li.major {
+	.wn-list dd.major {
 		font-weight: 600;
 		color: var(--ink);
 	}

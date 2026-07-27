@@ -72,9 +72,9 @@
 	<title>Players — UAR Unit Database</title>
 </svelte:head>
 
-<div class="playerspage">
-<div class="ptools">
-	<form class="psearch" method="GET" data-sveltekit-keepfocus>
+<div class="datapage">
+<div class="dtools">
+	<form method="GET" data-sveltekit-keepfocus>
 		<input
 			type="search"
 			name="q"
@@ -86,7 +86,9 @@
 		{#if data.sort !== 'career'}<input type="hidden" name="sort" value={data.sort} />{/if}
 		{#if data.dir !== 'desc'}<input type="hidden" name="dir" value={data.dir} />{/if}
 	</form>
-	<Pager page={data.page} pages={data.pages} total={data.total} label="players" />
+	<div class="right">
+		<Pager page={data.page} pages={data.pages} total={data.total} label="players" />
+	</div>
 </div>
 
 <div class="tablewrap rows">
@@ -109,7 +111,7 @@
 		<tbody>
 			{#each players as p, i (p.toon)}
 				<tr>
-					<td class="num rank-pos">{(data.page - 1) * 50 + i + 1}</td>
+					<td class="num rownum">{(data.page - 1) * 50 + i + 1}</td>
 					<td class="namecell">
 						<span class="playercell">
 							<img
@@ -151,50 +153,8 @@
 </div>
 
 <style>
-	/* only the rows scroll: the note, the pager and the header stay put,
-	   and the table runs the full width of the content area */
-	.ptools {
-		display: flex;
-		align-items: center;
-		/* breathing room between the toolbar and the table header */
-		margin-bottom: 12px;
-		justify-content: space-between;
-		gap: 16px;
-		flex-wrap: wrap;
-	}
-	.ptools :global(.pager) {
-		margin: 0;
-	}
-	.psearch input {
-		min-width: 240px;
-	}
-	.playerspage {
-		display: flex;
-		flex-direction: column;
-		/* fills what the shell leaves us, so the table owns the scroll and
-		   reaches the bottom of the window instead of floating above it */
-		--bottom-gap: 8px;
-		height: calc(100dvh - var(--topbar-h) - var(--content-pad-top, 26px) - var(--bottom-gap));
-		margin-bottom: calc(var(--bottom-gap) - var(--content-pad-bottom, 72px));
-	}
-	.rows {
-		flex: 1;
-		min-height: 0;
-		overflow: auto;
-		margin-inline: calc(-1 * var(--content-pad-x, 36px));
-		border-inline: none;
-		border-radius: 0;
-	}
-	.rows thead th {
-		position: sticky;
-		top: 0;
-		z-index: 2;
-		background: var(--surface-2);
-	}
-
-	.rank-pos {
-		color: var(--ink-3);
-	}
+	/* the page shape — toolbar put, rows scrolling, full-bleed table — is
+	   .datapage in the layout, shared with /entities and /items */
 	.career {
 		font-weight: 650;
 	}

@@ -52,6 +52,29 @@
 		if (wide) localStorage.setItem(NAV_KEY, navOpen ? '1' : '0');
 	}
 
+	/* The rail's edge hints: which way there is more to see. Reading it from
+	   the scroll position (rather than letting the content wipe a cover layer
+	   off, as this used to) is what lets CSS fade each edge in and out — the
+	   two numbers are the only state the stylesheet needs. */
+	let sideEl = $state<HTMLElement | null>(null);
+	let hintUp = $state(0);
+	let hintDown = $state(0);
+	function syncHints() {
+		if (!sideEl) return;
+		const max = sideEl.scrollHeight - sideEl.clientHeight;
+		hintUp = sideEl.scrollTop > 1 ? 1 : 0;
+		hintDown = max > 1 && sideEl.scrollTop < max - 1 ? 1 : 0;
+	}
+	onMount(() => {
+		if (!sideEl) return;
+		// the box for viewport and collapse changes, the children for the
+		// content growing or folding under them
+		const ro = new ResizeObserver(syncHints);
+		ro.observe(sideEl);
+		for (const child of sideEl.children) ro.observe(child);
+		return () => ro.disconnect();
+	});
+
 	// picking a destination closes the overlay; the docked sidebar stays put.
 	// Both hooks earn their keep: afterNavigate catches links inside the page,
 	// the click handler catches a tap on the page you are already on.
@@ -268,20 +291,19 @@
 		<button
 			class="burger"
 			onclick={toggleNav}
-			aria-label={drawer ? 'Close menu' : 'Open menu'}
+			aria-label={(navOpen ?? wide) ? 'Close menu' : 'Open menu'}
 			aria-expanded={navOpen ?? wide}
 			aria-controls="site-nav"
 			title="Menu"
 		>
-			<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor"
-				stroke-width="2" stroke-linecap="round" aria-hidden="true">
-				{#if drawer}
-					<line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-				{:else}
-					<line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" />
-					<line x1="3" y1="18" x2="21" y2="18" />
-				{/if}
-			</svg>
+			<!-- one glyph, not two icons swapped: the bars fold into the cross and
+			     the whole mark turns with them, so opening and closing read as the
+			     same motion run both ways. Which end it rests at comes from the
+			     shell in CSS, like the rail itself, so the prerendered markup
+			     cannot flash the wrong icon before the nav state is known. -->
+			<span class="burger-glyph" aria-hidden="true">
+				<span class="bar"></span><span class="bar"></span><span class="bar"></span>
+			</span>
 		</button>
 		<a class="brand-home" href="/" aria-label="Undead Assault Reborn — overview">
 			<span class="brand-mark">UAR</span>
@@ -348,11 +370,31 @@
 		{#if drawer}
 			<button class="scrim" aria-label="Close menu" onclick={() => (navOpen = false)}></button>
 		{/if}
-		<aside class="sidebar" id="site-nav">
+		<aside
+			class="sidebar"
+			id="site-nav"
+			bind:this={sideEl}
+			onscroll={syncHints}
+			ontransitionend={syncHints}
+			style="--hint-up: {hintUp}; --hint-down: {hintDown}"
+		>
 			<nav aria-label="Main">
+				{#each nav as item (item.href)}
+					<!-- title, not just text: collapsed to the rail the label is gone
+					     from the box and from the accessibility tree with it -->
+					<a
+						href={item.href}
+						class:active={isActive(item.href)}
+						onclick={closeDrawer}
+						title={item.label}
+					>
+						<span class="nav-icon">{@html item.icon}</span>
+						<span class="nav-label">{item.label}</span>
+					</a>
+				{/each}
 				{#if siteVersion}
-					<!-- the release the site is running, above everything else: the dot
-					     is the only loud part, and only until you have read it -->
+					<!-- the release the site is running, at the foot of the list: the
+					     dot is the only loud part, and only until you have read it -->
 					<a
 						class="nav-ver"
 						href="/changelog"
@@ -370,19 +412,6 @@
 						<span class="ver-code">{siteVersion}</span>
 					</a>
 				{/if}
-				{#each nav as item (item.href)}
-					<!-- title, not just text: collapsed to the rail the label is gone
-					     from the box and from the accessibility tree with it -->
-					<a
-						href={item.href}
-						class:active={isActive(item.href)}
-						onclick={closeDrawer}
-						title={item.label}
-					>
-						<span class="nav-icon">{@html item.icon}</span>
-						<span class="nav-label">{item.label}</span>
-					</a>
-				{/each}
 			</nav>
 
 			<div class="side-label">MOS</div>
@@ -492,6 +521,10 @@
 		--hostile-soft: color-mix(in srgb, var(--hostile) 11%, transparent);
 		--item: #91702c;
 		--item-soft: color-mix(in srgb, var(--item) 13%, transparent);
+		/* prestige, and nothing else: the one place the site goes gold */
+		--gold: #96731d;
+		--gold-soft: color-mix(in srgb, var(--gold) 13%, transparent);
+		--gold-line: color-mix(in srgb, var(--gold) 55%, transparent);
 		--scroll-thumb: #b9b3a0;
 		--scroll-thumb-hover: #9b9480;
 		--shadow-1: 0 1px 2px rgb(30 32 24 / 0.05), 0 1px 1px rgb(30 32 24 / 0.03);
@@ -535,6 +568,7 @@
 			--mos: #7fadd1;
 			--hostile: #d97f61;
 			--item: #cfa95c;
+			--gold: #e2b757;
 			--scroll-thumb: #3c4430;
 			--scroll-thumb-hover: #4f5940;
 			--shadow-1: 0 1px 2px rgb(0 0 0 / 0.35);
@@ -746,6 +780,97 @@
 		color: var(--ink-2);
 	}
 
+	/* ---------- list pages: /players, /entities, /items ----------
+	   One shape for the three. The toolbar and the table header stay put and
+	   only the rows scroll, so the table reaches the bottom of the window
+	   instead of floating above it, and runs the full width of the content
+	   area. The page takes what the shell leaves; anything above the rows (a
+	   toolbar, a note) keeps its own height and the rows take the rest. */
+	:global(.datapage) {
+		display: flex;
+		flex-direction: column;
+		/* exactly what the shell leaves, and the negative margin gives back the
+		   column's bottom padding: the last row ends on the window edge, with
+		   no strip of page under it */
+		height: calc(100dvh - var(--topbar-h) - var(--content-pad-top, 26px));
+		margin-bottom: calc(-1 * var(--content-pad-bottom, 72px));
+	}
+	:global(.datapage .dtools) {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 8px 14px;
+		/* breathing room between the toolbar and the table header */
+		margin-bottom: 12px;
+	}
+	/* whatever ends the toolbar — a pager, a count — holds the right end */
+	:global(.datapage .dtools .right) {
+		margin-left: auto;
+	}
+	:global(.datapage .dtools .chips) {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 7px;
+	}
+	:global(.datapage .dtools .pager) {
+		margin: 0;
+	}
+	:global(.datapage .dtools input[type='search']) {
+		min-width: 240px;
+	}
+	:global(.datapage .rows) {
+		flex: 1;
+		min-height: 0;
+		overflow: auto;
+		margin-inline: calc(-1 * var(--content-pad-x, 36px));
+		border-inline: none;
+		border-radius: 0;
+	}
+	:global(.datapage .rows thead th) {
+		position: sticky;
+		top: 0;
+		z-index: 2;
+		background: var(--surface-2);
+	}
+	/* a row's place in the current sort, not an identity: quiet */
+	:global(.datapage .rownum) {
+		color: var(--ink-3);
+	}
+	:global(.rowcount) {
+		font-family: var(--mono);
+		font-size: 11.5px;
+		color: var(--ink-3);
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+	}
+
+	/* Sortable headers look and behave the same whether the sort is a link
+	   (server-paged) or local state — the control fills the label, so the
+	   header reads as one word you can click and tab to. */
+	:global(table.data th.sortable) {
+		user-select: none;
+	}
+	:global(table.data th.sortable:hover) {
+		color: var(--ink);
+	}
+	:global(table.data th.sortable a),
+	:global(table.data th.sortable button) {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		font: inherit;
+		color: inherit;
+		background: none;
+		border: 0;
+		padding: 0;
+		cursor: pointer;
+		text-decoration: none;
+	}
+	:global(table.data th .dir) {
+		color: var(--accent);
+		font-size: 11px;
+	}
+
 	:global(.tag) {
 		display: inline-block;
 		font-family: var(--mono);
@@ -893,6 +1018,11 @@
 			--side-sb-w: 10px;
 			--nav-slot: 22px;
 			--nav-glyph: 16px;
+			/* the button says what it does next: close */
+			--burger-turn: 180deg;
+			--burger-fold: 6px;
+			--burger-cross: 45deg;
+			--burger-mid: 0;
 		}
 	}
 	@media (max-width: 899.98px) {
@@ -913,6 +1043,10 @@
 			--side-sb-w: 10px;
 			--nav-slot: 22px;
 			--nav-glyph: 16px;
+			--burger-turn: 180deg;
+			--burger-fold: 6px;
+			--burger-cross: 45deg;
+			--burger-mid: 0;
 		}
 	}
 
@@ -945,6 +1079,40 @@
 	.burger:hover {
 		background: var(--sidebar-2);
 		color: #fff;
+	}
+	/* Closed is the base state written here; the shell overrides these four
+	   variables while the nav is open, and the glyph takes the trip between
+	   them — the outer bars swing into the cross, the middle one goes, and
+	   the mark turns half a revolution on the way. */
+	.burger-glyph {
+		position: relative;
+		width: 20px;
+		height: 14px;
+		transform: rotate(var(--burger-turn, 0deg));
+		transition: transform 260ms cubic-bezier(0.2, 0.7, 0.3, 1);
+	}
+	.burger-glyph .bar {
+		position: absolute;
+		left: 0;
+		right: 0;
+		height: 2px;
+		border-radius: 2px;
+		background: currentColor;
+		transition: transform 260ms cubic-bezier(0.2, 0.7, 0.3, 1), opacity 160ms ease;
+	}
+	.burger-glyph .bar:nth-child(1) {
+		top: 0;
+		transform: translateY(var(--burger-fold, 0px)) rotate(var(--burger-cross, 0deg));
+	}
+	.burger-glyph .bar:nth-child(2) {
+		top: 6px;
+		opacity: var(--burger-mid, 1);
+		transform: scaleX(var(--burger-mid, 1));
+	}
+	.burger-glyph .bar:nth-child(3) {
+		top: 12px;
+		transform: translateY(calc(-1 * var(--burger-fold, 0px)))
+			rotate(calc(-1 * var(--burger-cross, 0deg)));
 	}
 	.brand-home {
 		display: flex;
@@ -1126,23 +1294,39 @@
 		cursor: pointer;
 	}
 
+	/* The rail's two scroll hints, registered so they can be transitioned:
+	   an unregistered custom property flips from one value to the next with
+	   nothing in between, and the edge would blink on. As numbers they
+	   interpolate, so the glow arrives and leaves. */
+	@property --hint-up {
+		syntax: '<number>';
+		inherits: false;
+		initial-value: 0;
+	}
+	@property --hint-down {
+		syntax: '<number>';
+		inherits: false;
+		initial-value: 0;
+	}
 	.sidebar {
 		flex: 0 0 var(--side-w);
 		display: flex;
 		flex-direction: column;
 		/* Once the scrollbar is hidden the rail gives no sign that it scrolls,
-		   so its edges carry it: a soft highlight top and bottom, over which
-		   the content slides and which it covers on arrival (the first two
-		   layers ride with the content, the next two are pinned to the box).
-		   No JS, and honest — each edge shows only while there is more that
-		   way. */
+		   so its edges carry it: a soft highlight pinned to the top and bottom
+		   of the box, each shown only while there is more content that way
+		   (syncHints sets the two variables from the scroll position). */
 		background:
-			linear-gradient(var(--sidebar) 30%, transparent) local top / 100% 26px no-repeat,
-			linear-gradient(transparent, var(--sidebar) 70%) local bottom / 100% 26px no-repeat,
-			linear-gradient(color-mix(in srgb, var(--accent) 45%, transparent), transparent) scroll top /
-				100% 16px no-repeat,
-			linear-gradient(transparent, color-mix(in srgb, var(--accent) 45%, transparent)) scroll
-				bottom / 100% 16px no-repeat,
+			linear-gradient(
+					color-mix(in srgb, var(--accent) calc(var(--hint-up, 0) * 45%), transparent),
+					transparent
+				)
+				scroll top / 100% 16px no-repeat,
+			linear-gradient(
+					transparent,
+					color-mix(in srgb, var(--accent) calc(var(--hint-down, 0) * 45%), transparent)
+				)
+				scroll bottom / 100% 16px no-repeat,
 			var(--sidebar);
 		color: var(--sidebar-ink);
 		overflow-y: auto;
@@ -1152,7 +1336,8 @@
 		padding: 14px var(--side-pad-x);
 		scrollbar-color: var(--sidebar-line) transparent;
 		scrollbar-width: var(--side-scrollbar);
-		transition: flex-basis 180ms ease, width 180ms ease, padding 180ms ease;
+		transition: flex-basis 180ms ease, width 180ms ease, padding 180ms ease,
+			--hint-up 220ms ease, --hint-down 220ms ease;
 	}
 	.nav-label,
 	.ver-code,
@@ -1331,6 +1516,11 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+	/* a step below the destinations: it is where the site's news lives, not
+	   another place to go */
+	.nav-ver {
+		margin-top: 5px;
 	}
 	.ver-code {
 		font-family: var(--mono);
