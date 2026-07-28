@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { units, categories, tagClass, weaponLabel, type Unit } from '$lib/units';
+	import Seo from '$lib/components/Seo.svelte';
 
 	let query = $state('');
 	let activeCats = $state<Set<string>>(new Set());
@@ -65,9 +66,10 @@
 	];
 </script>
 
-<svelte:head>
-	<title>All entities — UAR Unit Database</title>
-</svelte:head>
+<Seo
+	title="All entities"
+	description="All {units.length} entities extracted from Undead Assault Reborn — player classes, undead, items, deployables, projectiles and props — with stats, weapons and lineage."
+/>
 
 <div class="datapage">
 	<div class="dtools">

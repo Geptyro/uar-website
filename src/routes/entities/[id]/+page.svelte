@@ -4,6 +4,9 @@
 	import FactsCard, { type Fact } from '$lib/components/FactsCard.svelte';
 	import ModelCard from '$lib/components/ModelCard.svelte';
 	import DescCard from '$lib/components/DescCard.svelte';
+	import Seo from '$lib/components/Seo.svelte';
+	import { entityCardUrl, unitDescription } from '$lib/seo';
+	import { displayName } from '$lib/ogcard';
 
 	let { data } = $props();
 
@@ -39,9 +42,11 @@
 	]);
 </script>
 
-<svelte:head>
-	<title>{unit.name || unit.id} — UAR Unit Database</title>
-</svelte:head>
+<Seo
+	title={displayName(unit.name) || unit.id}
+	description={unitDescription(unit)}
+	image={entityCardUrl(unit.id)}
+/>
 
 <nav class="crumbs">
 	<a href="/entities">← All entities</a>

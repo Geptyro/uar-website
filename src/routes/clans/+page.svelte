@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { ClanSummary } from '$lib/clans';
+	import Seo from '$lib/components/Seo.svelte';
 
 	let { data } = $props();
 	const clans = $derived(data.clans);
@@ -48,9 +49,10 @@
 	});
 </script>
 
-<svelte:head>
-	<title>Clans — UAR Unit Database</title>
-</svelte:head>
+<Seo
+	title="Clans"
+	description="Clans seen in ingested Undead Assault Reborn replays, with their combined career XP, games, wins and top player."
+/>
 
 <p class="note">
 	Clans seen in ingested replays, grouped by the clan tag each player carried in their newest

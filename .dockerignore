@@ -1,0 +1,21 @@
+# The image installs its own dependencies (`npm ci` on Alpine, before this
+# context is copied). Letting the host's node_modules land on top of them
+# replaces musl-built native binaries with glibc ones — which is fine right
+# up until a dependency has a native binary, and then the build fails inside
+# the container for reasons nothing on the host can reproduce.
+node_modules
+
+# Build output, regenerated in the image. static/og is drawn by
+# scripts/build-og.ts as the first pass of the build.
+build
+.svelte-kit
+static/og
+
+# Never in an image.
+.env
+.env.*
+
+.git
+.github
+tests/integration
+static/replays/*.SC2Replay

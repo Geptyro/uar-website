@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { camos, specialCamos } from '$lib/unlocks';
+	import Seo from '$lib/components/Seo.svelte';
 
 	const special = specialCamos.filter((c) => !c.walkerOnly);
 	const walkerOnly = specialCamos.filter((c) => c.walkerOnly);
@@ -13,9 +14,10 @@
 	};
 </script>
 
-<svelte:head>
-	<title>Camouflages — UAR Unit Database</title>
-</svelte:head>
+<Seo
+	title="Camouflages"
+	description="Every armor camouflage in Undead Assault Reborn, with swatches straight from the game files: standard, walker-capable, and the special clan and event camos."
+/>
 
 <p class="note">
 	Armor camouflages are cosmetic unlocks picked from the Unlocks dialog (or the <code>-camo</code>

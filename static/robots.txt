@@ -1,3 +1,19 @@
-# allow crawling everything by default
+# The wiki, the player profiles and the clan pages are all fair game; the
+# sitemap lists every one of them, so nothing needs a query string to be found.
 User-agent: *
-Disallow:
+Allow: /
+
+# Endpoints, not pages.
+Disallow: /api/
+Disallow: /auth/
+
+# Yours alone, and nothing a search result could usefully point at.
+Disallow: /account
+
+# Every sort, search and page of the listing pages is the same page under a
+# different query. Blocking them keeps a crawler off the Mongo-backed routes,
+# which matters more here than usual: the cluster's read budget is small, and
+# crawling /players?sort=…&page=… would spend it on duplicates.
+Disallow: /*?
+
+Sitemap: https://uar.cedricdessalles.dev/sitemap.xml

@@ -2,6 +2,7 @@
 	import { rankFor, totalWins, totalXp, careerXp, type PlayerProfile } from '$lib/players';
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
 	import Pager from '$lib/components/Pager.svelte';
+	import Seo from '$lib/components/Seo.svelte';
 	import { goto } from '$app/navigation';
 	import { page as currentPage } from '$app/state';
 
@@ -68,9 +69,10 @@
 	const ingested = $derived(data.replayCount);
 </script>
 
-<svelte:head>
-	<title>Players — UAR Unit Database</title>
-</svelte:head>
+<Seo
+	title="Players"
+	description="Every player seen in an ingested Undead Assault Reborn replay, ranked by career XP: rank tracks, prestige, games played, wins and revives."
+/>
 
 <div class="datapage">
 <div class="dtools">

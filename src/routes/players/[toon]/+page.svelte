@@ -18,6 +18,8 @@
 	import Tooltip from '$lib/components/Tooltip.svelte';
 	import Pager from '$lib/components/Pager.svelte';
 	import OutcomeMark from '$lib/components/OutcomeMark.svelte';
+	import Seo from '$lib/components/Seo.svelte';
+	import { playerDescription } from '$lib/seo';
 	import { fmtDuration } from '$lib/outcome';
 
 	let { data } = $props();
@@ -196,9 +198,16 @@
 	}
 </script>
 
-<svelte:head>
-	<title>{p.name} — Players — UAR Unit Database</title>
-</svelte:head>
+<Seo
+	title="{p.name} — Players"
+	description={playerDescription({
+		name: p.name,
+		clan: p.clan,
+		gamesPlayed: p.gamesPlayed,
+		prestige: p.prestige,
+		wins: totalWins(p)
+	})}
+/>
 
 <div class="layout">
 	<div class="main">

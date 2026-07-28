@@ -11,6 +11,7 @@
 	import DescCard from '$lib/components/DescCard.svelte';
 	import ActivityChart from '$lib/components/ActivityChart.svelte';
 	import RecentGames from '$lib/components/RecentGames.svelte';
+	import Seo from '$lib/components/Seo.svelte';
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
 
 	let { data } = $props();
@@ -33,13 +34,10 @@
 		.sort((a, b) => (b.life ?? 0) - (a.life ?? 0));
 </script>
 
-<svelte:head>
-	<title>UAR Unit Database — Undead Assault Reborn</title>
-	<meta
-		name="description"
-		content="Unit database for the StarCraft II arcade map Undead Assault Reborn: MOS player classes, undead roster, items and weapons."
-	/>
-</svelte:head>
+<!-- the one page whose title is the brand rather than its subject -->
+<Seo
+	description="Unit database for the StarCraft II arcade map Undead Assault Reborn: player classes, undead roster, items and weapons, plus player profiles, clans and replays."
+/>
 
 <div class="layout">
 <div class="main">

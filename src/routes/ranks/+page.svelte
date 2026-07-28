@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { rankTracks } from '$lib/mos';
+	import Seo from '$lib/components/Seo.svelte';
 
 	const trackNotes: Record<number, string> = {
 		1: 'The starting track — 13 ranks from Private to Sergeant Major of the Army.',
@@ -8,9 +9,10 @@
 	};
 </script>
 
-<svelte:head>
-	<title>Ranks — UAR Unit Database</title>
-</svelte:head>
+<Seo
+	title="Rank sets"
+	description="The three rank tracks of Undead Assault Reborn — Enlisted, Warrant Officer, Commissioned Officer — with every rank, its XP threshold and its insignia."
+/>
 
 <p class="note">
 	Account XP is tracked separately in three rank sets. Ranks gate class unlocks, equipment and

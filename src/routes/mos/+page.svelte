@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { mosList } from '$lib/mos';
 	import { jamRangeFor, mechanicsFor, shotsPerJam } from '$lib/mechanics';
+	import Seo from '$lib/components/Seo.svelte';
 
 	type Row = {
 		id: string;
@@ -85,9 +86,10 @@
 	const pct = (v: number | null, m: number) => (v && m ? (100 * v) / m : 0);
 </script>
 
-<svelte:head>
-	<title>Classes compared — MOS — UAR Unit Database</title>
-</svelte:head>
+<Seo
+	title="Classes compared — MOS"
+	description="Weapon handling across every player class in Undead Assault Reborn: magazine size, reload, worst-case jam risk per shot and panel count, from the map script."
+/>
 
 <h2 class="section">Classes compared</h2>
 <p class="note">

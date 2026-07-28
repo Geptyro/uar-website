@@ -3,6 +3,7 @@
 	import { mosById, mosName, mosPageId } from '$lib/mos';
 	import { fmtDuration } from '$lib/outcome';
 	import OutcomeMark from '$lib/components/OutcomeMark.svelte';
+	import Seo from '$lib/components/Seo.svelte';
 
 	let { data } = $props();
 	const r = $derived(data.replay);
@@ -16,9 +17,15 @@
 	const players = $derived([...r.players].sort((a, b) => careerXp(b) - careerXp(a)));
 </script>
 
-<svelte:head>
-	<title>{when} — Replays — UAR Unit Database</title>
-</svelte:head>
+<!-- One page per game, and a new one after every upload. They are worth
+     serving and worth linking, but a search index full of them would bury the
+     wiki — and crawling them is the most expensive thing the database does. -->
+<Seo
+	title="{when} — Replays"
+	description="An ingested Undead Assault Reborn game from {when} UTC: {r.players
+		.length} player profiles, class picks, save data and the replay file."
+	noindex
+/>
 
 <div class="tiles">
 	<div class="tile"><b>{when}</b><span>game date · UTC</span></div>

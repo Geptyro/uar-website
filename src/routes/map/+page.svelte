@@ -11,6 +11,7 @@
 		type MapRegion,
 		type RegionCategory
 	} from '$lib/map';
+	import Seo from '$lib/components/Seo.svelte';
 
 	const categories = (
 		['landing zone', 'objective site', 'cache', 'defense', 'settlement', 'other'] as RegionCategory[]
@@ -84,9 +85,10 @@
 	const flip = (y: number) => mapSize - y;
 </script>
 
-<svelte:head>
-	<title>Map & missions — UAR Unit Database</title>
-</svelte:head>
+<Seo
+	title="Map & missions"
+	description="AO Thalim mapped: every named trigger region in Undead Assault Reborn and the missions that run in it, with their XP rewards, extracted from the map file."
+/>
 
 <p class="note">
 	AO Thalim with the {mapRegions.length} named trigger regions extracted from the map file, and the

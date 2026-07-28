@@ -1,14 +1,16 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { MESSAGE_MAX, NAME_MAX, CONTACT_MAX } from '$lib/feedback';
+	import Seo from '$lib/components/Seo.svelte';
 
 	let { form } = $props();
 	let sending = $state(false);
 </script>
 
-<svelte:head>
-	<title>Feedback — UAR Unit Database</title>
-</svelte:head>
+<Seo
+	title="Feedback"
+	description="Spotted a wrong stat, a missing unit, or have an idea for the UAR Unit Database? Send it straight to the maintainer."
+/>
 
 <p class="note">
 	Spotted a wrong stat, a missing unit, or have an idea for the site? Leave a note below — it goes

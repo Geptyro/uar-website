@@ -1,14 +1,16 @@
 <script lang="ts">
 	import { medals, decals, clanDecals, type Medal } from '$lib/unlocks';
+	import Seo from '$lib/components/Seo.svelte';
 
 	function xpLabel(m: Medal): string {
 		return m.xp.map((v) => `+${v.toLocaleString('en')} XP`).join(' / ');
 	}
 </script>
 
-<svelte:head>
-	<title>Medals & Decals — UAR Unit Database</title>
-</svelte:head>
+<Seo
+	title="Medals & decals"
+	description="Every medal and decal in Undead Assault Reborn: what each achievement asks for, the XP it awards, and the hero insignia it unlocks."
+/>
 
 <p class="note">
 	Medals are permanent account achievements, awarded in-game when their conditions are met — most

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
+	import Seo from '$lib/components/Seo.svelte';
 
 	let { data }: { data: PageData } = $props();
 	const release = $derived(data.release);
@@ -22,13 +23,10 @@
 	]);
 </script>
 
-<svelte:head>
-	<title>UAR Companion — UAR Unit Database</title>
-	<meta
-		name="description"
-		content="Free, open-source desktop companion for Undead Assault Reborn: uploads your replays automatically, flags you ready to play, and shows open lobbies and running games."
-	/>
-</svelte:head>
+<Seo
+	title="UAR Companion"
+	description="Free, open-source desktop app for Undead Assault Reborn: uploads your replays automatically, flags you ready to play, and shows open lobbies and running games."
+/>
 
 <p class="note">
 	<b>UAR Companion</b> is a small app for your PC that keeps this site in sync with your play. It runs

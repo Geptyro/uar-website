@@ -1,12 +1,14 @@
 <script lang="ts">
 	import ChangeChip from '$lib/components/ChangeChip.svelte';
+	import Seo from '$lib/components/Seo.svelte';
 
 	let { data } = $props();
 </script>
 
-<svelte:head>
-	<title>Changelog — UAR Unit Database</title>
-</svelte:head>
+<Seo
+	title="Changelog"
+	description="What changed on the UAR Unit Database, release by release: new pages, freshly extracted map data, and fixes."
+/>
 
 <p class="note">What changed on this site, release by release.</p>
 

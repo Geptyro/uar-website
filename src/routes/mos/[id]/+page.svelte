@@ -19,6 +19,8 @@
 	import Tooltip from '$lib/components/Tooltip.svelte';
 	import { mechanicsFor } from '$lib/mechanics';
 	import models from '$lib/data/models.json';
+	import Seo from '$lib/components/Seo.svelte';
+	import { mosCardUrl, mosDescription } from '$lib/seo';
 
 	let { data } = $props();
 
@@ -151,9 +153,7 @@
 	}
 </script>
 
-<svelte:head>
-	<title>{mos.name} — MOS — UAR Unit Database</title>
-</svelte:head>
+<Seo title="{mos.name} — MOS" description={mosDescription(mos)} image={mosCardUrl(mos.id)} />
 
 <!-- an item's card is its entity page; the handful that have no entity of
      their own (mission props) are named but not linked -->

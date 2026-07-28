@@ -2,6 +2,7 @@
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
 	import { onMount } from 'svelte';
 	import { rememberUmamiId } from '$lib/analytics';
+	import Seo from '$lib/components/Seo.svelte';
 
 	let { data } = $props();
 
@@ -52,9 +53,12 @@
 	});
 </script>
 
-<svelte:head>
-	<title>Account — UAR Unit Database</title>
-</svelte:head>
+<!-- yours alone: a real page, but nothing a search result could point at -->
+<Seo
+	title="Account"
+	description="Link your Battle.net StarCraft II profiles to their Undead Assault Reborn player pages, and pick the site's theme."
+	noindex
+/>
 
 <p class="eyebrow">Account</p>
 <!-- h2: the page's <h1> is the heading in the top bar -->

@@ -8,6 +8,7 @@
 	import { afterNavigate } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import { mosList, mosById } from '$lib/mos';
+	import { displayName } from '$lib/ogcard';
 	import { latestVersionInfo } from '$lib/changelog';
 	import { rememberUmamiId } from '$lib/analytics';
 	import ReadyToPlay from '$lib/components/ReadyToPlay.svelte';
@@ -189,8 +190,12 @@
 		if (p === '/') return { section: '', title: 'Overview' };
 		if (p === '/entities') return { section: '', title: 'All entities' };
 		if (p.startsWith('/entities/')) {
-			const id = decodeURIComponent(p.slice(7));
-			return { section: 'Entities', title: id };
+			// the loaded unit, not the path: the id is a map-internal symbol
+			// (SiegeTank) where the name is what the game calls it (AMX S-880),
+			// and this heading is the page's <h1>
+			const u = page.data.unit as { name?: string } | undefined;
+			const id = decodeURIComponent(p.slice('/entities/'.length));
+			return { section: 'Entities', title: displayName(u?.name ?? '') || id };
 		}
 		if (p === '/si') return { section: '', title: 'Skill Identifiers' };
 		if (p === '/ranks') return { section: '', title: 'Rank sets' };

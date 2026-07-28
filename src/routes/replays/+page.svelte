@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
+	import Seo from '$lib/components/Seo.svelte';
 
 	let uploading = $state(false);
 	let result = $state<{ ok: boolean; text: string } | null>(null);
@@ -48,9 +49,10 @@
 	}
 </script>
 
-<svelte:head>
-	<title>Replays — UAR Unit Database</title>
-</svelte:head>
+<Seo
+	title="Replays"
+	description="The Undead Assault Reborn replay archive behind the player profiles — browse ingested games, see who played and how each ended, or upload your own."
+/>
 
 <p class="note">
 	Replays are the data source for the <a href="/players">player profiles</a>: each game's save-file

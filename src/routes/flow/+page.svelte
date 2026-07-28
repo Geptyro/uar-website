@@ -11,6 +11,7 @@
 		timedStarts,
 		type FlowNode
 	} from '$lib/flow';
+	import Seo from '$lib/components/Seo.svelte';
 
 	let query = $state('');
 	let selectedId = $state<string>('gt_MayorGate');
@@ -204,9 +205,10 @@
 	});
 </script>
 
-<svelte:head>
-	<title>Mission flow — UAR Unit Database</title>
-</svelte:head>
+<Seo
+	title="Mission flow"
+	description="How missions start and chain in Undead Assault Reborn: every mission trigger with its arming events, the triggers it enables or shuts down, and its XP outcomes."
+/>
 
 <p class="note">
 	How missions start and chain, reconstructed from the map's trigger script: {flowNodes.length} mission-related

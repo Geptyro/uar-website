@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { rankFor, totalWins, careerXp } from '$lib/players';
+	import Seo from '$lib/components/Seo.svelte';
+	import { clanDescription } from '$lib/seo';
 
 	let { data } = $props();
 	const clan = $derived(data.clan);
@@ -10,9 +12,7 @@
 	}
 </script>
 
-<svelte:head>
-	<title>&lt;{clan.tag}&gt; — Clans — UAR Unit Database</title>
-</svelte:head>
+<Seo title="&lt;{clan.tag}&gt; — Clans" description={clanDescription(clan)} />
 
 <p class="note">
 	Players seen wearing the &lt;{clan.tag}&gt; tag in their newest ingested replay — snapshots of

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { skillIdentifiers, mosById, mosName, siXpLabel, type Si } from '$lib/mos';
+	import Seo from '$lib/components/Seo.svelte';
 
 	let filter = $state<'all' | 'universal' | 'class'>('all');
 
@@ -15,9 +16,10 @@
 
 </script>
 
-<svelte:head>
-	<title>Skill Identifiers — UAR Unit Database</title>
-</svelte:head>
+<Seo
+	title="Skill Identifiers"
+	description="Every Skill Identifier in Undead Assault Reborn: the permanent hero bonuses you pick two of per game, with the rank track and account XP each one unlocks at."
+/>
 
 <p class="note">
 	SIs are small permanent bonuses applied to your hero, chosen at the start of a game (max 2 per
