@@ -75,10 +75,15 @@
 
 <style>
 	.navprogress {
-		position: fixed;
-		top: 0;
+		/* absolute inside .topbar, sitting on its bottom edge: a loading bar
+		   belongs to the chrome it is loading under, not floating above the
+		   window — and this way it follows the taller topbar on narrow screens
+		   without knowing the height. -1px puts it over the header's border, so
+		   it reads as that line filling rather than as an extra strip. */
+		position: absolute;
+		bottom: -1px;
 		left: 0;
-		z-index: 100;
+		z-index: 5;
 		height: 3px;
 		width: var(--w);
 		background: var(--accent);

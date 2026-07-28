@@ -285,10 +285,9 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
-<NavProgress />
-
 <div class="shell" class:nav-open={navOpen === true} class:nav-closed={navOpen === false}>
 	<header class="topbar">
+		<NavProgress />
 		<button
 			class="burger"
 			onclick={toggleNav}
@@ -1138,6 +1137,9 @@
 	/* one line, always: only the crumb may shrink, everything else is nowrap
 	   and flex:none, and the chips go compact before the bar runs out of room */
 	.topbar {
+		/* containing block for the navigation progress bar, which rides on the
+		   header's bottom edge rather than floating above the window */
+		position: relative;
 		flex: 0 0 var(--topbar-h);
 		display: flex;
 		align-items: center;
