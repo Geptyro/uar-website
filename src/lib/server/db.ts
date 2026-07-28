@@ -702,9 +702,42 @@ export async function getReplayFacts(
 	});
 }
 
+/**
+ * Exactly the per-player fields one game's page shows. Notably not `unlocks`,
+ * which is around 62% of a replay document's bytes and which this page has
+ * never rendered — it was being read in full on every view because the read
+ * asked for the whole document.
+ */
+const REPLAY_DETAIL_PROJECTION = {
+	playedAt: 1,
+	title: 1,
+	baseBuild: 1,
+	size: 1,
+	durationLoops: 1,
+	outcome: 1,
+	settledOutcome: 1,
+	blobPrunedAt: 1,
+	'sightings.name': 1,
+	'sightings.clan': 1,
+	'sightings.toon': 1,
+	'sightings.mos': 1,
+	'sightings.xpEn': 1,
+	'sightings.xpWo': 1,
+	'sightings.xpCo': 1,
+	'sightings.prestige': 1,
+	'sightings.gamesPlayed': 1,
+	'sightings.revives': 1
+};
+
 export async function getReplay(file: string): Promise<ReplayDetail | null> {
+	return cached(`replay:${file}`, () => readReplay(file));
+}
+
+async function readReplay(file: string): Promise<ReplayDetail | null> {
 	const d = await db();
-	const doc = await d.collection<ReplayDoc>('replays').findOne({ _id: file });
+	const doc = await d
+		.collection<ReplayDoc>('replays')
+		.findOne({ _id: file }, { projection: REPLAY_DETAIL_PROJECTION });
 	if (!doc) return null;
 	return {
 		file: doc._id,
@@ -953,7 +986,7 @@ export async function upsertAccount(
 	await d
 		.collection<AccountDoc>('accounts')
 		.updateOne({ _id: sub }, { $set: set, $setOnInsert: { linkedAt: iso } }, { upsert: true });
-	invalidateCache('avatars', 'playerDirectory');
+	invalidateCache('avatars', 'playerDirectory', 'accountByToon');
 }
 
 /** The account's primary profile: first seen in UAR replays, else the first. */
@@ -1012,16 +1045,22 @@ export async function getAccount(sub: string): Promise<AccountDoc | null> {
 	return d.collection<AccountDoc>('accounts').findOne({ _id: sub });
 }
 
-/** The account that owns this toon, if anyone has linked it. */
+/**
+ * The account that owns this toon, if anyone has linked it. Read on every
+ * profile page and changed only by linking or unlinking, so it is cached and
+ * dropped by those two writes.
+ */
 export async function getAccountByToon(toon: string): Promise<AccountDoc | null> {
-	const d = await db();
-	return d.collection<AccountDoc>('accounts').findOne({ toons: toon });
+	return cached(`accountByToon:${toon}`, async () => {
+		const d = await db();
+		return d.collection<AccountDoc>('accounts').findOne({ toons: toon });
+	});
 }
 
 export async function deleteAccount(sub: string): Promise<void> {
 	const d = await db();
 	await d.collection<AccountDoc>('accounts').deleteOne({ _id: sub });
-	invalidateCache('avatars', 'playerDirectory');
+	invalidateCache('avatars', 'playerDirectory', 'accountByToon');
 }
 
 /**
