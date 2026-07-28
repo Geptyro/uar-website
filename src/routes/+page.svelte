@@ -15,6 +15,8 @@
 
 	let { data } = $props();
 
+	const COMPANION_REPO = 'https://github.com/Geptyro/uar-companion';
+
 	const unitById = new Map(units.map((u) => [u.id, u]));
 
 	const mosUnits = units
@@ -172,33 +174,48 @@
 	<!-- Every board on this page is only as good as the replays we get, so the
 	     one thing a visitor can *do* about that heads the column — green and
 	     filled, the only call to action on the page. -->
-	<a class="promo" href="/companion">
-		<span class="promo-label">
-			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
-				stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-				<rect x="2" y="3" width="20" height="14" rx="2" />
-				<line x1="8" y1="21" x2="16" y2="21" />
-				<line x1="12" y1="17" x2="12" y2="21" />
+	<div class="promo">
+		<a class="promo-main" href="/companion">
+			<span class="promo-label">
+				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+					stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<rect x="2" y="3" width="20" height="14" rx="2" />
+					<line x1="8" y1="21" x2="16" y2="21" />
+					<line x1="12" y1="17" x2="12" y2="21" />
+				</svg>
+				Help the stats
+			</span>
+			<!-- short enough to hold one line in a 290px column: at 13.5px the box
+			     fits ~36 characters, and a headline that wraps to a two-word second
+			     line is the loudest ragged edge on the card -->
+			<strong class="promo-title">Every game counts — once uploaded.</strong>
+			<span class="promo-text">
+				<b>UAR Companion</b> is a tray app that:
+			</span>
+			<!-- one line each, verb first, near enough the same length: in a 290px
+			     column a bullet that wraps leaves a short second line, and three of
+			     those read as six ragged lines rather than three points -->
+			<ul class="promo-list">
+				<li>pings you when a lobby opens</li>
+				<li>uploads your replays for you</li>
+				<li>flags you ready in one click</li>
+			</ul>
+			<span class="promo-cta">Get the app — Windows, Linux, macOS →</span>
+		</a>
+		<!-- the app asks to run on their machine and watch their replay folder, so
+		     the reassurance sits under the button where the doubt lands — and it
+		     goes straight to the repo, so it can be checked rather than believed.
+		     A real link, hence its own <a> beside (not inside) the card link. -->
+		<a class="promo-oss" href={COMPANION_REPO} target="_blank" rel="noopener">
+			<svg viewBox="0 0 16 16" aria-hidden="true">
+				<path
+					fill-rule="evenodd"
+					d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
+				/>
 			</svg>
-			Help the stats
-		</span>
-		<!-- short enough to hold one line in a 290px column: at 13.5px the box
-		     fits ~36 characters, and a headline that wraps to a two-word second
-		     line is the loudest ragged edge on the card -->
-		<strong class="promo-title">Every game counts — once uploaded.</strong>
-		<span class="promo-text">
-			<b>UAR Companion</b> is a tray app that:
-		</span>
-		<!-- one line each, verb first, near enough the same length: in a 290px
-		     column a bullet that wraps leaves a short second line, and three of
-		     those read as six ragged lines rather than three points -->
-		<ul class="promo-list">
-			<li>pings you when a lobby opens</li>
-			<li>uploads your replays for you</li>
-			<li>flags you ready in one click</li>
-		</ul>
-		<span class="promo-cta">Get the app — Windows, Linux, macOS →</span>
-	</a>
+			Free &amp; open source on GitHub ↗
+		</a>
+	</div>
 
 	<!-- Prestige is the rarest thing a player does, so it heads the boards,
 	     then the games those boards were aggregated from, and what shipped
@@ -330,24 +347,22 @@
 	   tinted card with an accent edge, and a filled bar at its foot so it
 	   reads as a button and not another read-only widget */
 	.promo {
-		display: block;
 		background:
 			linear-gradient(150deg, color-mix(in srgb, var(--accent) 16%, transparent), transparent 65%),
 			var(--accent-soft);
 		border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
 		border-radius: var(--r);
 		padding: 10px var(--card-pad-x) 11px;
+		/* the GitHub row bleeds to the card's edges — clip it to the radius */
+		overflow: hidden;
+	}
+	/* the card itself never reacts: it holds two destinations now, so lifting the
+	   whole thing under either one says "you are about to click this card" when
+	   what you are about to click is one row of it */
+	.promo-main {
+		display: block;
 		text-decoration: none;
 		color: inherit;
-		transition:
-			border-color 140ms ease,
-			box-shadow 140ms ease,
-			transform 140ms ease;
-	}
-	.promo:hover {
-		border-color: var(--accent);
-		box-shadow: var(--shadow-2);
-		transform: translateY(-1px);
 	}
 	.promo-label {
 		display: flex;
@@ -428,8 +443,41 @@
 		font-weight: 600;
 		text-align: center;
 	}
-	.promo:hover .promo-cta {
+	.promo-main:hover .promo-cta {
 		background: var(--accent-hover);
+	}
+	/* a second, quieter destination under the button: hairline off the CTA so it
+	   reads as part of the card, not a stray link under it */
+	/* bled out to the card's edges so its hover is a band across the foot of the
+	   card — an underline or a colour shift alone is too quiet to read as the
+	   second clickable thing sitting under a filled button */
+	.promo-oss {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 6px;
+		margin: 9px calc(-1 * var(--card-pad-x)) -11px;
+		padding: 9px var(--card-pad-x) 11px;
+		border-top: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+		border-radius: 0 0 calc(var(--r) - 1px) calc(var(--r) - 1px);
+		font-size: 12.5px;
+		font-weight: 550;
+		line-height: 1.3;
+		color: var(--ink-2);
+		text-decoration: none;
+		transition:
+			background 140ms ease,
+			color 140ms ease;
+	}
+	.promo-oss:hover {
+		background: color-mix(in srgb, var(--accent) 20%, transparent);
+		color: var(--accent);
+	}
+	.promo-oss svg {
+		width: 14px;
+		height: 14px;
+		fill: currentColor;
+		flex-shrink: 0;
 	}
 
 	/* the one place the site goes gold, with a sheen across it. In the column
