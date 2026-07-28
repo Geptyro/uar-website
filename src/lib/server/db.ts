@@ -175,9 +175,25 @@ export async function closeDb(): Promise<void> {
 	await c.close();
 }
 
-// short read cache: the always-on machine serves every page view, and
-// player data only changes on upload (which invalidates explicitly)
-const TTL_MS = 30_000;
+/**
+ * How long a cached value is served without rechecking.
+ *
+ * What keeps this cache honest is `invalidateCache`, not the clock: every
+ * write path clears it, so data that only changes on upload — replays,
+ * profiles, clans, the class boards — cannot go stale between uploads however
+ * long the TTL is. A short TTL there buys nothing and costs a re-read.
+ *
+ * The clock only matters for the things nothing in this process invalidates:
+ * feedback triage (written straight to Atlas by the admin tool), the ready and
+ * presence flags (which expire on a timestamp), and the windowed boards (whose
+ * window slides even when the data behind it does not).
+ */
+const TTL_MS = 10 * 60_000;
+/** Keys whose value ages on its own, and so cannot rely on invalidation. */
+const SHORT_TTL_KEYS = new Set(['ready', 'presence', 'weeklyBoards']);
+const SHORT_TTL_MS = 30_000;
+const ttlFor = (key: string) =>
+	SHORT_TTL_KEYS.has(key) || key.startsWith('replays:activity') ? SHORT_TTL_MS : TTL_MS;
 /**
  * How long a stale entry may still be served while its refresh runs. Past the
  * TTL the value is refetched, but nobody is made to *wait* for that refetch —
@@ -205,6 +221,48 @@ function touch(key: string, entry: { at: number; value: unknown }): void {
 	while (cache.size > MAX_ENTRIES) cache.delete(cache.keys().next().value as string);
 }
 
+/**
+ * Cache telemetry, grouped by the kind of key rather than the key itself.
+ *
+ * Per-key would be the wrong grain: with hundreds of players against an LRU of
+ * a few hundred entries, most keys are evicted long before they say anything.
+ * By category it answers the questions worth asking — is a TTL set wrong, and
+ * which reads are actually expensive.
+ *
+ * In memory only, and deliberately so: persisting it would mean writing to the
+ * very database this cache exists to read less of.
+ */
+interface CacheStat {
+	hits: number;
+	stale: number;
+	builds: number;
+	totalMs: number;
+	maxMs: number;
+}
+const stats = new Map<string, CacheStat>();
+
+/** `playerHistory:2-S2-1-7486118:3` -> `playerHistory`. */
+const categoryOf = (key: string) => key.split(':')[0];
+
+function stat(key: string): CacheStat {
+	const c = categoryOf(key);
+	let s = stats.get(c);
+	if (!s) stats.set(c, (s = { hits: 0, stale: 0, builds: 0, totalMs: 0, maxMs: 0 }));
+	return s;
+}
+
+/** One line per category: hit rate, and what a miss costs. */
+export function cacheStats(): string[] {
+	return [...stats.entries()]
+		.sort((a, b) => b[1].hits + b[1].builds - (a[1].hits + a[1].builds))
+		.map(([name, s]) => {
+			const total = s.hits + s.stale + s.builds;
+			const pct = total ? Math.round((s.hits / total) * 100) : 0;
+			const avg = s.builds ? Math.round(s.totalMs / s.builds) : 0;
+			return `${name}: ${pct}% hit (${s.hits} hit, ${s.stale} stale, ${s.builds} built) build avg ${avg}ms max ${Math.round(s.maxMs)}ms`;
+		});
+}
+
 /** Reads currently in flight, so N concurrent misses share one query. */
 const inFlight = new Map<string, { gen: number; promise: Promise<unknown> }>();
 /** Bumped by every invalidation, so a read cannot cache pre-write data. */
@@ -214,10 +272,16 @@ function refresh<T>(key: string, load: () => Promise<T>): Promise<T> {
 	const running = inFlight.get(key);
 	if (running && running.gen === generation) return running.promise as Promise<T>;
 	const gen = generation;
+	const startedAt = Date.now();
 	const entry = {
 		gen,
 		promise: load()
 			.then((value) => {
+				const took = Date.now() - startedAt;
+				const s = stat(key);
+				s.builds++;
+				s.totalMs += took;
+				if (took > s.maxMs) s.maxMs = took;
 				// a write landed while this read was in flight, so what it read is
 				// already out of date: hand it back, but do not cache it
 				if (gen === generation) touch(key, { at: Date.now(), value });
@@ -235,11 +299,13 @@ async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
 	const hit = cache.get(key);
 	if (hit) {
 		const age = Date.now() - hit.at;
-		if (age < TTL_MS) {
+		if (age < ttlFor(key)) {
+			stat(key).hits++;
 			touch(key, hit); // keep hot entries out of the LRU's way
 			return hit.value as T;
 		}
 		if (age < STALE_MS) {
+			stat(key).stale++;
 			// serve what we have and let the refresh finish in the background;
 			// a failed refresh just leaves the stale value for the next attempt
 			void refresh(key, load).catch(() => {});
@@ -375,13 +441,6 @@ export async function getPlayersPage(opts: {
 			.toArray()) as Record<string, unknown>[];
 	const rows = await cached(`players:${field}:${opts.dir}:${page}:${opts.q}`, read);
 	return { rows, page, pages, total, perPage: PER_PAGE };
-}
-
-export async function getPlayer(toon: string): Promise<Record<string, unknown> | null> {
-	return cached(`player:${toon}`, async () => {
-		const d = await db();
-		return d.collection('players').findOne({ _id: toon } as never, { projection: { _id: 0 } });
-	});
 }
 
 /**
@@ -842,7 +901,7 @@ export async function upsertAccount(
 /** The account's primary profile: first seen in UAR replays, else the first. */
 export async function pickPrimaryProfile(profiles: Sc2Profile[]): Promise<Sc2Profile | undefined> {
 	for (const p of profiles) {
-		if (await getPlayer(p.toon)) return p;
+		if (await getPlayerSummary(p.toon)) return p;
 	}
 	return profiles[0];
 }

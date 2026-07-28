@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import { bnetConfigured } from '$lib/server/bnet';
-import { dbConfigured, deleteAccount, getAccount, getPlayer } from '$lib/server/db';
+import { dbConfigured, deleteAccount, getAccount, getPlayerSummary } from '$lib/server/db';
 import { clearSession } from '$lib/server/session';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -29,7 +29,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const linked: LinkedToon[] = account
 		? await Promise.all(
 				account.profiles.map(async (p) => {
-					const player = (await getPlayer(p.toon)) as {
+					const player = (await getPlayerSummary(p.toon)) as {
 						name: string;
 						clan: string;
 						gamesPlayed: number;
