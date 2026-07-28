@@ -17,14 +17,23 @@
 import { MongoClient, type Db } from 'mongodb';
 import type { Sc2Profile } from './bnet.ts';
 import { buildPlayersData, type ReplaySighting } from './replay/extract.ts';
-import { replayOutcomes, type Outcome } from '../outcome.ts';
+import { outcomeChanges, type Outcome } from '../outcome.ts';
+import { PER_PAGE, pageNumber, type Paged } from '../paging.ts';
+import { escapeRegex } from '../search.ts';
+import { careerXp, totalWins } from '../xp.ts';
 import { bucketConfigured, deleteObject } from './replay/s3.ts';
 import { prunableReplays } from '../replayRetention.ts';
 import { withLock } from '../mutex.ts';
 import { topPlayersByMos } from './playtime.ts';
 import { topTeammates } from './teammates.ts';
-import { weeklyBoards } from './weekly.ts';
-import type { MosTopPlayer, ReplayDetail, Teammate, WeeklyBoards } from '../players.ts';
+import { WINDOW_MS, weeklyBoards } from './weekly.ts';
+import type {
+	MosTopPlayer,
+	ReplayDetail,
+	ReplayMeta,
+	Teammate,
+	WeeklyBoards
+} from '../players.ts';
 
 export interface ReplayDoc {
 	_id: string; // file name, YYYYMMDD-HHMM.SC2Replay
@@ -47,6 +56,14 @@ export interface ReplayDoc {
 	 * instead, so this is a hint, not the answer.
 	 */
 	outcome?: Outcome;
+	/**
+	 * The settled result, written by `rebuildPlayers` from the save-file
+	 * counters across every stored game (see lib/outcome.ts). Derived, never
+	 * authored: it exists so a page can render an outcome without the whole
+	 * archive being read to re-derive it on every view. Absent until the game
+	 * is settleable — nobody has played a follow-up yet.
+	 */
+	settledOutcome?: Outcome;
 	/**
 	 * When the bucket blob was dropped by the retention sweep, ISO. Absent
 	 * means the bytes are still downloadable. The doc itself is never
@@ -117,30 +134,118 @@ export async function db(): Promise<Db> {
 	return client.db(process.env.MONGODB_DB || 'uar');
 }
 
+/**
+ * Drop the shared pool. The server never calls this — it holds one client for
+ * its whole life — but a CLI that touched this module otherwise never exits,
+ * because the pool keeps the event loop alive and its connections keep sitting
+ * against the cluster's connection budget.
+ */
+export async function closeDb(): Promise<void> {
+	if (!client) return;
+	const c = client;
+	client = null;
+	await c.close();
+}
+
 // short read cache: the always-on machine serves every page view, and
 // player data only changes on upload (which invalidates explicitly)
 const TTL_MS = 30_000;
+/**
+ * How long a stale entry may still be served while its refresh runs. Past the
+ * TTL the value is refetched, but nobody is made to *wait* for that refetch —
+ * otherwise whichever page view happens to land on the expiry pays the whole
+ * read, which is exactly how a slow query turns into a random multi-second
+ * stall for one unlucky visitor.
+ */
+const STALE_MS = 5 * 60_000;
 const cache = new Map<string, { at: number; value: unknown }>();
+/** Reads currently in flight, so N concurrent misses share one query. */
+const inFlight = new Map<string, { gen: number; promise: Promise<unknown> }>();
+/** Bumped by every invalidation, so a read cannot cache pre-write data. */
+let generation = 0;
+
+function refresh<T>(key: string, load: () => Promise<T>): Promise<T> {
+	const running = inFlight.get(key);
+	if (running && running.gen === generation) return running.promise as Promise<T>;
+	const gen = generation;
+	const entry = {
+		gen,
+		promise: load()
+			.then((value) => {
+				// a write landed while this read was in flight, so what it read is
+				// already out of date: hand it back, but do not cache it
+				if (gen === generation) cache.set(key, { at: Date.now(), value });
+				return value;
+			})
+			.finally(() => {
+				if (inFlight.get(key) === entry) inFlight.delete(key);
+			})
+	};
+	inFlight.set(key, entry);
+	return entry.promise as Promise<T>;
+}
 
 async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
 	const hit = cache.get(key);
-	if (hit && Date.now() - hit.at < TTL_MS) return hit.value as T;
-	const value = await load();
-	cache.set(key, { at: Date.now(), value });
-	return value;
+	if (hit) {
+		const age = Date.now() - hit.at;
+		if (age < TTL_MS) return hit.value as T;
+		if (age < STALE_MS) {
+			// serve what we have and let the refresh finish in the background;
+			// a failed refresh just leaves the stale value for the next attempt
+			void refresh(key, load).catch(() => {});
+			return hit.value as T;
+		}
+	}
+	return refresh(key, load);
 }
 
 export function invalidateCache(): void {
+	generation++;
 	cache.clear();
 }
 
-export async function getPlayers(): Promise<Record<string, unknown>[]> {
-	return cached('players', async () => {
+/** Exactly the fields `buildClans` reads — see `ClanMember` in $lib/clans.ts. */
+const CLAN_PROJECTION = {
+	_id: 0,
+	name: 1,
+	clan: 1,
+	toon: 1,
+	xpEn: 1,
+	xpWo: 1,
+	xpCo: 1,
+	prestige: 1,
+	gamesPlayed: 1,
+	revives: 1,
+	avgGameTime: 1,
+	winsByMode: 1,
+	lastSeen: 1
+};
+
+/**
+ * Members of one clan, or every player who is in a clan when `tag` is omitted.
+ *
+ * The clan boards used to read every profile whole — history, unlocks and all,
+ * ~2 MB — to compute sums over eleven small fields. One clan's roster is a
+ * handful of documents.
+ *
+ * The single-clan read is uncached on purpose: `tag` comes from the URL, and
+ * keying the cache on visitor input would grow the map without bound.
+ */
+export async function getClanMembers(tag?: string): Promise<Record<string, unknown>[]> {
+	const read = async () => {
 		const d = await db();
-		return d.collection('players').find({}, { projection: { _id: 0 } }).toArray() as Promise<
-			Record<string, unknown>[]
-		>;
-	});
+		return d
+			.collection('players')
+			.find(tag ? { clan: tag } : { clan: { $nin: ['', null] } }, { projection: CLAN_PROJECTION })
+			.toArray() as Promise<Record<string, unknown>[]>;
+	};
+	return tag ? read() : cached('clans:members', read);
+}
+
+/** Total profiles on record — a counter, not a reason to read the collection. */
+export async function countPlayers(): Promise<number> {
+	return cached('players:count', async () => (await db()).collection('players').countDocuments({}));
 }
 
 /**
@@ -148,14 +253,83 @@ export async function getPlayers(): Promise<Record<string, unknown>[]> {
  * are only needed on a profile page, and carrying them for every player
  * made the leaderboard payload grow with the archive.
  */
-export async function getPlayersLite(): Promise<Record<string, unknown>[]> {
-	return cached('playersLite', async () => {
-		const d = await db();
-		return d
-			.collection('players')
-			.find({}, { projection: { _id: 0, history: 0, unlocks: 0 } })
-			.toArray() as Promise<Record<string, unknown>[]>;
-	});
+const PLAYER_LIST_PROJECTION = { _id: 0, history: 0, unlocks: 0 };
+
+/**
+ * Leaderboard column -> the field Mongo sorts on. Two of them are stored only
+ * so this mapping can exist: `careerXp` and `totalWins` are derived, and
+ * sorting the whole table in JS meant reading the whole table (see
+ * `withSortKeys`).
+ */
+const PLAYER_SORT_FIELDS: Record<string, string> = {
+	name: 'name',
+	career: 'careerXp',
+	xpEn: 'xpEn',
+	xpWo: 'xpWo',
+	xpCo: 'xpCo',
+	prestige: 'prestige',
+	games: 'gamesPlayed',
+	wins: 'totalWins',
+	revives: 'revives',
+	avg: 'avgGameTime'
+};
+
+/** Matches the old in-JS filter: name/clan case-insensitive, toon exact-case. */
+function playerSearchFilter(q: string): Record<string, unknown> {
+	if (!q) return {};
+	const rx = escapeRegex(q);
+	return {
+		$or: [
+			{ name: { $regex: rx, $options: 'i' } },
+			{ clan: { $regex: rx, $options: 'i' } },
+			{ toon: { $regex: rx } }
+		]
+	};
+}
+
+/**
+ * One page of the leaderboard, sorted, searched and paged by the database.
+ *
+ * Only the unsearched view is cached: the cache is keyed by string, and a
+ * visitor-supplied `q` would let arbitrary queries grow the map without bound.
+ * The read is one page either way.
+ */
+export async function getPlayersPage(opts: {
+	sort: string;
+	dir: 1 | -1;
+	q: string;
+	page: string | null;
+}): Promise<Paged<Record<string, unknown>>> {
+	const field = PLAYER_SORT_FIELDS[opts.sort] ?? 'careerXp';
+	const filter = playerSearchFilter(opts.q);
+	const d = await db();
+	const col = d.collection('players');
+	const total = opts.q ? await col.countDocuments(filter) : await countPlayers();
+	const pages = Math.max(1, Math.ceil(total / PER_PAGE));
+	// clamp before keying the cache — `?page=` is visitor input
+	const page = pageNumber(opts.page, pages);
+	// `_id` last makes the order total. Without it, players tied on the sort
+	// column (plenty share 0 games / 0 career XP) come back in an arbitrary
+	// order that can differ between queries — and once paging happens in the
+	// database rather than over one sorted array, that means a row can show up
+	// on two pages or on none. The careerXp tiebreak is skipped when it is
+	// already the sort column, or the duplicate key would drop the direction.
+	const sortSpec: Record<string, 1 | -1> =
+		field === 'careerXp'
+			? { careerXp: opts.dir, _id: 1 }
+			: { [field]: opts.dir, careerXp: -1, _id: 1 };
+	const read = async () =>
+		(await col
+			.find(filter, { projection: PLAYER_LIST_PROJECTION })
+			// the name column sorted case-insensitively in JS; collation is how
+			// the database does the same
+			.collation({ locale: 'en', strength: 2 })
+			.sort(sortSpec)
+			.skip((page - 1) * PER_PAGE)
+			.limit(PER_PAGE)
+			.toArray()) as Record<string, unknown>[];
+	const rows = opts.q ? await read() : await cached(`players:${field}:${opts.dir}:${page}`, read);
+	return { rows, page, pages, total, perPage: PER_PAGE };
 }
 
 export async function getPlayer(toon: string): Promise<Record<string, unknown> | null> {
@@ -163,88 +337,157 @@ export async function getPlayer(toon: string): Promise<Record<string, unknown> |
 	return d.collection('players').findOne({ _id: toon } as never, { projection: { _id: 0 } });
 }
 
-export async function getReplaysList(): Promise<
-	{
-		file: string;
-		playedAt: string;
-		players: number;
-		size: number;
-		durationLoops: number;
-		blobPruned: boolean;
-		outcome?: Outcome;
-	}[]
-> {
-	return cached('replays', async () => {
+/**
+ * The fields a replay list row renders. Deliberately no sightings: they are
+ * ~95% of a replay doc's bytes, and since `rebuildPlayers` settles outcomes
+ * onto the doc, no read path needs them to work out who won.
+ */
+const LIST_PROJECTION = {
+	playedAt: 1,
+	players: 1,
+	size: 1,
+	durationLoops: 1,
+	blobPrunedAt: 1,
+	outcome: 1,
+	settledOutcome: 1
+};
+
+/**
+ * The settled result if the counters have decided one, else whatever the
+ * parser read out of the file. Same precedence as `replayOutcomes`, which
+ * prefers its cross-replay verdict and falls back to the parser's hint.
+ */
+function replayOutcomeOf(r: Pick<ReplayDoc, 'settledOutcome' | 'outcome'>): Outcome | undefined {
+	return r.settledOutcome ?? r.outcome;
+}
+
+function toRow(r: ReplayDoc): ReplayMeta {
+	const outcome = replayOutcomeOf(r);
+	return {
+		file: r._id,
+		playedAt: r.playedAt,
+		players: r.players,
+		size: r.size,
+		durationLoops: r.durationLoops ?? 0,
+		blobPruned: Boolean(r.blobPrunedAt),
+		...(outcome ? { outcome } : {})
+	};
+}
+
+/**
+ * One page of replays, newest first, read as one page from the database
+ * rather than by slicing the whole archive. `countDocuments` costs a single
+ * server-side count and keeps the numbered pager honest.
+ */
+export async function getReplaysPage(
+	rawPage: string | null,
+	perPage = PER_PAGE
+): Promise<Paged<ReplayMeta>> {
+	const total = await cached('replays:count', async () => {
 		const d = await db();
-		// inclusion projection: outcomes need each game's win counters, which
-		// live on the sightings — reading the three fields that settle them is
-		// far cheaper than carrying the sightings whole
+		return d.collection<ReplayDoc>('replays').countDocuments({});
+	});
+	const pages = Math.max(1, Math.ceil(total / perPage));
+	// clamp before keying the cache: `?page=` is visitor input, and keying on
+	// the raw value would let junk query strings grow the map without bound
+	const page = pageNumber(rawPage, pages);
+	const rows = await cached(`replays:page:${page}:${perPage}`, async () => {
+		const d = await db();
 		const docs = await d
 			.collection<ReplayDoc>('replays')
-			.find(
-				{},
-				{
-					projection: {
-						playedAt: 1,
-						players: 1,
-						size: 1,
-						durationLoops: 1,
-						blobPrunedAt: 1,
-						outcome: 1,
-						'sightings.toon': 1,
-						'sightings.winsByMode': 1,
-						'sightings.gamesPlayed': 1
-					}
-				}
-			)
-			.sort({ playedAt: 1 })
+			.find({}, { projection: LIST_PROJECTION })
+			// `_id` breaks ties on the minute-resolution timestamp, so paging
+			// cannot show the same game twice or skip one (see getPlayersPage)
+			.sort({ playedAt: -1, _id: -1 })
+			.skip((page - 1) * perPage)
+			.limit(perPage)
 			.toArray();
-		const outcomes = replayOutcomes(
-			docs.map((r) => ({
-				file: r._id,
-				playedAt: r.playedAt,
-				outcome: r.outcome,
-				sightings: (r.sightings ?? []).map((s) => ({
-					toon: s.toon,
-					wins: (s.winsByMode ?? []).reduce((a, b) => a + b, 0),
-					gamesPlayed: s.gamesPlayed
-				}))
-			}))
-		);
-		return docs.map((r) => ({
-			file: r._id,
-			playedAt: r.playedAt,
-			players: r.players,
-			size: r.size,
-			durationLoops: r.durationLoops ?? 0,
-			blobPruned: Boolean(r.blobPrunedAt),
-			...(outcomes[r._id] ? { outcome: outcomes[r._id] } : {})
-		}));
+		return docs.map(toRow);
+	});
+	return { rows, page, pages, total, perPage };
+}
+
+/** The newest `n` games, for the homepage's Last games widget. */
+export async function getRecentReplays(n: number): Promise<ReplayMeta[]> {
+	return cached(`replays:recent:${n}`, async () => {
+		const d = await db();
+		const docs = await d
+			.collection<ReplayDoc>('replays')
+			.find({}, { projection: LIST_PROJECTION })
+			.sort({ playedAt: -1 })
+			.limit(n)
+			.toArray();
+		return docs.map(toRow);
 	});
 }
 
 /**
- * file -> outcome and recording length, for pages that show individual games
- * without loading the whole list (a profile's replay history, one replay's
- * page). Shares the cached list read above, so it costs nothing extra.
+ * Games overlapping the activity chart's trailing window. Reaches a day
+ * further back than the window itself because a game that started before it
+ * still credits the slots it runs into — `activityTimeline` clips such games
+ * to the window rather than dropping them, and caps any one game at a day.
  */
-export async function getReplayFacts(): Promise<
-	Record<string, { durationLoops: number; outcome?: Outcome }>
-> {
-	const rows = await getReplaysList();
+export async function getActivityReplays(
+	days: number
+): Promise<{ playedAt: string; players: number; durationLoops?: number }[]> {
+	return cached(`replays:activity:${days}`, async () => {
+		const d = await db();
+		const since = new Date(Date.now() - (days + 1) * 24 * 3600 * 1000)
+			.toISOString()
+			.slice(0, 19) + 'Z'; // same fixed-width shape the ingest writes
+		return d
+			.collection<ReplayDoc>('replays')
+			.find(
+				{ playedAt: { $gte: since } },
+				{ projection: { playedAt: 1, players: 1, durationLoops: 1 } }
+			)
+			.sort({ playedAt: 1 })
+			.toArray() as Promise<{ playedAt: string; players: number; durationLoops?: number }[]>;
+	});
+}
+
+/** Archive-wide counters for the leaderboard header — two server-side reads. */
+export async function getReplayStats(): Promise<{ count: number; latest: string }> {
+	return cached('replays:stats', async () => {
+		const d = await db();
+		const col = d.collection<ReplayDoc>('replays');
+		const [count, newest] = await Promise.all([
+			col.countDocuments({ players: { $gt: 0 } }),
+			col.find({}, { projection: { playedAt: 1 } }).sort({ playedAt: -1 }).limit(1).toArray()
+		]);
+		return { count, latest: newest[0]?.playedAt?.slice(0, 10) ?? '' };
+	});
+}
+
+/**
+ * file -> outcome and recording length, for pages that show individual games:
+ * a profile's replay history, one replay's page. Takes the files the caller
+ * already knows it will render, so the read scales with the page and not with
+ * the archive.
+ */
+export async function getReplayFacts(
+	files: string[]
+): Promise<Record<string, { durationLoops: number; outcome?: Outcome }>> {
 	const map: Record<string, { durationLoops: number; outcome?: Outcome }> = {};
-	for (const r of rows) {
-		map[r.file] = { durationLoops: r.durationLoops, ...(r.outcome ? { outcome: r.outcome } : {}) };
+	if (!files.length) return map;
+	const d = await db();
+	const docs = await d
+		.collection<ReplayDoc>('replays')
+		.find(
+			{ _id: { $in: files } },
+			{ projection: { durationLoops: 1, outcome: 1, settledOutcome: 1 } }
+		)
+		.toArray();
+	for (const r of docs) {
+		const outcome = replayOutcomeOf(r);
+		map[r._id] = { durationLoops: r.durationLoops ?? 0, ...(outcome ? { outcome } : {}) };
 	}
 	return map;
 }
 
 export async function getReplay(file: string): Promise<ReplayDetail | null> {
 	const d = await db();
-	const [doc, facts] = await Promise.all([
-		d.collection<ReplayDoc>('replays').findOne({ _id: file }),
-		getReplayFacts()
-	]);
+	const doc = await d.collection<ReplayDoc>('replays').findOne({ _id: file });
 	if (!doc) return null;
 	return {
 		file: doc._id,
@@ -253,7 +496,9 @@ export async function getReplay(file: string): Promise<ReplayDetail | null> {
 		baseBuild: doc.baseBuild,
 		size: doc.size,
 		durationLoops: doc.durationLoops ?? 0,
-		outcome: facts[file]?.outcome ?? null,
+		// the settled result rides on the doc itself now, so one game's page
+		// no longer re-derives it from the whole archive
+		outcome: replayOutcomeOf(doc) ?? null,
 		blobPruned: Boolean(doc.blobPrunedAt),
 		// project sightings down to what the page shows — unlocks etc. stay server-side
 		players: doc.sightings.map((s) => ({
@@ -271,28 +516,22 @@ export async function getReplay(file: string): Promise<ReplayDetail | null> {
 	};
 }
 
+/** Stored per-class board, written by `persistMosBoards`. */
+const mosBoardId = (mosId: string) => `mosPlaytime:${mosId}`;
+
+/**
+ * One class's playtime board. All-time, so unlike the weekly widgets it cannot
+ * be narrowed by a date window — instead it is aggregated once when the
+ * archive changes and stored, so this is a point read of about a kilobyte
+ * rather than a scan of every replay's sightings.
+ *
+ * Deliberately uncached: `mosId` comes from the URL, and keying the read cache
+ * on visitor input would grow the map without bound for a read this small.
+ */
 export async function getMosTopPlayers(mosId: string): Promise<MosTopPlayer[]> {
-	const byMos = await cached('mosPlaytime', async () => {
-		const d = await db();
-		const docs = await d
-			.collection<ReplayDoc>('replays')
-			.find(
-				{},
-				{
-					projection: {
-						playedAt: 1,
-						durationLoops: 1,
-						'sightings.toon': 1,
-						'sightings.name': 1,
-						'sightings.clan': 1,
-						'sightings.mos': 1
-					}
-				}
-			)
-			.toArray();
-		return topPlayersByMos(docs);
-	});
-	return byMos[mosId] ?? [];
+	const d = await db();
+	const doc = await d.collection('meta').findOne({ _id: mosBoardId(mosId) } as never);
+	return ((doc as { rows?: MosTopPlayer[] } | null)?.rows ?? []) as MosTopPlayer[];
 }
 
 /**
@@ -323,10 +562,14 @@ export async function getTeammates(toon: string): Promise<Teammate[]> {
 export async function getWeeklyBoards(): Promise<WeeklyBoards> {
 	return cached('weeklyBoards', async () => {
 		const d = await db();
+		const now = new Date();
+		// the boards only ever look at the last 7 days, and `weeklyBoards`
+		// drops anything older outright — so don't pay to read the archive
+		const since = new Date(now.getTime() - WINDOW_MS).toISOString().slice(0, 19) + 'Z';
 		const docs = await d
 			.collection<ReplayDoc>('replays')
 			.find(
-				{},
+				{ playedAt: { $gte: since } },
 				{
 					projection: {
 						playedAt: 1,
@@ -343,7 +586,7 @@ export async function getWeeklyBoards(): Promise<WeeklyBoards> {
 				}
 			)
 			.toArray();
-		return weeklyBoards(docs, new Date());
+		return weeklyBoards(docs, now);
 	});
 }
 
@@ -568,26 +811,45 @@ export async function deleteAccount(sub: string): Promise<void> {
  * always consistent and idempotent.
  */
 /**
- * Rebuilding reads every stored replay, so a backfill of hundreds of
- * uploads must not trigger hundreds of rebuilds. Runs inline when the last
- * one is old enough (the normal case: one game, profiles live instantly),
- * otherwise coalesces the burst into a single trailing rebuild.
+ * A rebuild still costs one pass over the archive to settle outcomes and the
+ * class boards, so a backfill of hundreds of uploads must not trigger hundreds
+ * of them. Runs inline when the last one is old enough (the normal case: one
+ * game, profiles live instantly), otherwise coalesces the burst into a single
+ * trailing rebuild covering every player seen in the meantime.
  */
 const REBUILD_GAP_MS = 15_000;
 let lastRebuildAt = 0;
 let rebuildTimer: ReturnType<typeof setTimeout> | null = null;
+/** Players touched by uploads not yet folded into a rebuild. */
+const pendingToons = new Set<string>();
 
-export async function rebuildPlayersSoon(): Promise<number | null> {
+function takePending(): string[] {
+	const batch = [...pendingToons];
+	pendingToons.clear();
+	return batch;
+}
+
+/** The work an upload triggers: the players it touched, then the archive-wide derivations. */
+async function runRebuild(toons: string[]): Promise<number> {
+	const count = await rebuildPlayersFor(toons);
+	await refreshDerived();
+	invalidateCache();
+	return count;
+}
+
+/** Returns how many profiles were rewritten, or null if a rebuild was deferred. */
+export async function rebuildPlayersSoon(toons: string[]): Promise<number | null> {
+	for (const t of toons) pendingToons.add(t);
 	if (rebuildTimer) return null; // a trailing rebuild already covers this
 	const since = Date.now() - lastRebuildAt;
 	if (since >= REBUILD_GAP_MS) {
-		const count = await rebuildPlayers();
+		const count = await runRebuild(takePending());
 		lastRebuildAt = Date.now();
 		return count;
 	}
 	rebuildTimer = setTimeout(() => {
 		rebuildTimer = null;
-		void rebuildPlayers()
+		void runRebuild(takePending())
 			.then(() => {
 				lastRebuildAt = Date.now();
 			})
@@ -596,6 +858,212 @@ export async function rebuildPlayersSoon(): Promise<number | null> {
 	return null;
 }
 
+/**
+ * Work out each game's settled result from the save-file counters across the
+ * whole archive, and write down the ones that moved.
+ *
+ * This is the read path's shortcut: settling an outcome needs every replay's
+ * sightings (a game's result is the delta to the next game each of its players
+ * appears in), which is far too much to read on a page view. Doing it here
+ * instead means it happens once per upload, from docs the rebuild already
+ * holds — and a new game only settles the previous game of each of its
+ * players, so the write is a handful of docs, not the archive.
+ *
+ * Idempotent: re-running with unchanged data writes nothing and returns 0.
+ */
+export async function persistSettledOutcomes(
+	docs: Pick<ReplayDoc, '_id' | 'playedAt' | 'outcome' | 'settledOutcome' | 'sightings'>[]
+): Promise<number> {
+	const changes = outcomeChanges(
+		docs.map((r) => ({
+			file: r._id,
+			playedAt: r.playedAt,
+			outcome: r.outcome,
+			settledOutcome: r.settledOutcome,
+			sightings: (r.sightings ?? []).map((s) => ({
+				toon: s.toon,
+				wins: (s.winsByMode ?? []).reduce((a, b) => a + b, 0),
+				gamesPlayed: s.gamesPlayed
+			}))
+		}))
+	);
+	if (changes.length) {
+		const d = await db();
+		await d.collection<ReplayDoc>('replays').bulkWrite(
+			changes.map((c) =>
+				c.outcome
+					? { updateOne: { filter: { _id: c.file }, update: { $set: { settledOutcome: c.outcome } } } }
+					: { updateOne: { filter: { _id: c.file }, update: { $unset: { settledOutcome: '' } } } }
+			) as never[],
+			// each op touches one doc and none depends on another, so there is
+			// nothing to gain from applying them one at a time
+			{ ordered: false }
+		);
+	}
+	return changes.length;
+}
+
+/** Everything the derived-data pass needs, and nothing else. */
+const DERIVED_PROJECTION = {
+	playedAt: 1,
+	durationLoops: 1,
+	outcome: 1,
+	settledOutcome: 1,
+	'sightings.toon': 1,
+	'sightings.name': 1,
+	'sightings.clan': 1,
+	'sightings.mos': 1,
+	'sightings.winsByMode': 1,
+	'sightings.gamesPlayed': 1
+};
+
+type DerivedDoc = Pick<
+	ReplayDoc,
+	'_id' | 'playedAt' | 'durationLoops' | 'outcome' | 'settledOutcome' | 'sightings'
+>;
+
+/** Recompute the all-time per-class playtime boards and store them. */
+async function persistMosBoards(docs: DerivedDoc[]): Promise<number> {
+	const boards = topPlayersByMos(
+		docs.map((r) => ({
+			playedAt: r.playedAt,
+			durationLoops: r.durationLoops,
+			sightings: r.sightings ?? []
+		}))
+	);
+	const entries = Object.entries(boards);
+	if (entries.length) {
+		const d = await db();
+		const at = new Date().toISOString();
+		await d.collection('meta').bulkWrite(
+			entries.map(([mos, rows]) => ({
+				replaceOne: { filter: { _id: mosBoardId(mos) }, replacement: { rows, at }, upsert: true }
+			})) as never[],
+			{ ordered: false }
+		);
+	}
+	return entries.length;
+}
+
+/**
+ * Recompute everything derived from the archive as a whole: each game's settled
+ * outcome, and the per-class playtime boards.
+ *
+ * Both need every replay, for the same reason — a game's result is a vote
+ * across all its players, and the boards are all-time totals — so they share a
+ * single narrow read rather than scanning twice. Pass `docs` when the caller
+ * already holds them (the full rebuild does) to skip the read entirely.
+ */
+export async function refreshDerived(
+	docs?: DerivedDoc[]
+): Promise<{ outcomes: number; boards: number }> {
+	const rows =
+		docs ??
+		((await (await db())
+			.collection<ReplayDoc>('replays')
+			.find({}, { projection: DERIVED_PROJECTION })
+			.toArray()) as DerivedDoc[]);
+	const outcomes = await persistSettledOutcomes(rows);
+	const boards = await persistMosBoards(rows);
+	return { outcomes, boards };
+}
+
+/**
+ * Sort keys for the leaderboard, stored alongside the profile.
+ *
+ * Both are derived from fields already on the doc, so they are never a source
+ * of truth — they exist purely so `getPlayersPage` can order and page in the
+ * database. The table still renders `careerXp(p)`/`totalWins(p)`, so what a
+ * visitor reads cannot drift from these even if one goes stale.
+ */
+function withSortKeys(p: Record<string, unknown>): Record<string, unknown> {
+	return {
+		...p,
+		careerXp: careerXp(p as Parameters<typeof careerXp>[0]),
+		totalWins: totalWins(p as Parameters<typeof totalWins>[0])
+	};
+}
+
+/**
+ * Rebuild just the players named, from their own sightings.
+ *
+ * An upload can only change the players in it, and `$elemMatch` returns a
+ * player's own sighting from each of their games rather than the whole lobby —
+ * so this reads one player's history, not the archive. Measured on a real
+ * 12-player game: 0.45 MB against the full rebuild's 7 MB.
+ *
+ * `buildPlayersData` is still the one merge function; only the fetch differs.
+ * Its `replays` return value is meaningless here (rosters are partial by
+ * design) and is deliberately ignored.
+ */
+export async function rebuildPlayersFor(toons: string[]): Promise<number> {
+	const unique = [...new Set(toons.filter(Boolean))];
+	if (!unique.length) return 0;
+	const d = await db();
+	const col = d.collection<ReplayDoc>('replays');
+	const updated: Record<string, unknown>[] = [];
+	// sequential: the cluster throttles on bytes returned, so concurrency buys
+	// nothing here and only risks the ops-per-second ceiling
+	for (const toon of unique) {
+		const docs = await col
+			.find(
+				{ 'sightings.toon': toon },
+				{
+					projection: {
+						playedAt: 1,
+						title: 1,
+						baseBuild: 1,
+						lobbyId: 1,
+						durationLoops: 1,
+						outcome: 1,
+						size: 1,
+						sightings: { $elemMatch: { toon } }
+					}
+				}
+			)
+			.toArray();
+		if (!docs.length) continue;
+		const { players } = buildPlayersData(
+			docs.map((r) => ({
+				replay: {
+					file: r._id,
+					playedAt: r.playedAt,
+					title: r.title,
+					baseBuild: r.baseBuild,
+					protocolExact: true,
+					lobbyId: r.lobbyId ?? 0,
+					durationLoops: r.durationLoops ?? 0,
+					outcome: r.outcome ?? null,
+					sightings: r.sightings
+				},
+				size: r.size
+			}))
+		);
+		updated.push(...players);
+	}
+	if (updated.length) {
+		await d.collection('players').bulkWrite(
+			updated.map((p) => ({
+				replaceOne: {
+					filter: { _id: p.toon as string },
+					replacement: withSortKeys(p),
+					upsert: true
+				}
+			})) as never[],
+			{ ordered: false }
+		);
+	}
+	invalidateCache();
+	return updated.length;
+}
+
+/**
+ * Rebuild every player from every stored replay. The from-scratch path: slow
+ * by nature (it reads the whole archive, sightings and all), so uploads use
+ * `rebuildPlayersFor`. Kept because it is the only thing that can repair or
+ * seed the collection, and the only place a player who has left every replay
+ * gets pruned.
+ */
 export async function rebuildPlayers(): Promise<number> {
 	const d = await db();
 	const replayDocs = await d.collection<ReplayDoc>('replays').find().toArray();
@@ -620,11 +1088,14 @@ export async function rebuildPlayers(): Promise<number> {
 	if (players.length) {
 		await col.bulkWrite(
 			players.map((p) => ({
-				replaceOne: { filter: { _id: p.toon as string }, replacement: p, upsert: true }
+				replaceOne: { filter: { _id: p.toon as string }, replacement: withSortKeys(p), upsert: true }
 			})) as never[]
 		);
 	}
 	await col.deleteMany({ _id: { $nin: players.map((p) => p.toon as string) } } as never);
+	// derive from the same docs already in hand, so the read paths can render an
+	// outcome or a class board without re-deriving either from the whole archive
+	await refreshDerived(replayDocs);
 	invalidateCache();
 	// The retention sweep needs exactly the docs already in hand, so it costs
 	// no extra read. Deliberately not awaited: this call sits inside the

@@ -81,6 +81,24 @@ export function replayOutcomes(replays: OutcomeReplay[]): Record<string, Outcome
 	return out;
 }
 
+/**
+ * Which stored games' recorded outcome no longer matches what the counters
+ * say, as the write list a rebuild should apply. `outcome: undefined` means
+ * the game is no longer settleable and its stored verdict should be dropped.
+ *
+ * Split out from the write itself so it can be tested without a database, and
+ * so a rebuild that settles nothing new writes nothing: a new game only
+ * settles the previous game of each of its players, not the whole archive.
+ */
+export function outcomeChanges(
+	replays: (OutcomeReplay & { settledOutcome?: Outcome })[]
+): { file: string; outcome?: Outcome }[] {
+	const settled = replayOutcomes(replays);
+	return replays
+		.filter((r) => settled[r.file] !== r.settledOutcome)
+		.map((r) => ({ file: r.file, ...(settled[r.file] ? { outcome: settled[r.file] } : {}) }));
+}
+
 /** Recording length as m:ss / h:mm:ss. */
 export function fmtDuration(loops: number): string {
 	const total = Math.round(loops / 16);

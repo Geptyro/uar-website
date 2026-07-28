@@ -9,7 +9,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { replayOutcomes, fmtDuration, type OutcomeReplay } from '../src/lib/outcome.ts';
+import { replayOutcomes, outcomeChanges, fmtDuration, type OutcomeReplay } from '../src/lib/outcome.ts';
 
 function game(
 	file: string,
@@ -105,6 +105,52 @@ test('players with no toon handle are skipped', () => {
 		game('b', '2026-01-02T00:00:00Z', [{ toon: '', wins: 5, gamesPlayed: 11 }])
 	]);
 	assert.deepEqual(out, {});
+});
+
+// outcomeChanges is what a rebuild actually writes: settling a result needs
+// every stored game's counters, which is far too much to read on a page view,
+// so the verdict is written onto the replay doc once per upload instead.
+
+test('outcomeChanges: an unsettled archive yields the verdicts to write', () => {
+	assert.deepEqual(
+		outcomeChanges([
+			game('a', '2026-01-01T00:00:00Z', [{ toon: 't1', wins: 4, gamesPlayed: 10 }]),
+			game('b', '2026-01-02T00:00:00Z', [{ toon: 't1', wins: 5, gamesPlayed: 11 }])
+		]),
+		[{ file: 'a', outcome: 'win' }]
+	);
+});
+
+test('outcomeChanges: re-running over already-settled docs writes nothing', () => {
+	const settled = [
+		{ ...game('a', '2026-01-01T00:00:00Z', [{ toon: 't1', wins: 4, gamesPlayed: 10 }]), settledOutcome: 'win' as const },
+		game('b', '2026-01-02T00:00:00Z', [{ toon: 't1', wins: 5, gamesPlayed: 11 }])
+	];
+	assert.deepEqual(outcomeChanges(settled), []);
+});
+
+test('outcomeChanges: a new game settles only the game before it', () => {
+	// 'a' is already written down; 'c' arriving settles 'b' (its counter did
+	// not move, so a loss) and leaves every older verdict alone
+	assert.deepEqual(
+		outcomeChanges([
+			{ ...game('a', '2026-01-01T00:00:00Z', [{ toon: 't1', wins: 4, gamesPlayed: 10 }]), settledOutcome: 'win' as const },
+			game('b', '2026-01-02T00:00:00Z', [{ toon: 't1', wins: 5, gamesPlayed: 11 }]),
+			game('c', '2026-01-03T00:00:00Z', [{ toon: 't1', wins: 5, gamesPlayed: 12 }])
+		]),
+		[{ file: 'b', outcome: 'loss' }]
+	);
+});
+
+test('outcomeChanges: a verdict that no longer holds is dropped, not left behind', () => {
+	// the follow-up game is gone (a replay replaced by a longer recording of
+	// the same lobby), so nothing settles 'a' any more
+	assert.deepEqual(
+		outcomeChanges([
+			{ ...game('a', '2026-01-01T00:00:00Z', [{ toon: 't1', wins: 4, gamesPlayed: 10 }]), settledOutcome: 'win' as const }
+		]),
+		[{ file: 'a' }]
+	);
 });
 
 test('fmtDuration: 16 game loops per second, hours only when needed', () => {

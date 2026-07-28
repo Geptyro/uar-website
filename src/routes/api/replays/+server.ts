@@ -162,12 +162,14 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 			name,
 			parsed,
 			existed: Boolean(existing),
-			playerCount: await rebuildPlayersSoon()
+			// only the players in this game can have changed, so the rebuild is
+			// told who rather than re-deriving the whole collection
+			playerCount: await rebuildPlayersSoon(parsed.sightings.map((s) => s.toon))
 		};
 	});
 	const existing = existed;
 	console.log(
-		`upload ${existing ? 'replaced' : 'accepted'}: ${name} (${parsed.sightings.length} profiles, ${playerCount === null ? 'rebuild queued' : playerCount + ' players total'})`
+		`upload ${existing ? 'replaced' : 'accepted'}: ${name} (${parsed.sightings.length} profiles, ${playerCount === null ? 'rebuild queued' : playerCount + ' profiles rebuilt'})`
 	);
 
 	return json({

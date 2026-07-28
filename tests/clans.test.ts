@@ -14,6 +14,7 @@ const member = (over: Partial<ClanMember>): ClanMember => ({
 	prestige: 0,
 	gamesPlayed: 0,
 	revives: 0,
+	avgGameTime: 0,
 	winsByMode: [],
 	lastSeen: '2026-01-01T00:00:00Z',
 	...over

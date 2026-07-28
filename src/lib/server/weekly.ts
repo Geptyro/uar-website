@@ -43,7 +43,12 @@ export interface WeeklyXpReplay {
 
 type Sighting = WeeklyXpReplay['sightings'][number] & { playedAt: number };
 
-const WINDOW_MS = 7 * 24 * 3600 * 1000;
+/**
+ * Exported so the database read can ask for exactly this window. Games older
+ * than it are skipped below, so fetching them is pure waste — and the archive
+ * grows without bound while the window does not.
+ */
+export const WINDOW_MS = 7 * 24 * 3600 * 1000;
 
 /** Boards over the 7 days before `now`; xp/classPicks capped at `limit` rows. */
 export function weeklyBoards(replays: WeeklyXpReplay[], now: Date, limit = 10): WeeklyBoards {

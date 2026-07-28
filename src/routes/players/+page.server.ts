@@ -1,27 +1,31 @@
-import { dbConfigured, getAvatarsByToon, getPlayersLite, getReplaysList } from '$lib/server/db';
-import { careerXp, totalWins, type PlayerProfile } from '$lib/players';
-import { paginate } from '$lib/paging';
+import { dbConfigured, getAvatarsByToon, getPlayersPage, getReplayStats } from '$lib/server/db';
+import type { PlayerProfile } from '$lib/players';
 import type { PageServerLoad } from './$types';
 
 export const prerender = false;
 
-/** Sortable columns, matching the table headers. */
-const SORTS: Record<string, (p: PlayerProfile) => number | string> = {
-	name: (p) => p.name.toLowerCase(),
-	career: (p) => careerXp(p),
-	xpEn: (p) => p.xpEn,
-	xpWo: (p) => p.xpWo,
-	xpCo: (p) => p.xpCo,
-	prestige: (p) => p.prestige,
-	games: (p) => p.gamesPlayed,
-	wins: (p) => totalWins(p),
-	revives: (p) => p.revives,
-	avg: (p) => p.avgGameTime
-};
+/**
+ * Sortable columns, matching the table headers. The database owns the ordering
+ * now (see `getPlayersPage`), so this is only the whitelist that keeps a
+ * `?sort=` value from reaching the query — the field each one maps to lives
+ * next to the query it builds.
+ */
+const SORTS = [
+	'name',
+	'career',
+	'xpEn',
+	'xpWo',
+	'xpCo',
+	'prestige',
+	'games',
+	'wins',
+	'revives',
+	'avg'
+];
 
 export const load: PageServerLoad = async ({ url }) => {
 	const key = url.searchParams.get('sort') ?? '';
-	const sort = SORTS[key] ? key : 'career';
+	const sort = SORTS.includes(key) ? key : 'career';
 	const dir = url.searchParams.get('dir') === 'asc' ? 1 : -1;
 	const meta = { sort, dir: dir === 1 ? 'asc' : 'desc' };
 	if (!dbConfigured()) {
@@ -38,38 +42,20 @@ export const load: PageServerLoad = async ({ url }) => {
 		};
 	}
 	const q = (url.searchParams.get('q') ?? '').trim();
-	const [all, replays, avatars] = await Promise.all([
-		getPlayersLite() as unknown as Promise<PlayerProfile[]>,
-		getReplaysList(),
+	// sorted, searched and paged by the database: the leaderboard grows with
+	// every new player, and only one screen of it is ever rendered
+	const [{ rows, page, pages, total }, replayStats, avatars] = await Promise.all([
+		getPlayersPage({ sort, dir, q, page: url.searchParams.get('page') }),
+		// the header shows a game count and a date — both are server-side
+		// counters, not something to read the archive for
+		getReplayStats(),
 		getAvatarsByToon()
 	]);
 
-	// sort and page here, so the response carries one screen of rows rather
-	// than the whole leaderboard with every player's history attached
-	// search first, so paging and the row count describe the filtered list
-	const needle = q.toLowerCase();
-	const matched = needle
-		? all.filter(
-				(p) =>
-					p.name.toLowerCase().includes(needle) ||
-					(p.clan ?? '').toLowerCase().includes(needle) ||
-					p.toon.includes(needle)
-			)
-		: all;
-
-	const value = SORTS[sort];
-	const sorted = [...matched].sort((a, b) => {
-		const x = value(a);
-		const y = value(b);
-		const cmp = typeof x === 'number' ? x - (y as number) : String(x).localeCompare(String(y));
-		return cmp * dir || careerXp(b) - careerXp(a);
-	});
-	const { rows, page, pages, total } = paginate(sorted, url.searchParams.get('page'));
-
 	return {
-		players: rows,
-		replayCount: replays.filter((r) => r.players > 0).length,
-		latest: replays.at(-1)?.playedAt?.slice(0, 10) ?? '',
+		players: rows as unknown as PlayerProfile[],
+		replayCount: replayStats.count,
+		latest: replayStats.latest,
 		avatars,
 		...meta,
 		q,

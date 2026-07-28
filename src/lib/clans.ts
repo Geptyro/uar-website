@@ -4,7 +4,12 @@
 import { careerXp, totalWins } from './xp.ts';
 import type { PlayerProfile } from './players.ts';
 
-/** The profile fields clan aggregation actually reads (structural subset). */
+/**
+ * The profile fields the clan pages need (structural subset): what the
+ * aggregation below sums, plus what a member row renders. It is also the
+ * projection the database read asks for, so widening this widens that — keep
+ * it to what is actually displayed.
+ */
 export type ClanMember = Pick<
 	PlayerProfile,
 	| 'name'
@@ -16,6 +21,7 @@ export type ClanMember = Pick<
 	| 'prestige'
 	| 'gamesPlayed'
 	| 'revives'
+	| 'avgGameTime'
 	| 'winsByMode'
 	| 'lastSeen'
 >;
