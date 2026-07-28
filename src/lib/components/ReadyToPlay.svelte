@@ -106,7 +106,7 @@
 />
 
 {#if signedIn || active.length > 0}
-	<HoverPop disabled={active.length === 0} heading={`Ready to play · ${active.length}`}>
+	<HoverPop disabled={active.length === 0} heading={`Ready to play now · ${active.length}`}>
 		{#snippet trigger()}
 			<ReadyChip
 				{signedIn}
@@ -124,7 +124,6 @@
 		{#if active.length > 0}
 			<ReadyPlayers
 				players={active}
-				{now}
 				href={(p: ReadyPlayer) => (p.toon ? `/players/${p.toon}` : null)}
 				{statusOf}
 			/>
