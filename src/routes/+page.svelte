@@ -45,67 +45,87 @@
 	<h2 class="section">This week · last 7 days</h2>
 	<div class="boards">
 		{#if data.weekly.xp.length}
-			<DescCard label="XP gained">
-				<ol class="top-list">
-					{#each data.weekly.xp as p, i (p.toon || p.name)}
-						<li>
-							<div class="prow">
-								<span class="pos">{i + 1}</span>
-								<img
-									class="pportrait"
-									src={(p.toon && data.avatars[p.toon]) || anonPortrait}
-									alt=""
-									loading="lazy"
-								/>
-								{#if p.clan}<span class="pclan">&lt;{p.clan}&gt;</span>{/if}
-								{#if p.toon}
-									<a class="pname" href="/players/{p.toon}">{p.name}</a>
-								{:else}
-									<span class="pname">{p.name}</span>
-								{/if}
-								<span class="pxp" title="{p.games} game{p.games === 1 ? '' : 's'} this week"
-									>+{p.xpGained.toLocaleString('en')} XP</span
-								>
-							</div>
-							<div class="pbar">
-								<div
-									class="pbar-fill"
-									style="width: {(100 * p.xpGained) / data.weekly.xp[0].xpGained}%"
-								></div>
-							</div>
-						</li>
-					{/each}
-				</ol>
-			</DescCard>
+			<div class="tablewrap">
+				<table class="data board">
+					<thead>
+						<tr>
+							<th class="pos">#</th>
+							<th>Player</th>
+							<th class="num">XP gained</th>
+							<th class="barcell"></th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each data.weekly.xp as p, i (p.toon || p.name)}
+							<tr>
+								<td class="pos">{i + 1}</td>
+								<td class="figcell">
+									<img
+										class="figimg"
+										src={(p.toon && data.avatars[p.toon]) || anonPortrait}
+										alt=""
+										loading="lazy"
+									/>
+									{#if p.clan}<span class="pclan">&lt;{p.clan}&gt;</span>{/if}
+									{#if p.toon}
+										<a class="pname" href="/players/{p.toon}">{p.name}</a>
+									{:else}
+										<span class="pname">{p.name}</span>
+									{/if}
+								</td>
+								<td class="num" title="{p.games} game{p.games === 1 ? '' : 's'} this week">
+									+{p.xpGained.toLocaleString('en')}
+								</td>
+								<td class="barcell">
+									<div
+										class="boardbar"
+										style="width: {(100 * p.xpGained) / data.weekly.xp[0].xpGained}%"
+									></div>
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
 		{/if}
 		{#if data.weekly.classPicks.length}
-			<DescCard label="Class picks">
-				<ol class="top-list">
-					{#each data.weekly.classPicks as c (c.mos)}
-						{@const u = unitById.get(c.mos)}
-						<li>
-							<div class="prow">
-								{#if u?.icon}
-									<img class="pick-icon" src={u.icon} alt="" loading="lazy" />
-								{:else}
-									<span class="pick-icon placeholder"></span>
-								{/if}
-								<a class="pname" href="/mos/{c.mos}">{u?.name || c.mos}</a>
-								<span class="pxp" title="times picked in ingested games this week">{c.picks}</span>
-							</div>
-							<div class="pbar pick-bar">
-								<div
-									class="pbar-fill"
-									style="width: {(100 * c.picks) / data.weekly.classPicks[0].picks}%"
-								></div>
-							</div>
-						</li>
-					{/each}
-				</ol>
-			</DescCard>
+			<div class="tablewrap">
+				<table class="data board">
+					<thead>
+						<tr>
+							<th class="pos">#</th>
+							<th>Class</th>
+							<th class="num">Picks</th>
+							<th class="barcell"></th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each data.weekly.classPicks as c, i (c.mos)}
+							{@const u = unitById.get(c.mos)}
+							<tr>
+								<td class="pos">{i + 1}</td>
+								<td class="figcell">
+									{#if u?.icon}
+										<img class="figimg" src={u.icon} alt="" loading="lazy" />
+									{:else}
+										<span class="figimg placeholder"></span>
+									{/if}
+									<a class="pname" href="/mos/{c.mos}">{u?.name || c.mos}</a>
+								</td>
+								<td class="num" title="times picked in ingested games this week">{c.picks}</td>
+								<td class="barcell">
+									<div
+										class="boardbar"
+										style="width: {(100 * c.picks) / data.weekly.classPicks[0].picks}%"
+									></div>
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
 		{/if}
 	</div>
-	<p class="top-note">Aggregated from ingested replays over the last 7 days.</p>
 {/if}
 
 {#if data.activity.values.some((v) => v > 0)}
@@ -767,77 +787,17 @@
 	}
 	.boards {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+		/* a row is a picture, a name, a count and a bar — the longest class name
+		   is 25 characters, and under about this width the four stop fitting */
+		grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
 		gap: 12px;
 		align-items: start;
 	}
-	.pick-icon {
-		width: 18px;
-		height: 18px;
-		object-fit: cover;
-		border-radius: 4px;
-		align-self: center;
-		flex-shrink: 0;
-	}
-	.pick-icon.placeholder {
-		background: var(--surface-2);
-	}
-	/* aligned under the name: icon 18 + gap (must out-rank .pbar's 48px) */
-	.pbar.pick-bar {
-		margin-left: 24px;
-	}
-	.top-list {
-		list-style: none;
-		margin: 2px 0 0;
-		padding: 0;
-		display: flex;
-		flex-direction: column;
-		gap: 7px;
-	}
-	.top-list li {
-		display: flex;
-		flex-direction: column;
-		gap: 3px;
-		min-width: 0;
-	}
-	.prow {
-		display: flex;
-		align-items: baseline;
-		gap: 6px;
-		font-size: 12.5px;
-		min-width: 0;
-	}
-	.pportrait {
-		width: 22px;
-		height: 22px;
-		border-radius: var(--r-sm);
-		object-fit: cover;
-		border: 1px solid var(--border);
-		align-self: center;
-		flex-shrink: 0;
-	}
-	/* XP gained relative to the #1 player */
-	.pbar {
-		/* aligned under the name: pos 14 + portrait 22 + 2 gaps */
-		margin-left: 48px;
-		height: 3px;
-		border-radius: 99px;
-		background: var(--surface-2);
-		overflow: hidden;
-	}
-	.pbar-fill {
-		height: 100%;
-		min-width: 2px;
-		border-radius: inherit;
-		background: var(--accent);
-	}
-	.pos {
-		font-family: var(--mono);
-		font-size: 10px;
-		color: var(--ink-3);
-		min-width: 14px;
-		text-align: right;
-		flex-shrink: 0;
+	/* The two boards are the board table from +layout.svelte — the same row a
+	   player page draws for played-with and classes-played, and a class page
+	   for its top players. */
+	.figcell .pclan {
+		margin-right: 3px;
 	}
 	.pclan {
 		color: var(--ink-3);
@@ -850,14 +810,6 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
-	}
-	.pxp {
-		margin-left: auto;
-		font-family: var(--mono);
-		font-size: 11px;
-		color: var(--ink-2);
-		white-space: nowrap;
-		flex-shrink: 0;
 	}
 	.top-note {
 		margin: 10px 0 0;

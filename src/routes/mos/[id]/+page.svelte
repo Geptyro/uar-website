@@ -195,7 +195,7 @@
 				weapons (no separate stats) modify the equipped weapon instead.
 			</p>
 			<div class="tablewrap">
-				<table class="data" style="min-width: 660px">
+				<table class="data items" style="min-width: 660px">
 					<thead>
 						<tr>
 							<th>Weapon</th>
@@ -224,7 +224,12 @@
 								{#each item.grants as g (g.id)}
 									<tr>
 										<td class="wname namecell">
-											{#if item.icon}<img class="row-icon" src={item.icon} alt="" loading="lazy" />{/if}
+											{#if item.icon}<img
+													class="row-icon"
+													src={item.icon}
+													alt=""
+													loading="lazy"
+												/>{:else}<span class="row-icon placeholder"></span>{/if}
 											{@render itemName(item)}
 										</td>
 										<td><span class="tag t-item">item</span></td>
@@ -242,7 +247,12 @@
 							{:else}
 								<tr>
 									<td class="wname namecell">
-										{#if item.icon}<img class="row-icon" src={item.icon} alt="" loading="lazy" />{/if}
+										{#if item.icon}<img
+												class="row-icon"
+												src={item.icon}
+												alt=""
+												loading="lazy"
+											/>{:else}<span class="row-icon placeholder"></span>{/if}
 										{@render itemName(item)}
 									</td>
 									<td><span class="tag t-item">weapon buff</span></td>
@@ -256,15 +266,6 @@
 		</div>
 		{/if}
 
-		{#if mechanics}
-			<h2 class="section">Handling</h2>
-			<p class="note">
-				Ammunition, jamming and shared-class behaviour, read from the map's trigger script rather
-				than the unit data.
-			</p>
-			<MechanicsGrid mosId={mos.id} />
-		{/if}
-
 		{#if mechanics?.panel.length}
 			<h2 class="section">Class panel · {mechanics.panel.length} buttons</h2>
 			<p class="note">
@@ -276,7 +277,7 @@
 		{#each gearGroups as group (group.type)}
 			<h2 class="section">{group.label} · {group.items.length}</h2>
 			<div class="tablewrap">
-				<table class="data" style="min-width: 640px">
+				<table class="data items" style="min-width: 640px">
 					<thead>
 						<tr>
 							<th>Item</th>
@@ -290,7 +291,12 @@
 						{#each group.items as item (item.id)}
 							<tr>
 								<td class="namecell">
-									{#if item.icon}<img class="row-icon" src={item.icon} alt="" loading="lazy" />{/if}
+									{#if item.icon}<img
+											class="row-icon"
+											src={item.icon}
+											alt=""
+											loading="lazy"
+										/>{:else}<span class="row-icon placeholder"></span>{/if}
 									{@render itemName(item)}
 								</td>
 								<td class="num"
@@ -312,6 +318,52 @@
 			</div>
 		{/each}
 
+		<!-- Who actually plays it, on the same board the front page and a player
+		     profile draw. It comes from the live DB on a page that is otherwise
+		     prerendered, so the section only exists once the fetch lands. -->
+		{#if topPlayers.length}
+			<h2 class="section">Top players</h2>
+			<div class="tablewrap">
+				<table class="data board toplist">
+					<thead>
+						<tr>
+							<th class="pos">#</th>
+							<th>Player</th>
+							<th class="num">Time</th>
+							<th class="barcell"></th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each topPlayers as p, i (p.toon || p.name)}
+							<tr>
+								<td class="pos">{i + 1}</td>
+								<td class="figcell">
+									<img class="figimg" src={p.avatarUrl || anonPortrait} alt="" loading="lazy" />
+									{#if p.clan}<span class="pclan">&lt;{p.clan}&gt;</span>{/if}
+									{#if p.toon}
+										<a class="pname" href="/players/{p.toon}">{p.name}</a>
+									{:else}
+										<span class="pname">{p.name}</span>
+									{/if}
+								</td>
+								<td class="num" title="{p.games} game{p.games === 1 ? '' : 's'}">
+									{fmtPlaytime(p.seconds)}
+								</td>
+								<td class="barcell">
+									{#if p.seconds > 0}
+										<div
+											class="boardbar"
+											style="width: {(100 * p.seconds) / topPlayers[0].seconds}%"
+										></div>
+									{/if}
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+			<a class="si-all" href="/players">All players →</a>
+		{/if}
 	</div>
 
 	<aside class="infobox">
@@ -343,6 +395,20 @@
 					Commands this class has by default. Hover — or focus — an icon for what it does.
 				</p>
 			</DescCard>
+		{/if}
+		<!-- Handling reads as a rail block: its cards already carry their own
+		     frame and label, so the group only needs a heading over them. One
+		     element, because below 1080px every child of the rail becomes a
+		     cell of its own grid. -->
+		{#if mechanics}
+			<section class="handling">
+				<h2 class="section">Handling</h2>
+				<p class="note">
+					Ammunition, jamming and shared-class behaviour, read from the map's trigger script rather
+					than the unit data.
+				</p>
+				<MechanicsGrid mosId={mos.id} />
+			</section>
 		{/if}
 		{#if unlock}
 			<DescCard label="Unlock requirements">
@@ -425,39 +491,6 @@
 				<a class="si-all" href="/si">All Skill Identifiers →</a>
 			</DescCard>
 		{/if}
-		{#if topPlayers.length}
-			<DescCard label="Top players">
-				<ol class="top-list">
-					{#each topPlayers as p, i (p.toon || p.name)}
-						<li>
-							<div class="prow">
-								<span class="pos">{i + 1}</span>
-								<img class="pportrait" src={p.avatarUrl || anonPortrait} alt="" loading="lazy" />
-								{#if p.clan}<span class="pclan">&lt;{p.clan}&gt;</span>{/if}
-								{#if p.toon}
-									<a class="pname" href="/players/{p.toon}">{p.name}</a>
-								{:else}
-									<span class="pname">{p.name}</span>
-								{/if}
-								<span class="ptime" title="{p.games} game{p.games === 1 ? '' : 's'}"
-									>{fmtPlaytime(p.seconds)}</span
-								>
-							</div>
-							<div class="pbar">
-								{#if p.seconds > 0}
-									<div
-										class="pbar-fill"
-										style="width: {(100 * p.seconds) / topPlayers[0].seconds}%"
-									></div>
-								{/if}
-							</div>
-						</li>
-					{/each}
-				</ol>
-				<p class="top-note">Time played on this class across ingested replays.</p>
-				<a class="si-all" href="/players">All players →</a>
-			</DescCard>
-		{/if}
 	</aside>
 </div>
 
@@ -481,6 +514,21 @@
 		display: flex;
 		flex-direction: column;
 		gap: 14px;
+	}
+	/* In the rail the gap between blocks is the spacing, so the heading does
+	   not also carry the 34px a main-column section would, and the note reads
+	   at the size the rail's other notes do. */
+	.handling {
+		min-width: 0;
+	}
+	.handling h2 {
+		margin-top: 6px;
+	}
+	.handling .note {
+		font-size: 11.5px;
+		line-height: 1.5;
+		color: var(--ink-3);
+		margin-bottom: 10px;
 	}
 	.unlock-grid {
 		display: grid;
@@ -632,84 +680,16 @@
 		text-decoration: underline;
 		text-underline-offset: 3px;
 	}
-	.top-list {
-		list-style: none;
-		margin: 2px 0 0;
-		padding: 0;
-		display: flex;
-		flex-direction: column;
-		gap: 7px;
-	}
-	.top-list li {
-		display: flex;
-		flex-direction: column;
-		gap: 3px;
-		min-width: 0;
-	}
-	.prow {
-		display: flex;
-		align-items: baseline;
-		gap: 6px;
-		font-size: 12.5px;
-		min-width: 0;
-	}
-	.pportrait {
-		width: 22px;
-		height: 22px;
-		border-radius: var(--r-sm);
-		object-fit: cover;
-		border: 1px solid var(--border);
-		align-self: center;
-		flex-shrink: 0;
-	}
-	/* time played relative to the #1 player, zero-based */
-	.pbar {
-		/* aligned under the name: pos 14 + portrait 22 + 2 gaps */
-		margin-left: 48px;
-		height: 3px;
-		border-radius: 99px;
-		background: var(--surface-2);
-		overflow: hidden;
-	}
-	.pbar-fill {
-		height: 100%;
-		min-width: 2px;
-		border-radius: inherit;
-		background: var(--accent);
-	}
-	.pos {
-		font-family: var(--mono);
-		font-size: 10px;
-		color: var(--ink-3);
-		min-width: 14px;
-		text-align: right;
-		flex-shrink: 0;
-	}
-	.pclan {
+	/* The board is the one from +layout.svelte, run across the main column: a
+	   name and a duration beside a bar want the room, and the rail could not
+	   give it — at 290px the row was cut off rather than laid out. */
+	.toplist .pclan {
 		color: var(--ink-3);
 		font-size: 11px;
-		flex-shrink: 0;
+		margin-right: 3px;
 	}
-	.pname {
+	.toplist .pname {
 		font-weight: 550;
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.ptime {
-		margin-left: auto;
-		font-family: var(--mono);
-		font-size: 11px;
-		color: var(--ink-2);
-		white-space: nowrap;
-		flex-shrink: 0;
-	}
-	.top-note {
-		margin: 10px 0 0;
-		font-size: 11px;
-		line-height: 1.5;
-		color: var(--ink-3);
 	}
 
 	@media (max-width: 1080px) {
@@ -728,6 +708,12 @@
 	   above and size each half to its widest child rather than the page,
 	   which puts a scrollbar under the whole thing. */
 	@media (max-width: 899.98px) {
+		/* the picture follows the cell's own inset in, and the row is a little
+		   shorter here, so the cap comes down with it */
+		table.items {
+			--fig: 34px;
+			--fig-x: 9px;
+		}
 		.layout {
 			display: grid;
 			grid-template-columns: minmax(0, 1fr);
@@ -856,16 +842,35 @@
 		box-shadow: var(--shadow-2);
 	}
 
-	td.namecell {
-		white-space: nowrap;
+	/* The item's picture is drawn to the row, the way the boards draw a
+	   portrait: pinned to the cell so a row whose effect text wraps keeps the
+	   height that text gives it, with the cell handing the width back as
+	   padding. Both item tables carry it, so the two read as one. */
+	table.items {
+		--fig: 36px;
+		--fig-x: 12px;
 	}
+	td.namecell {
+		position: relative;
+		white-space: nowrap;
+		padding-left: calc(var(--fig-x) + var(--fig) + 8px);
+	}
+	/* --fig is a shade taller than a one-line row, so an ordinary row is filled
+	   top to bottom and the cap never bites. It bites on the rows whose effect
+	   text runs to three lines: there the picture stays square beside the name
+	   it belongs to instead of being stretched into a stripe. */
 	.row-icon {
-		width: 20px;
-		height: 20px;
+		position: absolute;
+		left: var(--fig-x);
+		top: 0;
+		height: 100%;
+		max-height: var(--fig);
+		width: var(--fig);
 		object-fit: cover;
 		border-radius: 4px;
-		vertical-align: -5px;
-		margin-right: 7px;
+	}
+	.row-icon.placeholder {
+		background: var(--surface-2);
 	}
 	td.effect {
 		overflow-wrap: anywhere;

@@ -81,6 +81,13 @@ export interface ReplayDoc {
 	 */
 	settledMode?: number;
 	/**
+	 * Modifier ids the lobby voted on (see lib/modifiers.ts). An empty array
+	 * means the vote was read and the lobby wanted none; absent means the
+	 * recording never covered that vote, and nothing else can recover it —
+	 * unlike the mode, no save-file counter names a modifier.
+	 */
+	modifiers?: number[];
+	/**
 	 * When the bucket blob was dropped by the retention sweep, ISO. Absent
 	 * means the bytes are still downloadable. The doc itself is never
 	 * deleted, so lobbyId/sha256/size/sightings survive as the game's record
@@ -579,7 +586,8 @@ const LIST_PROJECTION = {
 	outcome: 1,
 	settledOutcome: 1,
 	mode: 1,
-	settledMode: 1
+	settledMode: 1,
+	modifiers: 1
 };
 
 /**
@@ -612,7 +620,8 @@ function toRow(r: ReplayDoc): ReplayMeta {
 		durationLoops: r.durationLoops ?? 0,
 		blobPruned: Boolean(r.blobPrunedAt),
 		...(outcome ? { outcome } : {}),
-		...(mode ? { mode } : {})
+		...(mode ? { mode } : {}),
+		...(r.modifiers?.length ? { modifiers: r.modifiers } : {})
 	};
 }
 
@@ -710,11 +719,19 @@ export async function getReplayStats(): Promise<{ count: number; latest: string 
 export async function getReplayFacts(
 	cacheKey: string,
 	files: string[]
-): Promise<Record<string, { durationLoops: number; outcome?: Outcome; mode?: number }>> {
+): Promise<
+	Record<
+		string,
+		{ durationLoops: number; outcome?: Outcome; mode?: number; modifiers?: number[] }
+	>
+> {
 	if (!files.length) return {};
 	// keyed by which page of whose history it is, so a revisit does not re-read
 	return cached(`replayFacts:${cacheKey}`, async () => {
-		const map: Record<string, { durationLoops: number; outcome?: Outcome; mode?: number }> = {};
+		const map: Record<
+			string,
+			{ durationLoops: number; outcome?: Outcome; mode?: number; modifiers?: number[] }
+		> = {};
 		const d = await db();
 		const docs = await d
 			.collection<ReplayDoc>('replays')
@@ -726,7 +743,8 @@ export async function getReplayFacts(
 						outcome: 1,
 						settledOutcome: 1,
 						mode: 1,
-						settledMode: 1
+						settledMode: 1,
+						modifiers: 1
 					}
 				}
 			)
@@ -737,7 +755,8 @@ export async function getReplayFacts(
 			map[r._id] = {
 				durationLoops: r.durationLoops ?? 0,
 				...(outcome ? { outcome } : {}),
-				...(mode ? { mode } : {})
+				...(mode ? { mode } : {}),
+				...(r.modifiers?.length ? { modifiers: r.modifiers } : {})
 			};
 		}
 		return map;
@@ -760,6 +779,7 @@ const REPLAY_DETAIL_PROJECTION = {
 	settledOutcome: 1,
 	mode: 1,
 	settledMode: 1,
+	modifiers: 1,
 	blobPrunedAt: 1,
 	'sightings.name': 1,
 	'sightings.clan': 1,
@@ -794,6 +814,7 @@ async function readReplay(file: string): Promise<ReplayDetail | null> {
 		// no longer re-derives it from the whole archive
 		outcome: replayOutcomeOf(doc) ?? null,
 		mode: replayModeOf(doc) ?? null,
+		modifiers: doc.modifiers ?? [],
 		blobPruned: Boolean(doc.blobPrunedAt),
 		// project sightings down to what the page shows — unlocks etc. stay server-side
 		players: doc.sightings.map((s) => ({
@@ -1458,6 +1479,8 @@ export async function rebuildPlayersFor(toons: string[]): Promise<number> {
 					durationLoops: r.durationLoops ?? 0,
 					outcome: r.outcome ?? null,
 					mode: r.mode ?? null,
+					modifiers: r.modifiers ?? [],
+					modifiersRead: Boolean(r.modifiers),
 					sightings: r.sightings
 				},
 				size: r.size
@@ -1503,6 +1526,8 @@ export async function rebuildPlayers(): Promise<number> {
 				durationLoops: r.durationLoops ?? 0,
 				outcome: r.outcome ?? null,
 				mode: r.mode ?? null,
+				modifiers: r.modifiers ?? [],
+				modifiersRead: Boolean(r.modifiers),
 				sightings: r.sightings
 			},
 			size: r.size

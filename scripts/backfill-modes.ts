@@ -1,5 +1,6 @@
 /**
- * Read the game mode out of every stored replay that predates mode detection.
+ * Read the game mode and modifiers out of every stored replay that predates
+ * them being detected.
  *
  * Uploads have carried a mode since the parser learned to count the map's
  * opening vote, and `refreshDerived` settles won games from the save-file win
@@ -147,14 +148,17 @@ if (verify) {
 // _id and blobPrunedAt only: the whole point is that the mode is not in the
 // document, and pulling sightings here would read the archive twice over
 const todo = (await replays
-	.find({ mode: { $exists: false } }, { projection: { blobPrunedAt: 1, settledMode: 1 } })
+	.find(
+		{ $or: [{ mode: { $exists: false } }, { modifiers: { $exists: false } }] },
+		{ projection: { blobPrunedAt: 1, settledMode: 1 } }
+	)
 	.sort({ playedAt: -1 })
 	.toArray()) as Pick<ReplayDoc, '_id' | 'blobPrunedAt' | 'settledMode'>[];
 
 const pruned = todo.filter((r) => r.blobPrunedAt);
 const readable = todo.filter((r) => !r.blobPrunedAt).slice(0, limit);
 console.log(
-	`${todo.length} games have no stored mode: ${readable.length} to re-read` +
+	`${todo.length} games are missing a mode or modifiers: ${readable.length} to re-read` +
 		`${limit === Infinity ? '' : ` (of ${todo.length - pruned.length} readable)`}, ` +
 		`${pruned.length} whose file was released`
 );
@@ -177,26 +181,36 @@ for (const r of readable) {
 		console.log(`  ${r._id}: blob not in bucket`);
 		continue;
 	}
-	let mode: number | null = null;
+	let parsed: ReturnType<typeof parseReplay>;
 	try {
-		const bytes = new Uint8Array(await res.arrayBuffer());
-		mode = parseReplay(r._id, bytes, mosIds).mode;
+		parsed = parseReplay(r._id, new Uint8Array(await res.arrayBuffer()), mosIds);
 	} catch (err) {
 		failed += 1;
 		console.log(`  ${r._id}: parse failed — ${(err as Error).message}`);
 		continue;
 	}
 	read += 1;
-	if (mode === null) continue; // recording stopped inside the vote
+	// an empty modifier list is an answer, so it is stored; a vote the
+	// recording never reached is not, and leaves the field absent
+	const set: { mode?: number; modifiers?: number[] } = {};
+	if (parsed.mode !== null) set.mode = parsed.mode;
+	if (parsed.modifiersRead) set.modifiers = parsed.modifiers;
+	if (!Object.keys(set).length) continue; // recording stopped inside the votes
 	found += 1;
-	if (apply) await replays.updateOne({ _id: r._id }, { $set: { mode } });
+	if (apply) await replays.updateOne({ _id: r._id }, { $set: set });
 	if (found <= 10 || found % 50 === 0) {
-		console.log(`  ${r._id}: mode ${mode}${apply ? '' : ' (dry run)'}`);
+		const what = [
+			set.mode !== undefined ? `mode ${set.mode}` : null,
+			set.modifiers ? `mods [${set.modifiers.join(',')}]` : null
+		]
+			.filter(Boolean)
+			.join(' · ');
+		console.log(`  ${r._id}: ${what}${apply ? '' : ' (dry run)'}`);
 	}
 }
 
 console.log(
-	`\nre-read ${read} replays: ${found} gained a mode, ${read - found} stopped inside the vote` +
+	`\nre-read ${read} replays: ${found} gained something, ${read - found} stopped inside the votes` +
 		`${missing ? `, ${missing} blob(s) missing` : ''}${failed ? `, ${failed} failed to parse` : ''}`
 );
 if (!apply) {

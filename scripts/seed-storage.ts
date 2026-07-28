@@ -68,6 +68,7 @@ for (const file of files) {
 			durationLoops: parsed.durationLoops,
 			...(parsed.outcome ? { outcome: parsed.outcome } : {}),
 			...(parsed.mode ? { mode: parsed.mode } : {}),
+			...(parsed.modifiersRead ? { modifiers: parsed.modifiers } : {}),
 			sightings: parsed.sightings
 		});
 		console.log(`  doc     ${name} inserted (${parsed.sightings.length} profiles)`);

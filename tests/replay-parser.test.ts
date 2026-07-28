@@ -172,6 +172,8 @@ function fakeReplay(file: string, playedAt: string, sightings: ReplaySighting[])
 			durationLoops: 1000,
 			outcome: null,
 			mode: null,
+			modifiers: [],
+			modifiersRead: false,
 			sightings
 		},
 		size: 1000

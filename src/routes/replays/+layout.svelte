@@ -4,6 +4,8 @@
 	import OutcomeMark from '$lib/components/OutcomeMark.svelte';
 	import { fmtDuration } from '$lib/outcome';
 	import ModeMark from '$lib/components/ModeMark.svelte';
+	import ModifierMark from '$lib/components/ModifierMark.svelte';
+	import { orderModifiers } from '$lib/modifiers';
 
 	let { data, children } = $props();
 	const replays = $derived(data.replays); // already newest-first from the server
@@ -32,8 +34,11 @@
 							<OutcomeMark outcome={r.outcome} />
 						</span>
 						<span class="rmeta">
-							{#if r.mode}<ModeMark mode={r.mode} /> ·
-							{/if}{r.players} profile{r.players === 1 ? '' : 's'}{#if r.durationLoops}
+							{#if r.mode || r.modifiers?.length}<span class="rtags"
+								>{#if r.mode}<ModeMark mode={r.mode} />{/if}{#each orderModifiers(
+									r.modifiers ?? []
+								) as id (id)}<ModifierMark {id} iconOnly focusable={false} />{/each}</span
+							> · {/if}{r.players} profile{r.players === 1 ? '' : 's'}{#if r.durationLoops}
 								· <span class="rdur">{fmtDuration(r.durationLoops)}</span>{/if} ·
 							<span class:struck={r.blobPruned}>{fmtSize(r.size)}</span
 							>{#if r.blobPruned}<span
@@ -144,6 +149,16 @@
 	.rmeta {
 		font-size: 11px;
 		color: var(--ink-3);
+	}
+	/* the mode mark and the modifier chips share a centre line rather than a
+	   baseline — a bordered chip and plain coloured text do not sit on the same
+	   one — and the group as a whole aligns to the middle of the meta text it
+	   leads */
+	.rmeta .rtags {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		vertical-align: middle;
 	}
 	.rmeta .rdur {
 		font-family: var(--mono);

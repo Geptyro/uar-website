@@ -8,6 +8,8 @@
 	"durationLoops": 408,
 	"outcome": null,
 	"mode": null,
+	"modifiers": [],
+	"modifiersRead": false,
 	"sightings": [
 		{
 			"name": "KanaxStratz",

@@ -4,6 +4,8 @@
 	import { fmtDuration } from '$lib/outcome';
 	import OutcomeMark from '$lib/components/OutcomeMark.svelte';
 	import ModeMark from '$lib/components/ModeMark.svelte';
+	import ModifierMark from '$lib/components/ModifierMark.svelte';
+	import { orderModifiers } from '$lib/modifiers';
 	import Seo from '$lib/components/Seo.svelte';
 
 	let { data } = $props();
@@ -33,6 +35,12 @@
 	<div class="tile">
 		<b class="mode">{#if r.mode}<ModeMark mode={r.mode} />{:else}—{/if}</b>
 		<span>game mode</span>
+	</div>
+	<div class="tile mods">
+		<b class="modlist">
+			{#each orderModifiers(r.modifiers) as id (id)}<ModifierMark {id} />{:else}—{/each}
+		</b>
+		<span>modifiers</span>
 	</div>
 	<div class="tile"><b>{r.players.length}</b><span>profiles</span></div>
 	<div class="tile"><b>{fmtDuration(r.durationLoops)}</b><span>recorded</span></div>
@@ -140,6 +148,19 @@
 	.mode {
 		display: flex;
 		align-items: center;
+	}
+	/* the modifier tile holds a variable number of chips, so it is the one
+	   tile allowed to grow and wrap rather than sit on the tile grid's rhythm */
+	.tile.mods {
+		flex: 1 1 auto;
+		min-width: 150px;
+	}
+	.modlist {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 4px;
+		font-size: 13px;
 	}
 	.dl {
 		display: inline-block;

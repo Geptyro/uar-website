@@ -153,6 +153,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 			...(parsed.outcome ? { outcome: parsed.outcome } : {}),
 			// likewise the mode: only when the recording lasted past the vote
 			...(parsed.mode ? { mode: parsed.mode } : {}),
+			...(parsed.modifiersRead ? { modifiers: parsed.modifiers } : {}),
 			sightings: parsed.sightings
 		};
 		// replaceReplayDoc writes the doc whole, so a longer recording of a

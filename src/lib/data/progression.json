@@ -12,5 +12,72 @@
 		"Infested",
 		"PMC+",
 		"Apocalypse"
+	],
+	"modifiers": [
+		{
+			"id": 1,
+			"name": "Outbreak",
+			"desc": "Increases XP gain by 10%, but only masses of class 3 zombies spawn"
+		},
+		{
+			"id": 2,
+			"name": "Rifle",
+			"desc": "Increases XP gain by 25%, but only riflemen and medics can be chosen"
+		},
+		{
+			"id": 3,
+			"name": "Tier 1",
+			"desc": "Increases XP by 10%. Mostly class 1 and 2 hostiles spawn. Cannot be checked with Outbreak."
+		},
+		{
+			"id": 4,
+			"name": "1 life",
+			"desc": "Increases XP gain by 15%. No revives or reinforcements on death. Requires 3+ players."
+		},
+		{
+			"id": 5,
+			"name": "Training",
+			"desc": "Training mode (12 of each class) (XP and bank saving disabled)"
+		},
+		{
+			"id": 6,
+			"name": "Blizzard",
+			"desc": "reduces movespeed by 0.15, visionrange by 3, impossible to pick ali, and increases energy regen by 0.25. XP gain +15%."
+		},
+		{
+			"id": 7,
+			"name": "Level 12",
+			"desc": "option : start lvl 12"
+		},
+		{
+			"id": 8,
+			"name": "Auto-revive",
+			"desc": "option : no defeat + auto-revive"
+		},
+		{
+			"id": 9,
+			"name": "Cheats",
+			"desc": "option : cheat commands"
+		},
+		{
+			"id": 10,
+			"name": "Sushis",
+			"desc": "Sushis will infect some players - Increases XP gain by 15% + additional XP in case of Victory (be infected before the chapter 3 to unlock the April Fish camo). The Sushi modifier prevents the Rifle and Classical modifiers."
+		},
+		{
+			"id": 11,
+			"name": "Classical",
+			"desc": "Disable new UAR MOS. The Classical modifier prevents the Rifle and Sushis modifiers."
+		},
+		{
+			"id": 12,
+			"name": "Infested",
+			"desc": "tumors spawn randomly, slowing soldiers and buffing undeads. XP gain +10%."
+		},
+		{
+			"id": 13,
+			"name": "Rainy Day",
+			"desc": "Increases XP gain by 10%, the Mayor has installed a powerful missiles launcher turret at the top of his house. Asked about that surprising fact, the Mayor just said: \"Yes, this is a missiles turret. The biggest I could find.\"."
+		}
 	]
 }

@@ -584,6 +584,23 @@
 		--mode-9: #6b559c;
 		--mode-10: #3a7a63;
 		--mode-11: #3b4586;
+		/* Modifiers. Grouped by what they do rather than ranked: the ones that
+		   make the fight harder run warm, the ones that restrict what you may
+		   bring run cool, and the training-mode options are grey — a training
+		   game earns nothing, so it should not look like a hard one. */
+		--mod-1: #a8482f;
+		--mod-3: #9a5a1e;
+		--mod-2: #7a5a8e;
+		--mod-10: #2f7a5e;
+		--mod-11: #4c6f8f;
+		--mod-4: #a03050;
+		--mod-6: #3d6f96;
+		--mod-12: #3a7a4e;
+		--mod-13: #6b6a2a;
+		--mod-5: #7b7f70;
+		--mod-7: #7b7f70;
+		--mod-8: #7b7f70;
+		--mod-9: #7b7f70;
 		--scroll-thumb: #b9b3a0;
 		--scroll-thumb-hover: #9b9480;
 		--shadow-1: 0 1px 2px rgb(30 32 24 / 0.05), 0 1px 1px rgb(30 32 24 / 0.03);
@@ -654,6 +671,19 @@
 			--mode-9: #a992e0;
 			--mode-10: #63bd97;
 			--mode-11: #7480d8;
+			--mod-1: #e08a6e;
+			--mod-3: #d99a55;
+			--mod-2: #b79ad0;
+			--mod-10: #5fb894;
+			--mod-11: #85b3d8;
+			--mod-4: #e07a97;
+			--mod-6: #7cb4dd;
+			--mod-12: #6fbd85;
+			--mod-13: #c2bf63;
+			--mod-5: #a3a891;
+			--mod-7: #a3a891;
+			--mod-8: #a3a891;
+			--mod-9: #a3a891;
 			--scroll-thumb: #3c4430;
 			--scroll-thumb-hover: #4f5940;
 			--shadow-1: 0 1px 2px rgb(0 0 0 / 0.35);
@@ -697,6 +727,19 @@
 		--mode-9: #a992e0;
 		--mode-10: #63bd97;
 		--mode-11: #7480d8;
+		--mod-1: #e08a6e;
+		--mod-3: #d99a55;
+		--mod-2: #b79ad0;
+		--mod-10: #5fb894;
+		--mod-11: #85b3d8;
+		--mod-4: #e07a97;
+		--mod-6: #7cb4dd;
+		--mod-12: #6fbd85;
+		--mod-13: #c2bf63;
+		--mod-5: #a3a891;
+		--mod-7: #a3a891;
+		--mod-8: #a3a891;
+		--mod-9: #a3a891;
 		--scroll-thumb: #3c4430;
 		--scroll-thumb-hover: #4f5940;
 		--shadow-1: 0 1px 2px rgb(0 0 0 / 0.35);
@@ -912,6 +955,81 @@
 		font-family: var(--mono);
 		font-size: 11.5px;
 		color: var(--ink-2);
+	}
+
+	/* ---------- board tables ----------
+	   A name, a count, and a bar read against the top row. The weekly boards
+	   on the front page and the career boards on a player page are the same
+	   table, so the two pages read as one thing. Every column takes its own
+	   width and what is left over goes to the bar — the part worth having
+	   long. Bars are read against their own board's top row and never across
+	   boards, so two tables not lining up column-for-column costs nothing. */
+	:global(table.data.board) {
+		width: 100%;
+		--fig: 34px;
+		--fig-x: 12px;
+	}
+	:global(table.data.board th),
+	:global(table.data.board td) {
+		width: 1%;
+		white-space: nowrap;
+		vertical-align: middle;
+	}
+	/* The bar takes everything the named columns leave, and holds no floor of
+	   its own: cramped, it gives its width back rather than pushing the row
+	   wider than the card. A short bar reads fine; a board that scrolls
+	   sideways does not. */
+	:global(table.data.board th.barcell),
+	:global(table.data.board td.barcell) {
+		width: 100%;
+		min-width: 0;
+	}
+	/* the order is the ranking, and the number says how far down it you are */
+	:global(table.data.board th.pos),
+	:global(table.data.board td.pos) {
+		font-family: var(--mono);
+		font-size: 10px;
+		color: var(--ink-3);
+		text-align: right;
+		font-variant-numeric: tabular-nums;
+		/* the picture carries its own inset, so the number does not pay twice */
+		padding-right: 0;
+	}
+	/* The row's picture is drawn to the row's own height, border to border, so
+	   a board reads down as a column of faces rather than one of stamps. It is
+	   taken out of flow: the row keeps the height its text gives it, and the
+	   cell gives the width back as padding. */
+	:global(table.data.board td.figcell) {
+		position: relative;
+		padding-top: 0;
+		padding-bottom: 0;
+		padding-left: calc(var(--fig-x) + var(--fig) + 8px);
+	}
+	/* height rather than top+bottom: an out-of-flow <img> is a replaced box, so
+	   it answers `bottom` with its own intrinsic height and stops short of the
+	   row. A percentage resolves against the cell, which is the row. */
+	:global(table.data.board .figimg) {
+		position: absolute;
+		left: var(--fig-x);
+		top: 0;
+		height: 100%;
+		width: var(--fig);
+		object-fit: cover;
+		border-radius: 3px;
+		border: 1px solid var(--border);
+	}
+	:global(table.data.board .figimg.placeholder) {
+		background: var(--surface-2);
+	}
+	/* One bar for every board. Wins by mode passes --bar so each row is drawn
+	   in its own mode's colour, the same ramp the icons carry; the other
+	   boards set nothing and stay on the accent. */
+	:global(table.data.board .boardbar) {
+		height: 8px;
+		border-radius: 2px;
+		background: var(--bar, var(--accent));
+		opacity: 0.55;
+		min-width: 2px;
 	}
 
 	/* ---------- list pages: /players and /entities ----------
@@ -1714,6 +1832,11 @@
 		}
 		:global(table.data td) {
 			padding: 6px 9px;
+		}
+		/* the picture follows the cell's own inset in */
+		:global(table.data.board) {
+			--fig: 30px;
+			--fig-x: 9px;
 		}
 		:global(h2.section) {
 			margin: 24px 0 10px;

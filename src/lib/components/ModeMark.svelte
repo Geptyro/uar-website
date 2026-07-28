@@ -89,6 +89,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 4px;
+		line-height: 1;
 		color: var(--mode);
 		white-space: nowrap;
 	}

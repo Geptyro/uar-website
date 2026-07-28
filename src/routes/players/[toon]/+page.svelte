@@ -18,6 +18,8 @@
 	import Pager from '$lib/components/Pager.svelte';
 	import OutcomeMark from '$lib/components/OutcomeMark.svelte';
 	import ModeMark from '$lib/components/ModeMark.svelte';
+	import ModifierMark from '$lib/components/ModifierMark.svelte';
+	import { orderModifiers } from '$lib/modifiers';
 	import Seo from '$lib/components/Seo.svelte';
 	import { playerDescription } from '$lib/seo';
 	import { fmtDuration } from '$lib/outcome';
@@ -252,9 +254,9 @@
 						<section>
 							<h2 class="section">Wins by mode</h2>
 							<div class="tablewrap">
-								<table class="data modes">
+								<table class="data board">
 									<thead>
-										<tr><th>Mode</th><th class="num">Wins</th><th></th></tr>
+										<tr><th>Mode</th><th class="num">Wins</th><th class="barcell"></th></tr>
 									</thead>
 									<tbody>
 										{#each modes as m (m.name)}
@@ -263,7 +265,7 @@
 												<td class="num">{m.wins.toLocaleString('en')}</td>
 												<td class="barcell">
 													<div
-														class="modebar"
+														class="boardbar"
 														style="width: {(m.wins / modes[0].wins) *
 															100}%; --bar: var(--mode-{m.num})"
 													></div>
@@ -285,16 +287,22 @@
 						<section>
 							<h2 class="section">Played with</h2>
 							<div class="tablewrap">
-								<table class="data modes">
+								<table class="data board">
 									<thead>
-										<tr><th>Player</th><th class="num">Time</th><th></th></tr>
+										<tr>
+											<th class="pos">#</th>
+											<th>Player</th>
+											<th class="num">Time</th>
+											<th class="barcell"></th>
+										</tr>
 									</thead>
 									<tbody>
-										{#each data.teammates as t (t.toon || t.name)}
+										{#each data.teammates as t, i (t.toon || t.name)}
 											<tr>
-												<td>
+												<td class="pos">{i + 1}</td>
+												<td class="figcell">
 													<img
-														class="pportrait"
+														class="figimg"
 														src={t.avatarUrl || anonPortrait}
 														alt=""
 														loading="lazy"
@@ -311,7 +319,7 @@
 												</td>
 												<td class="barcell">
 													<div
-														class="modebar"
+														class="boardbar"
 														style="width: {(100 * t.seconds) / data.teammates[0].seconds}%"
 													></div>
 												</td>
@@ -333,32 +341,38 @@
 				<section>
 					<h2 class="section">Classes played</h2>
 					<div class="tablewrap">
-						<table class="data modes">
+						<table class="data board">
 							<thead>
-								<tr><th>Class</th><th class="num">Games</th><th></th></tr>
+								<tr>
+									<th class="pos">#</th>
+									<th>Class</th>
+									<th class="num">Games</th>
+									<th class="barcell"></th>
+								</tr>
 							</thead>
 							<tbody>
-								{#each classesPlayed as c (c.id)}
+								{#each classesPlayed as c, i (c.id)}
 									<tr>
-										<td class="classcell">
+										<td class="pos">{i + 1}</td>
+										<td class="figcell classcell">
 											{#if c.info}
 												<a class="classlink" href="/mos/{c.id}" title={c.info.name}>
-													{#if c.info.icon}<img
-															class="class-icon"
-															src={c.info.icon}
-															alt=""
-															loading="lazy"
-														/>{/if}
+													{#if c.info.icon}
+														<img class="figimg" src={c.info.icon} alt="" loading="lazy" />
+													{:else}
+														<span class="figimg placeholder"></span>
+													{/if}
 													<span class="class-name">{c.info.name}</span>
 												</a>
 											{:else}
+												<span class="figimg placeholder"></span>
 												<span class="class-name">{c.id}</span>
 											{/if}
 										</td>
 										<td class="num">{c.games}</td>
 										<td class="barcell">
 											<div
-												class="modebar"
+												class="boardbar"
 												style="width: {(c.games / classesPlayed[0].games) * 100}%"
 											></div>
 										</td>
@@ -535,6 +549,7 @@
 						<th>Game date</th>
 						<th title="Won, lost, or not known yet">Result</th>
 						<th title="The mode the lobby voted at the start of the game">Mode</th>
+						<th title="Modifiers the lobby voted on top of the mode">Modifiers</th>
 						<th class="num">Length</th>
 						<th>Class</th>
 						<th class="num">Enlisted</th>
@@ -553,7 +568,7 @@
 							<tr class="gap">
 								<td
 									class="gapinfo"
-									colspan="5"
+									colspan="6"
 									title="only the game below is a recorded replay; the rest weren't"
 								>
 									⋯ over {span} games
@@ -587,18 +602,30 @@
 										>·</span
 									>{/if}
 							</td>
+							<td class="histmods">
+								{#each orderModifiers(facts?.modifiers ?? []) as id (id)}<ModifierMark
+										{id}
+										iconOnly
+									/>{:else}<span class="none">·</span>{/each}
+							</td>
 							<td class="num mono">{facts ? fmtDuration(facts.durationLoops) : ''}</td>
-							<td class="histclass">
-								{#each h.mos as id (id)}
-									{@const chip = mosById.get(id)}
-									{#if chip?.icon}<img
-											class="class-icon"
-											src={chip.icon}
-											alt={chip.name}
-											title={chip.name}
-											loading="lazy"
-										/>{:else}{chip?.name ?? id}{/if}
-								{/each}
+							<td class="histclass" style="--figs: {h.mos.length}">
+								<span class="histfigs">
+									{#each h.mos as id (id)}
+										{@const chip = mosById.get(id)}
+										{#if chip?.icon}
+											<img
+												class="histfig"
+												src={chip.icon}
+												alt={chip.name}
+												title={chip.name}
+												loading="lazy"
+											/>
+										{:else}
+											<span class="histfig placeholder" title={chip?.name ?? id}></span>
+										{/if}
+									{/each}
+								</span>
 							</td>
 							{#each ['xpEn', 'xpWo', 'xpCo', 'gamesPlayed', 'wins', 'revives'] as const as key (key)}
 								{@const d = span === 1 ? delta(p.history, i, key) : null}
@@ -736,7 +763,12 @@
 		grid-area: 2 / 1 / auto / -1;
 		min-width: 0;
 	}
-	.main :global(h2.section:first-child) {
+	/* The column opens on a section heading, and its 34px of top margin is
+	   spacing between sections, not a gap under the top bar. Only that opening
+	   heading: without the child combinator this also catches every heading
+	   that opens a <section> further down — which is all of them — and pins
+	   the whole page's section spacing to 4px. */
+	.main > :global(h2.section:first-child) {
 		margin-top: 4px;
 	}
 	.counthint {
@@ -819,30 +851,13 @@
 	.stack {
 		min-width: 0;
 	}
-	/* three boards in two columns need the label to belong to what is under
-	   it more plainly than a single run of sections does */
-	.boards h2 {
-		margin-top: 46px;
+	/* the longest class name is 25 characters — under about this width the
+	   picture, the name, the count and the bar stop fitting on one row */
+	.duo.boards {
+		grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
 	}
-	table.modes {
-		width: 100%;
-	}
-	/* The label reads at its own width and the count at its own digits, so
-	   everything left over goes to the bar — the part worth having long. Each
-	   board's bars are read against its own top row and never across boards,
-	   so the three not lining up column-for-column costs nothing. */
-	table.modes th:first-child,
-	table.modes td:first-child {
-		width: 1%;
-		white-space: nowrap;
-	}
-	table.modes .num {
-		width: 1%;
-	}
-	.barcell {
-		width: 100%;
-		min-width: 90px;
-	}
+	/* the board table itself is a global primitive (see +layout.svelte); what
+	   is left here is only what these three boards say on top of it */
 	.classcell a {
 		font-weight: 600;
 	}
@@ -850,19 +865,14 @@
 	   carry the row, and the tables stay inside the content column. A player
 	   keeps their name: it is the row, and there is no icon that says it. */
 	@media (max-width: 899.98px) {
+		/* follows the cell's own inset in, as the boards' pictures do */
+		.histrows table {
+			--fig: 30px;
+			--fig-x: 9px;
+		}
 		.classlink .class-name {
 			display: none;
 		}
-	}
-	/* One bar for the three boards. Wins by mode passes --bar so each row is
-	   drawn in its own mode's colour, the same ramp the icons carry; the other
-	   two boards set nothing and stay on the accent. */
-	.modebar {
-		height: 8px;
-		border-radius: 2px;
-		background: var(--bar, var(--accent));
-		opacity: 0.55;
-		min-width: 2px;
 	}
 	tr.total td {
 		font-weight: 650;
@@ -873,15 +883,6 @@
 	   Same three-column row as the two boards it sits with: who, how much,
 	   and a bar read against the top row. The order is the ranking, so no
 	   position number is printed. */
-	.pportrait {
-		width: 22px;
-		height: 22px;
-		border-radius: 3px;
-		object-fit: cover;
-		border: 1px solid var(--border);
-		vertical-align: middle;
-		margin-right: 4px;
-	}
 	.pclan {
 		color: var(--ink-3);
 		font-size: 11px;
@@ -897,17 +898,36 @@
 		color: var(--ink-3);
 	}
 
-	/* ---------- class icons ---------- */
-	.class-icon {
-		width: 22px;
-		height: 22px;
+	/* ---------- class pictures in the replay history ----------
+	   The same idea the boards use: the picture is drawn to the row, so it is
+	   taken out of flow — a percentage height then resolves against the cell,
+	   which is the row, and the row keeps the height its text gives it. A game
+	   with a re-pick carries more than one picture, so the strip is a flex
+	   line and the cell hands back exactly the width its own pictures need. */
+	.histrows table {
+		--fig: 34px;
+		--fig-x: 12px;
+	}
+	.histclass {
+		position: relative;
+		padding-left: calc(var(--fig-x) + var(--figs, 1) * var(--fig) + (var(--figs, 1) - 1) * 3px);
+	}
+	.histfigs {
+		position: absolute;
+		left: var(--fig-x);
+		top: 0;
+		height: 100%;
+		display: flex;
+		gap: 3px;
+	}
+	.histfig {
+		height: 100%;
+		width: var(--fig);
 		object-fit: cover;
 		border-radius: 3px;
-		vertical-align: middle;
-		margin-right: 4px;
 	}
-	.histclass .class-icon {
-		margin-right: 3px;
+	.histfig.placeholder {
+		background: var(--surface-2);
 	}
 	.histresult {
 		width: 1%;
@@ -919,12 +939,26 @@
 	}
 	/* the mode is unknown for a lost game nobody has a later save of, which is
 	   why the column carries the same middle dot the Result column does */
-	.histmode {
+	/* Two columns rather than one cell holding both: the modifiers vary in
+	   number row to row, and behind them the mode would start at a different x
+	   on every line. Split, each reads down its own edge. */
+	.histmode,
+	.histmods {
 		width: 1%;
 		white-space: nowrap;
 	}
-	.histmode .unknown {
+	.histmods {
+		display: table-cell;
+		line-height: 1;
+	}
+	.histmods :global(.tt) + :global(.tt) {
+		margin-left: 3px;
+	}
+	.histmode .unknown,
+	.histmods .none {
 		color: var(--ink-3);
+	}
+	.histmode .unknown {
 		cursor: help;
 	}
 

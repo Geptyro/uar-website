@@ -23,6 +23,7 @@ import {
 import { hx1, hxList, decodeUnlocks, XP_CAP, type Unlocks } from './bank.ts';
 import { decodeAttributes, lobbyVotedMode } from './attributes.ts';
 import { tallyModeVotes, type ModeVoter } from '../../mode.ts';
+import { tallyModifiers, type ModifierEvent } from './modifiers.ts';
 
 const utf8 = new TextDecoder('utf-8');
 
@@ -122,6 +123,17 @@ const VOTE_BALLOT_LOOPS = 16 * 23;
  * it, so scanning further costs nothing measurable.
  */
 const VOTE_SCAN_LOOPS = 16 * 300;
+/**
+ * How far in the modifier vote must be over.
+ *
+ * It opens the moment the mode vote closes and runs its own twenty-second
+ * timer, so two timers plus the slowest bank load the archive has is still
+ * inside two and a half game-minutes. Gating on this rather than on the end of
+ * the scan window matters: the window is generous on purpose, and demanding
+ * the reader reach it threw away games whose slice simply stopped decoding
+ * earlier.
+ */
+const MODIFIER_WINDOW_LOOPS = 16 * 150;
 
 /** Dialog control id -> mode, exported so a test can pin it to real clicks. */
 export const MODE_VOTE_BUTTONS = new Map(
@@ -157,6 +169,15 @@ export interface ParsedReplay {
 	 * itself came down to the map's random tie-break. See lib/mode.ts.
 	 */
 	mode: number | null;
+	/**
+	 * The modifiers the lobby voted on top of the mode, as gv_modifiervote
+	 * ids (see lib/modifiers.ts). Empty both when the lobby wanted none and
+	 * when the recording stopped before that vote — the two are told apart by
+	 * `modifiersRead`.
+	 */
+	modifiers: number[];
+	/** Whether the recording actually covered the modifier vote. */
+	modifiersRead: boolean;
 	sightings: ReplaySighting[];
 }
 
@@ -209,6 +230,11 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 	// click again, so which one counted is the tally's business, not the
 	// scanner's
 	const modeClicks: { user: number; mode: number; loop: number }[] = [];
+	// and every dialog event the modifier vote could be made of. Which
+	// controls those are is not known until the whole window has been read
+	// (the dialog's control ids move between games), so the scanner keeps them
+	// all and `tallyModifiers` picks its own out.
+	const dialogEvents: ModifierEvent[] = [];
 	// The preload is replayed at gameloop 0 and the mode vote closes inside
 	// the first minute, so only the head of game.events matters.
 	// Decompressing the whole stream costs over a second on a long game — an
@@ -226,10 +252,19 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 			if (loop > 0) preload = true; // past the bank preload
 			const t = ev._event as string;
 			if (t.endsWith('STriggerDialogControlEvent')) {
-				const mode = MODE_VOTE_BUTTONS.get(ev.m_controlId as number);
-				if (mode !== undefined && ev.m_eventType === DIALOG_CLICKED) {
-					modeClicks.push({ user: ev._userid.m_userId as number, mode, loop });
+				const user = ev._userid.m_userId as number;
+				const control = ev.m_controlId as number;
+				const type = ev.m_eventType as number;
+				if (type === DIALOG_CLICKED || type === 1) {
+					dialogEvents.push({
+						user,
+						control,
+						type,
+						checked: (ev.m_eventData as { Checked?: boolean })?.Checked
+					});
 				}
+				const mode = MODE_VOTE_BUTTONS.get(control);
+				if (mode !== undefined && type === DIALOG_CLICKED) modeClicks.push({ user, mode, loop });
 				continue;
 			}
 			if (!t.includes('Bank')) continue;
@@ -271,6 +306,7 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 		curBank.clear();
 		curKey.clear();
 		modeClicks.length = 0;
+		dialogEvents.length = 0;
 		scanned = scanHead(decodeReplayGameEvents(protocol, archive.readFile('replay.game.events')!));
 	}
 
@@ -387,6 +423,15 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 		lobbyVotedMode(attrs, activePlayers) ??
 		(counted ? tallyModeVotes(voters, activePlayers.length) : null);
 
+	// The modifier vote runs straight after the mode one, on its own
+	// twenty-second timer, so a recording that reached the end of the scan
+	// window covered it. A shorter one may have caught part of it, and part of
+	// a ballot is worse than none.
+	const modifiersRead = scanned.endLoop >= MODIFIER_WINDOW_LOOPS;
+	const modifiers = modifiersRead
+		? tallyModifiers(dialogEvents, activePlayers.length, mode)
+		: [];
+
 	return {
 		file,
 		playedAt,
@@ -397,6 +442,8 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 		durationLoops: header.m_elapsedGameLoops as number,
 		outcome,
 		mode,
+		modifiers,
+		modifiersRead,
 		sightings
 	};
 }

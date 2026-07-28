@@ -142,6 +142,8 @@ export interface ReplayMeta {
 	/** Game mode 1..12, indexing `modeNames` from 1. Absent when neither the
 	 * vote nor the win counters could settle it — see lib/mode.ts. */
 	mode?: number;
+	/** Modifier ids voted on top of the mode — see lib/modifiers.ts. */
+	modifiers?: number[];
 	/** The file was released by the retention sweep — the game is still on
 	 * record, but there is nothing to download. */
 	blobPruned?: boolean;
@@ -179,6 +181,8 @@ export interface ReplayDetail {
 	/** Game mode 1..12, indexing `modeNames` from 1; null while neither the
 	 * vote nor the win counters can settle it — see lib/mode.ts. */
 	mode: number | null;
+	/** Modifier ids voted on top of the mode — see lib/modifiers.ts. */
+	modifiers: number[];
 	/**
 	 * The blob was dropped by the retention sweep, so there is nothing to
 	 * download. Everything else on this page still comes from the stored

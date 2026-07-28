@@ -8,5 +8,7 @@
 	"durationLoops": 496,
 	"outcome": "loss",
 	"mode": null,
+	"modifiers": [],
+	"modifiersRead": false,
 	"sightings": []
 }

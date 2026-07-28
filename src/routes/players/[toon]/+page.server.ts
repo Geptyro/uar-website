@@ -56,7 +56,7 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 		classGames: profile.classGames ?? {},
 		replayFacts: replayFacts as Record<
 			string,
-			{ durationLoops: number; outcome?: Outcome; mode?: number }
+			{ durationLoops: number; outcome?: Outcome; mode?: number; modifiers?: number[] }
 		>,
 		// battletag of the Battle.net account that claimed this toon via /account
 		verified: account
