@@ -666,14 +666,23 @@ export async function getReplayByLobby(
 		: null;
 }
 
+/**
+ * Both replay writers drop the read cache themselves rather than leaving it to
+ * the rebuild that follows. A burst of uploads defers its rebuild by up to
+ * `REBUILD_GAP_MS` (see `rebuildPlayersSoon`), and until that fires the game is
+ * in the database but every cached read still predates it — so the replay list
+ * would keep serving a list the new game is missing from.
+ */
 export async function replaceReplayDoc(doc: ReplayDoc): Promise<void> {
 	const d = await db();
 	await d.collection<ReplayDoc>('replays').replaceOne({ _id: doc._id }, doc, { upsert: true });
+	invalidateCache();
 }
 
 export async function insertReplayDoc(doc: ReplayDoc): Promise<void> {
 	const d = await db();
 	await d.collection<ReplayDoc>('replays').insertOne(doc);
+	invalidateCache();
 }
 
 export async function insertFeedback(doc: FeedbackDoc): Promise<void> {
