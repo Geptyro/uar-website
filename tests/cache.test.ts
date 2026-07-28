@@ -9,7 +9,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cacheState } from '../src/lib/cache.ts';
+import { cacheState, cacheKeyMatches } from '../src/lib/cache.ts';
 
 const MIN = 60_000;
 
@@ -38,4 +38,38 @@ test('a TTL longer than the stale window still yields a stale window', () => {
 
 test('a short-lived key still gets its window', () => {
 	assert.equal(cacheState(31_000, 30_000, 30 * MIN), 'stale');
+});
+
+// Invalidation scope. A presence heartbeat arrives every half-minute from
+// every running Companion; when it cleared everything, almost every page view
+// became a cold read. These pin that it now reaches the roster and nothing else.
+
+test('a prefix matches its own key and its namespace', () => {
+	assert.equal(cacheKeyMatches('presence', ['presence']), true);
+	assert.equal(cacheKeyMatches('replays:page:1:50', ['replays']), true);
+	assert.equal(cacheKeyMatches('replays', ['replays']), true);
+});
+
+test('a prefix does not bleed into a sibling namespace', () => {
+	// the trap: 'player' must not reach the leaderboard or the summaries
+	assert.equal(cacheKeyMatches('players:count', ['player']), false);
+	assert.equal(cacheKeyMatches('playerSummary:2-S2-1-1', ['player']), false);
+	assert.equal(cacheKeyMatches('player:2-S2-1-1', ['player']), true);
+});
+
+test('a presence heartbeat leaves the page caches alone', () => {
+	const untouched = [
+		'replays:page:1:50',
+		'players:careerXp:-1:1',
+		'clans:members',
+		'playerSummary:2-S2-1-7486118',
+		'playerHistory:2-S2-1-7486118:1',
+		'mosBoard:AlligatorLK19',
+		'weeklyBoards'
+	];
+	for (const key of untouched) {
+		assert.equal(cacheKeyMatches(key, ['presence']), false, `${key} should survive a heartbeat`);
+	}
+	assert.equal(cacheKeyMatches('presence', ['presence']), true);
+	assert.equal(cacheKeyMatches('ready', ['ready']), true);
 });

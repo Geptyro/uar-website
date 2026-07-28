@@ -19,7 +19,7 @@ import type { Sc2Profile } from './bnet.ts';
 import { buildPlayersData, type ReplaySighting } from './replay/extract.ts';
 import { outcomeChanges, type Outcome } from '../outcome.ts';
 import { PER_PAGE, pageNumber, type Paged } from '../paging.ts';
-import { cacheState } from '../cache.ts';
+import { cacheKeyMatches, cacheState } from '../cache.ts';
 import { escapeRegex } from '../search.ts';
 import { careerXp, totalWins } from '../xp.ts';
 import { bucketConfigured, deleteObject } from './replay/s3.ts';
@@ -353,9 +353,28 @@ async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
 	return refresh(key, load);
 }
 
-export function invalidateCache(): void {
+/**
+ * Drop cached values, optionally only those under the given key prefixes.
+ *
+ * Scope matters far more than it looks. Presence heartbeats arrive from every
+ * running Companion every half-minute or so, and while this cleared everything
+ * unconditionally each one threw away the replay list, the leaderboard, the
+ * clan boards and every cached profile — so almost every page view was a cold
+ * read, and no amount of TTL could help, because a cleared entry is not even
+ * stale enough to serve while it refreshes.
+ *
+ * Called with no arguments it still clears the lot; that is right for an upload,
+ * which can change nearly anything derived.
+ */
+export function invalidateCache(...prefixes: string[]): void {
 	generation++;
-	cache.clear();
+	if (!prefixes.length) {
+		cache.clear();
+		return;
+	}
+	for (const key of [...cache.keys()]) {
+		if (cacheKeyMatches(key, prefixes)) cache.delete(key);
+	}
 }
 
 /** Exactly the fields `buildClans` reads — see `ClanMember` in $lib/clans.ts. */
@@ -870,13 +889,13 @@ export async function setReady(doc: ReadyDoc): Promise<void> {
 	await col.replaceOne({ _id: doc._id }, doc, { upsert: true });
 	// opportunistic cleanup — expired flags are never read again
 	await col.deleteMany({ until: { $lt: new Date().toISOString() } });
-	invalidateCache();
+	invalidateCache('ready');
 }
 
 export async function clearReady(sub: string): Promise<void> {
 	const d = await db();
 	await d.collection<ReadyDoc>('ready').deleteOne({ _id: sub });
-	invalidateCache();
+	invalidateCache('ready');
 }
 
 /** Fresh lobby/ingame heartbeats (stale ones are ignored, cleaned lazily). */
@@ -903,13 +922,14 @@ export async function upsertPresence(doc: PresenceDoc): Promise<void> {
 	await col.replaceOne({ _id: doc._id }, doc, { upsert: true });
 	// opportunistic cleanup — anything hours-stale is never read again
 	await col.deleteMany({ at: { $lt: new Date(Date.now() - 6 * 3_600_000).toISOString() } });
-	invalidateCache();
+	// only the roster changed — everything else in the cache is untouched
+	invalidateCache('presence');
 }
 
 export async function deletePresence(sub: string): Promise<void> {
 	const d = await db();
 	await d.collection<PresenceDoc>('presence').deleteOne({ _id: sub });
-	invalidateCache();
+	invalidateCache('presence');
 }
 
 /**
@@ -933,7 +953,7 @@ export async function upsertAccount(
 	await d
 		.collection<AccountDoc>('accounts')
 		.updateOne({ _id: sub }, { $set: set, $setOnInsert: { linkedAt: iso } }, { upsert: true });
-	invalidateCache();
+	invalidateCache('avatars', 'playerDirectory');
 }
 
 /** The account's primary profile: first seen in UAR replays, else the first. */
@@ -1001,7 +1021,7 @@ export async function getAccountByToon(toon: string): Promise<AccountDoc | null>
 export async function deleteAccount(sub: string): Promise<void> {
 	const d = await db();
 	await d.collection<AccountDoc>('accounts').deleteOne({ _id: sub });
-	invalidateCache();
+	invalidateCache('avatars', 'playerDirectory');
 }
 
 /**

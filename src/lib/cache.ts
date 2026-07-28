@@ -24,3 +24,15 @@ export function cacheState(age: number, ttl: number, staleWindow: number): Cache
 	if (age < ttl + staleWindow) return 'stale';
 	return 'expired';
 }
+
+/**
+ * Does a cache key fall under one of these prefixes?
+ *
+ * A prefix matches the key exactly, or the key up to a `:` separator — never a
+ * bare string prefix. `player` must not reach `players:count`, or scoping an
+ * invalidation to one thing would quietly throw away another; the separator is
+ * what keeps sibling namespaces apart.
+ */
+export function cacheKeyMatches(key: string, prefixes: string[]): boolean {
+	return prefixes.some((p) => key === p || key.startsWith(`${p}:`));
+}
