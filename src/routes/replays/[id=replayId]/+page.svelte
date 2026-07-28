@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { careerXp } from '$lib/players';
+	import { careerXp, modeName } from '$lib/players';
 	import { mosById, mosName, mosPageId } from '$lib/mos';
 	import { fmtDuration } from '$lib/outcome';
 	import OutcomeMark from '$lib/components/OutcomeMark.svelte';
+	import ModeMark from '$lib/components/ModeMark.svelte';
 	import Seo from '$lib/components/Seo.svelte';
 
 	let { data } = $props();
@@ -29,6 +30,10 @@
 
 <div class="tiles">
 	<div class="tile"><b>{when}</b><span>game date · UTC</span></div>
+	<div class="tile">
+		<b class="mode">{#if r.mode}<ModeMark mode={r.mode} />{:else}—{/if}</b>
+		<span>game mode</span>
+	</div>
 	<div class="tile"><b>{r.players.length}</b><span>profiles</span></div>
 	<div class="tile"><b>{fmtDuration(r.durationLoops)}</b><span>recorded</span></div>
 	<div class="tile">
@@ -48,6 +53,11 @@
 	{#if !r.outcome}
 		The result is unknown for now: this recording stopped before the game ended, and none of its
 		players has uploaded a later game yet.
+	{/if}
+	{#if !r.mode}
+		The mode is unknown for now: it is voted after the lobby, so it is only readable from a
+		recording that lasted past the vote — or, for a game that was won, from the players' own
+		save files once one of them uploads a later game.
 	{/if}
 </p>
 
@@ -124,6 +134,12 @@
 		display: flex;
 		align-items: center;
 		gap: 7px;
+	}
+	/* the mode tile carries the mark at the tile's own type size, so the icon
+	   scales with it rather than being pinned to a pixel height */
+	.mode {
+		display: flex;
+		align-items: center;
 	}
 	.dl {
 		display: inline-block;

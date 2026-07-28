@@ -21,6 +21,8 @@ import {
 	decodeReplayTrackerEvents
 } from './protocol.ts';
 import { hx1, hxList, decodeUnlocks, XP_CAP, type Unlocks } from './bank.ts';
+import { decodeAttributes, lobbyVotedMode } from './attributes.ts';
+import { tallyModeVotes, type ModeVoter } from '../../mode.ts';
 
 const utf8 = new TextDecoder('utf-8');
 
@@ -77,6 +79,55 @@ export type ReplayOutcome = 'win' | 'loss';
 const WIN_PROP = 'Planet';
 const DEAD_HERO = 'DeadHeroIndicator';
 
+/**
+ * The map's opening mode vote, as dialog-button clicks.
+ *
+ * gt_ModeSelect_Func builds one button per mode and reads the click straight
+ * off it, so the vote is in the game-events stream as twelve control ids. The
+ * ids are positional: every one of gf_CreateDifficultyButton{Left,Center,Right}
+ * makes exactly four controls with the button second, so the buttons run at a
+ * stride of four in the order gt_ModeSelect_Func creates them — the five
+ * regular difficulties, Apocalypse, then the centre and right columns.
+ *
+ * The base is the one thing that is not derivable: it is wherever the map's
+ * earlier dialogs happened to leave the counter, and a future version of the
+ * map that adds a control before the mode dialog would shift it. It has held
+ * across every build from 92174 to 97563, and two things would catch it
+ * moving: `tests/replay-mode.test.ts` pins it against the sample replays, and
+ * `scripts/backfill-modes.ts --verify` grades this reader against the
+ * save-file win counters, which need no constant at all. That check stands at
+ * 170/171 over the archive, so the run below is where it should be.
+ */
+const VOTE_BUTTON_BASE = 43;
+const VOTE_BUTTON_STRIDE = 4;
+const VOTE_BUTTON_MODES = [1, 2, 3, 4, 5, 12, 7, 8, 11, 6, 9, 10];
+/** m_eventType of a dialog button being clicked (0 = clicked). */
+const DIALOG_CLICKED = 0;
+/**
+ * How long the ballot stays open after the first vote is cast.
+ *
+ * gt_IniModeDialog_Func opens the dialog once every player's bank has loaded —
+ * which is not at a fixed time, and on a full lobby of big save files can be a
+ * good while in — and then runs gv_timermodevalue down from twenty seconds.
+ * Nobody can click before the dialog opens, so "first click + the timer" is
+ * never shorter than the real window and never runs past the point where the
+ * buttons stop existing. A couple of seconds of slack covers the timer's
+ * one-second tick and the waits gt_SetMode does before it counts.
+ */
+const VOTE_BALLOT_LOOPS = 16 * 23;
+/**
+ * How far in to keep decoding while looking for the vote. Generous, because
+ * the dialog's opening time rides on bank loading, and free: the cost of the
+ * head of game.events is decompressing the slice, not decoding the events in
+ * it, so scanning further costs nothing measurable.
+ */
+const VOTE_SCAN_LOOPS = 16 * 300;
+
+/** Dialog control id -> mode, exported so a test can pin it to real clicks. */
+export const MODE_VOTE_BUTTONS = new Map(
+	VOTE_BUTTON_MODES.map((mode, i) => [VOTE_BUTTON_BASE + i * VOTE_BUTTON_STRIDE, mode])
+);
+
 export interface ParsedReplay {
 	file: string;
 	playedAt: string;
@@ -100,6 +151,12 @@ export interface ParsedReplay {
 	 * uploader left early, which is the common case for a leaver's copy).
 	 */
 	outcome: ReplayOutcome | null;
+	/**
+	 * Which of the map's twelve modes the game was played on (1..12), or null
+	 * when the recording stopped before the vote closed — or when the vote
+	 * itself came down to the map's random tie-break. See lib/mode.ts.
+	 */
+	mode: number | null;
 	sightings: ReplaySighting[];
 }
 
@@ -147,19 +204,35 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 	const toons = new Map<number, string>();
 	const curBank = new Map<number, string>();
 	const curKey = new Map<number, string>();
-	// The preload is replayed at gameloop 0, so only the head of
-	// game.events matters. Decompressing the whole stream costs over a
-	// second on a long game — an order of magnitude more than decoding the
-	// few hundred events we want — so read a slice and fall back to the
-	// whole file if it did not cover the preload.
+	// every click on a mode button, in order, with the loop it landed on: the
+	// map refuses a click for a mode the player has not unlocked and lets them
+	// click again, so which one counted is the tally's business, not the
+	// scanner's
+	const modeClicks: { user: number; mode: number; loop: number }[] = [];
+	// The preload is replayed at gameloop 0 and the mode vote closes inside
+	// the first minute, so only the head of game.events matters.
+	// Decompressing the whole stream costs over a second on a long game — an
+	// order of magnitude more than decoding the few hundred events we want —
+	// so read a slice and fall back to the whole file if it did not cover the
+	// preload.
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const scanBanks = (events: Generator<any>): boolean => {
+	const scanHead = (events: Generator<any>): { preload: boolean; endLoop: number } => {
+		let preload = false;
+		let endLoop = 0;
 		for (const ev of events) {
+			const loop = ev._gameloop as number;
+			if (loop > VOTE_SCAN_LOOPS) return { preload: true, endLoop: loop };
+			endLoop = loop;
+			if (loop > 0) preload = true; // past the bank preload
 			const t = ev._event as string;
-			if (!t.includes('Bank')) {
-				if ((ev._gameloop as number) > 0) return true; // past the preload
+			if (t.endsWith('STriggerDialogControlEvent')) {
+				const mode = MODE_VOTE_BUTTONS.get(ev.m_controlId as number);
+				if (mode !== undefined && ev.m_eventType === DIALOG_CLICKED) {
+					modeClicks.push({ user: ev._userid.m_userId as number, mode, loop });
+				}
 				continue;
 			}
+			if (!t.includes('Bank')) continue;
 			const uid = ev._userid.m_userId as number;
 			if (t.endsWith('SBankFileEvent')) {
 				curBank.set(uid, utf(ev.m_name));
@@ -177,24 +250,28 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 				toons.set(uid, utf(ev.m_toonHandle));
 			}
 		}
-		return false; // ran out of events without leaving loop 0
+		// ran out of events: the recording itself stopped this early
+		return { preload, endLoop };
 	};
 
-	// 512 KB covers a full twelve-player preload several times over
-	let covered = false;
+	// 512 KB covers a full twelve-player preload several times over, and
+	// decodes several game-minutes past the vote even on a busy twelve-player
+	// opening
+	let scanned: { preload: boolean; endLoop: number };
 	try {
-		covered = scanBanks(
+		scanned = scanHead(
 			decodeReplayGameEvents(protocol, archive.readFile('replay.game.events', 512 * 1024)!)
 		);
 	} catch {
-		covered = false; // slice ended mid-event
+		scanned = { preload: false, endLoop: 0 }; // slice ended mid-event
 	}
-	if (!covered) {
+	if (!scanned.preload) {
 		banks.clear();
 		toons.clear();
 		curBank.clear();
 		curKey.clear();
-		scanBanks(decodeReplayGameEvents(protocol, archive.readFile('replay.game.events')!));
+		modeClicks.length = 0;
+		scanned = scanHead(decodeReplayGameEvents(protocol, archive.readFile('replay.game.events')!));
 	}
 
 	// class picks (each player's hero unit(s) born) and the end-of-game
@@ -269,6 +346,47 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 		});
 	}
 
+	// The lobby can settle the mode before the game starts; when it has not —
+	// the map's default — the opening vote does, and that only counts if the
+	// recording lasted past it.
+	const activePlayers = [...playerToUser.keys()].sort((a, b) => a - b);
+	const attrs = decodeAttributes(archive.readFile('replay.attributes.events') ?? new Uint8Array());
+
+	// The ballot is the clicks inside one timer's length of the first of them;
+	// anything later belongs to whatever dialog came after the vote, not to it.
+	const opened = modeClicks.length ? modeClicks[0].loop : 0;
+	const closes = opened + VOTE_BALLOT_LOOPS;
+	const clicksByUser = new Map<number, number[]>();
+	for (const c of modeClicks) {
+		if (c.loop > closes) break; // modeClicks is in event order, so in loop order
+		const list = clicksByUser.get(c.user);
+		if (list) list.push(c.mode);
+		else clicksByUser.set(c.user, [c.mode]);
+	}
+	const voters: ModeVoter[] = [...clicksByUser].map(([uid, clicks]) => {
+		const bank = banks.get(uid);
+		return {
+			clicks,
+			xp: bank
+				? Math.min(hx1(bank['nbe'] ?? ''), XP_CAP) +
+					Math.min(hx1(bank['nbw'] ?? ''), XP_CAP) +
+					Math.min(hx1(bank['nbc'] ?? ''), XP_CAP)
+				: 0,
+			prestige: bank ? hx1(bank['pb'] ?? '') : 0
+		};
+	});
+
+	// Two things have to hold before the tally is worth anything: somebody
+	// voted, and the recording lasted past the close of the ballot. Without
+	// the first, the map's own count would answer Normal — its default for a
+	// lobby that let the timer run out — when much more likely we are simply
+	// not looking at a vote at all. Without the second we are counting a
+	// half-cast ballot, which is how a leaver's copy reads.
+	const counted = voters.length > 0 && scanned.endLoop >= closes;
+	const mode =
+		lobbyVotedMode(attrs, activePlayers) ??
+		(counted ? tallyModeVotes(voters, activePlayers.length) : null);
+
 	return {
 		file,
 		playedAt,
@@ -278,6 +396,7 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 		lobbyId: initdata.m_syncLobbyState.m_gameDescription.m_randomValue as number,
 		durationLoops: header.m_elapsedGameLoops as number,
 		outcome,
+		mode,
 		sightings
 	};
 }

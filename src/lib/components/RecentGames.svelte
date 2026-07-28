@@ -2,6 +2,7 @@
 	import type { ReplayMeta } from '$lib/players';
 	import { fmtDuration } from '$lib/outcome';
 	import OutcomeMark from './OutcomeMark.svelte';
+	import ModeMark from './ModeMark.svelte';
 
 	let { games }: { games: ReplayMeta[] } = $props();
 
@@ -23,7 +24,8 @@
 			when: fmtWhen.format(new Date(g.playedAt)),
 			players: g.players,
 			duration: g.durationLoops ? fmtDuration(g.durationLoops) : '',
-			outcome: g.outcome
+			outcome: g.outcome,
+			mode: g.mode
 		}))
 	);
 </script>
@@ -42,9 +44,9 @@
 						<!-- the separator is an expression: markup whitespace at the
 						     edge of a block is trimmed away, and the dot would end up
 						     glued to the word before it -->
-						{g.players} profile{g.players === 1 ? '' : 's'}{#if g.duration}{' · '}<span
-								class="g-dur">{g.duration}</span
-							>{/if}
+						{#if g.mode}<ModeMark mode={g.mode} />{' · '}{/if}{g.players} profile{g.players === 1
+							? ''
+							: 's'}{#if g.duration}{' · '}<span class="g-dur">{g.duration}</span>{/if}
 					</span>
 				</a>
 			</li>
@@ -75,23 +77,31 @@
 	   plain band while the game is unsettled, so a row never looks broken.
 	   The tint bleeds into the card's padding to read as a band rather than a
 	   floating chip, and stays well under the ✓/✕ mark's own soft fill so the
-	   mark still reads on top of it. */
+	   mark still reads on top of it. On top of the tint the row carries a bar
+	   down its leading edge in its own colour, which is what makes the run of
+	   results readable at a glance; the bar eats 4px of the left padding so an
+	   unsettled row — transparent bar — keeps the exact same box. */
 	ol a {
 		display: flex;
 		flex-direction: column;
 		gap: 1px;
-		padding: 6px 9px;
+		padding: 6px 9px 6px 5px;
 		margin: 0 -9px;
+		border-left: 4px solid transparent;
 		border-radius: var(--r-sm);
 		text-decoration: none;
 		background: var(--surface-2);
-		transition: background 120ms ease;
+		transition:
+			background 120ms ease,
+			border-color 120ms ease;
 	}
 	ol a.win {
 		background: color-mix(in srgb, var(--accent) 9%, transparent);
+		border-color: var(--accent);
 	}
 	ol a.loss {
 		background: color-mix(in srgb, var(--hostile) 9%, transparent);
+		border-color: var(--hostile);
 	}
 	/* hover deepens the row's own colour — the timestamp must not go accent
 	   green on a game that was lost */

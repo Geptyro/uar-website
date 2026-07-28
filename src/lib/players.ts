@@ -139,6 +139,9 @@ export interface ReplayMeta {
 	durationLoops: number;
 	/** Absent until one source or the other can settle it — see lib/outcome.ts. */
 	outcome?: Outcome;
+	/** Game mode 1..12, indexing `modeNames` from 1. Absent when neither the
+	 * vote nor the win counters could settle it — see lib/mode.ts. */
+	mode?: number;
 	/** The file was released by the retention sweep — the game is still on
 	 * record, but there is nothing to download. */
 	blobPruned?: boolean;
@@ -173,6 +176,9 @@ export interface ReplayDetail {
 	durationLoops: number;
 	/** Null while neither source can settle it — see lib/outcome.ts. */
 	outcome: Outcome | null;
+	/** Game mode 1..12, indexing `modeNames` from 1; null while neither the
+	 * vote nor the win counters can settle it — see lib/mode.ts. */
+	mode: number | null;
 	/**
 	 * The blob was dropped by the retention sweep, so there is nothing to
 	 * download. Everything else on this page still comes from the stored
@@ -184,6 +190,11 @@ export interface ReplayDetail {
 
 /** Game mode names; winsByMode[i] is the mode modeNames[i]. */
 export const modeNames: string[] = progression.modes;
+
+/** A stored game's mode number (1-based) as its name, empty when unknown. */
+export function modeName(mode: number | null | undefined): string {
+	return mode ? (modeNames[mode - 1] ?? `Mode ${mode}`) : '';
+}
 
 const camoByNum = new Map(camos.map((c) => [c.num, c]));
 const decalByNum = new Map(decals.map((d) => [d.num, d]));

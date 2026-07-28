@@ -67,6 +67,7 @@ for (const file of files) {
 			lobbyId: parsed.lobbyId,
 			durationLoops: parsed.durationLoops,
 			...(parsed.outcome ? { outcome: parsed.outcome } : {}),
+			...(parsed.mode ? { mode: parsed.mode } : {}),
 			sightings: parsed.sightings
 		});
 		console.log(`  doc     ${name} inserted (${parsed.sightings.length} profiles)`);

@@ -18,6 +18,7 @@ import { MongoClient, type Db } from 'mongodb';
 import type { Sc2Profile } from './bnet.ts';
 import { buildPlayersData, type ReplaySighting } from './replay/extract.ts';
 import { outcomeChanges, type Outcome } from '../outcome.ts';
+import { modeChanges } from '../mode.ts';
 import { PER_PAGE, pageNumber, type Paged } from '../paging.ts';
 import { cacheKeyMatches, cacheState } from '../cache.ts';
 import { escapeRegex } from '../search.ts';
@@ -65,6 +66,20 @@ export interface ReplayDoc {
 	 * is settleable — nobody has played a follow-up yet.
 	 */
 	settledOutcome?: Outcome;
+	/**
+	 * The game mode the parser counted out of the opening vote, 1..12. Absent
+	 * on games ingested before modes were read, and on recordings that stopped
+	 * before the vote closed — `replayModes` settles those from the save-file
+	 * win counters instead, so this is a hint, not the answer.
+	 */
+	mode?: number;
+	/**
+	 * The settled mode, written by `rebuildPlayers` from the win counters
+	 * across every stored game (see lib/mode.ts). Derived, never authored, for
+	 * the same reason as `settledOutcome` — and the reason a game whose blob
+	 * is long gone can still gain a mode it never had.
+	 */
+	settledMode?: number;
 	/**
 	 * When the bucket blob was dropped by the retention sweep, ISO. Absent
 	 * means the bytes are still downloadable. The doc itself is never
@@ -562,7 +577,9 @@ const LIST_PROJECTION = {
 	durationLoops: 1,
 	blobPrunedAt: 1,
 	outcome: 1,
-	settledOutcome: 1
+	settledOutcome: 1,
+	mode: 1,
+	settledMode: 1
 };
 
 /**
@@ -574,8 +591,19 @@ function replayOutcomeOf(r: Pick<ReplayDoc, 'settledOutcome' | 'outcome'>): Outc
 	return r.settledOutcome ?? r.outcome;
 }
 
+/**
+ * The settled mode if the counters produced one worth trusting, else what the
+ * parser counted out of the vote. `settledMode` is only written where the
+ * counters were corroborated or the vote had nothing to say, so this is the
+ * same precedence `replayModes` applies — not a blanket win for the counters.
+ */
+function replayModeOf(r: Pick<ReplayDoc, 'settledMode' | 'mode'>): number | undefined {
+	return r.settledMode ?? r.mode;
+}
+
 function toRow(r: ReplayDoc): ReplayMeta {
 	const outcome = replayOutcomeOf(r);
+	const mode = replayModeOf(r);
 	return {
 		file: r._id,
 		playedAt: r.playedAt,
@@ -583,7 +611,8 @@ function toRow(r: ReplayDoc): ReplayMeta {
 		size: r.size,
 		durationLoops: r.durationLoops ?? 0,
 		blobPruned: Boolean(r.blobPrunedAt),
-		...(outcome ? { outcome } : {})
+		...(outcome ? { outcome } : {}),
+		...(mode ? { mode } : {})
 	};
 }
 
@@ -681,22 +710,35 @@ export async function getReplayStats(): Promise<{ count: number; latest: string 
 export async function getReplayFacts(
 	cacheKey: string,
 	files: string[]
-): Promise<Record<string, { durationLoops: number; outcome?: Outcome }>> {
+): Promise<Record<string, { durationLoops: number; outcome?: Outcome; mode?: number }>> {
 	if (!files.length) return {};
 	// keyed by which page of whose history it is, so a revisit does not re-read
 	return cached(`replayFacts:${cacheKey}`, async () => {
-		const map: Record<string, { durationLoops: number; outcome?: Outcome }> = {};
+		const map: Record<string, { durationLoops: number; outcome?: Outcome; mode?: number }> = {};
 		const d = await db();
 		const docs = await d
 			.collection<ReplayDoc>('replays')
 			.find(
 				{ _id: { $in: files } },
-				{ projection: { durationLoops: 1, outcome: 1, settledOutcome: 1 } }
+				{
+					projection: {
+						durationLoops: 1,
+						outcome: 1,
+						settledOutcome: 1,
+						mode: 1,
+						settledMode: 1
+					}
+				}
 			)
 			.toArray();
 		for (const r of docs) {
 			const outcome = replayOutcomeOf(r);
-			map[r._id] = { durationLoops: r.durationLoops ?? 0, ...(outcome ? { outcome } : {}) };
+			const mode = replayModeOf(r);
+			map[r._id] = {
+				durationLoops: r.durationLoops ?? 0,
+				...(outcome ? { outcome } : {}),
+				...(mode ? { mode } : {})
+			};
 		}
 		return map;
 	});
@@ -716,6 +758,8 @@ const REPLAY_DETAIL_PROJECTION = {
 	durationLoops: 1,
 	outcome: 1,
 	settledOutcome: 1,
+	mode: 1,
+	settledMode: 1,
 	blobPrunedAt: 1,
 	'sightings.name': 1,
 	'sightings.clan': 1,
@@ -749,6 +793,7 @@ async function readReplay(file: string): Promise<ReplayDetail | null> {
 		// the settled result rides on the doc itself now, so one game's page
 		// no longer re-derives it from the whole archive
 		outcome: replayOutcomeOf(doc) ?? null,
+		mode: replayModeOf(doc) ?? null,
 		blobPruned: Boolean(doc.blobPrunedAt),
 		// project sightings down to what the page shows — unlocks etc. stay server-side
 		players: doc.sightings.map((s) => ({
@@ -1181,12 +1226,55 @@ export async function persistSettledOutcomes(
 	return changes.length;
 }
 
+/**
+ * Work out each game's settled mode from the per-mode win counters across the
+ * whole archive, and write down the ones that moved.
+ *
+ * Same shape and the same reasoning as `persistSettledOutcomes`: settling a
+ * mode needs every replay's sightings, which no page view can afford to read,
+ * and a new game only settles the previous game of each of its players — so
+ * the write is a handful of docs, not the archive.
+ *
+ * Idempotent: re-running with unchanged data writes nothing and returns 0.
+ */
+export async function persistSettledModes(
+	docs: Pick<ReplayDoc, '_id' | 'playedAt' | 'mode' | 'settledMode' | 'sightings'>[]
+): Promise<number> {
+	const changes = modeChanges(
+		docs.map((r) => ({
+			file: r._id,
+			playedAt: r.playedAt,
+			mode: r.mode,
+			settledMode: r.settledMode,
+			sightings: (r.sightings ?? []).map((s) => ({
+				toon: s.toon,
+				winsByMode: s.winsByMode ?? [],
+				gamesPlayed: s.gamesPlayed
+			}))
+		}))
+	);
+	if (changes.length) {
+		const d = await db();
+		await d.collection<ReplayDoc>('replays').bulkWrite(
+			changes.map((c) =>
+				c.mode
+					? { updateOne: { filter: { _id: c.file }, update: { $set: { settledMode: c.mode } } } }
+					: { updateOne: { filter: { _id: c.file }, update: { $unset: { settledMode: '' } } } }
+			) as never[],
+			{ ordered: false }
+		);
+	}
+	return changes.length;
+}
+
 /** Everything the derived-data pass needs, and nothing else. */
 const DERIVED_PROJECTION = {
 	playedAt: 1,
 	durationLoops: 1,
 	outcome: 1,
 	settledOutcome: 1,
+	mode: 1,
+	settledMode: 1,
 	'sightings.toon': 1,
 	'sightings.name': 1,
 	'sightings.clan': 1,
@@ -1197,7 +1285,14 @@ const DERIVED_PROJECTION = {
 
 type DerivedDoc = Pick<
 	ReplayDoc,
-	'_id' | 'playedAt' | 'durationLoops' | 'outcome' | 'settledOutcome' | 'sightings'
+	| '_id'
+	| 'playedAt'
+	| 'durationLoops'
+	| 'outcome'
+	| 'settledOutcome'
+	| 'mode'
+	| 'settledMode'
+	| 'sightings'
 >;
 
 /** Recompute the all-time per-class playtime boards and store them. */
@@ -1225,17 +1320,18 @@ async function persistMosBoards(docs: DerivedDoc[]): Promise<number> {
 
 /**
  * Recompute everything derived from the archive as a whole: each game's settled
- * outcome, and the per-class playtime boards.
+ * outcome and mode, and the per-class playtime boards.
  *
- * Both need every replay, for the same reason — a game's result is a vote
- * across all its players, and the boards are all-time totals — so they share a
- * single narrow read rather than scanning twice. Pass `docs` when the caller
- * already holds them (the full rebuild does) to skip the read entirely.
+ * All of them need every replay, for the same reason — a game's result and its
+ * mode are both a vote across all its players, and the boards are all-time
+ * totals — so they share a single narrow read rather than scanning three
+ * times. Pass `docs` when the caller already holds them (the full rebuild
+ * does) to skip the read entirely.
  */
 export async function refreshDerived(
 	docs?: DerivedDoc[],
 	onlyToons?: string[]
-): Promise<{ outcomes: number; boards: number; mates: number }> {
+): Promise<{ outcomes: number; modes: number; boards: number; mates: number }> {
 	const rows =
 		docs ??
 		((await (await db())
@@ -1243,9 +1339,10 @@ export async function refreshDerived(
 			.find({}, { projection: DERIVED_PROJECTION })
 			.toArray()) as DerivedDoc[]);
 	const outcomes = await persistSettledOutcomes(rows);
+	const modes = await persistSettledModes(rows);
 	const boards = await persistMosBoards(rows);
 	const mates = await persistTeammates(rows, onlyToons);
-	return { outcomes, boards, mates };
+	return { outcomes, modes, boards, mates };
 }
 
 /**
@@ -1360,6 +1457,7 @@ export async function rebuildPlayersFor(toons: string[]): Promise<number> {
 					lobbyId: r.lobbyId ?? 0,
 					durationLoops: r.durationLoops ?? 0,
 					outcome: r.outcome ?? null,
+					mode: r.mode ?? null,
 					sightings: r.sightings
 				},
 				size: r.size
@@ -1404,6 +1502,7 @@ export async function rebuildPlayers(): Promise<number> {
 				lobbyId: r.lobbyId ?? 0,
 				durationLoops: r.durationLoops ?? 0,
 				outcome: r.outcome ?? null,
+				mode: r.mode ?? null,
 				sightings: r.sightings
 			},
 			size: r.size

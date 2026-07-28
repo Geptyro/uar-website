@@ -103,13 +103,6 @@
 			)
 		},
 		{
-			href: '/entities',
-			label: 'Entities',
-			icon: icon(
-				'<circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/>'
-			)
-		},
-		{
 			href: '/si',
 			label: 'Skill IDs',
 			icon: icon(
@@ -171,6 +164,13 @@
 			label: 'Companion app',
 			icon: icon(
 				'<rect x=\'2\' y=\'3\' width=\'20\' height=\'14\' rx=\'2\'/><line x1=\'8\' y1=\'21\' x2=\'16\' y2=\'21\'/><line x1=\'12\' y1=\'17\' x2=\'12\' y2=\'21\'/>'
+			)
+		},
+		{
+			href: '/entities',
+			label: 'Entities',
+			icon: icon(
+				'<circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/>'
 			)
 		},
 		{
@@ -556,6 +556,8 @@
 		--accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
 		--on-accent: #fff;
 		--mos: #3d6483;
+		/* light goes darker on hover, dark goes lighter — same as the accent pair */
+		--mos-hover: #345572;
 		--mos-soft: color-mix(in srgb, var(--mos) 11%, transparent);
 		--hostile: #a84632;
 		--hostile-soft: color-mix(in srgb, var(--hostile) 11%, transparent);
@@ -565,6 +567,23 @@
 		--gold: #96731d;
 		--gold-soft: color-mix(in srgb, var(--gold) 13%, transparent);
 		--gold-line: color-mix(in srgb, var(--gold) 55%, transparent);
+		/* Game modes. The six ordered difficulties run warm, green to red and
+		   past it for Apocalypse, so the ramp itself says how hard a game was;
+		   the six side modes are cool, so they read as off the ladder rather
+		   than somewhere on it. Both themes carry the same twelve hues at
+		   different lightness, the way --accent and --hostile do. */
+		--mode-1: #4d7d3c;
+		--mode-2: #6d8a2f;
+		--mode-3: #93791d;
+		--mode-4: #b06428;
+		--mode-5: #a84632;
+		--mode-12: #8c2b52;
+		--mode-6: #4c6f8f;
+		--mode-7: #2c7a76;
+		--mode-8: #55609e;
+		--mode-9: #6b559c;
+		--mode-10: #3a7a63;
+		--mode-11: #3b4586;
 		--scroll-thumb: #b9b3a0;
 		--scroll-thumb-hover: #9b9480;
 		--shadow-1: 0 1px 2px rgb(30 32 24 / 0.05), 0 1px 1px rgb(30 32 24 / 0.03);
@@ -619,9 +638,22 @@
 			--accent-hover: #a0c77c;
 			--on-accent: #131608;
 			--mos: #7fadd1;
+			--mos-hover: #98c0e0;
 			--hostile: #d97f61;
 			--item: #cfa95c;
 			--gold: #e2b757;
+			--mode-1: #8db566;
+			--mode-2: #b0c163;
+			--mode-3: #d9b95e;
+			--mode-4: #e59355;
+			--mode-5: #d97f61;
+			--mode-12: #e0699a;
+			--mode-6: #85b3d8;
+			--mode-7: #5cb8b0;
+			--mode-8: #8f9ae0;
+			--mode-9: #a992e0;
+			--mode-10: #63bd97;
+			--mode-11: #7480d8;
 			--scroll-thumb: #3c4430;
 			--scroll-thumb-hover: #4f5940;
 			--shadow-1: 0 1px 2px rgb(0 0 0 / 0.35);
@@ -649,9 +681,22 @@
 		--accent-hover: #a0c77c;
 		--on-accent: #131608;
 		--mos: #7fadd1;
+		--mos-hover: #98c0e0;
 		--hostile: #d97f61;
 		--item: #cfa95c;
 		--gold: #e2b757;
+		--mode-1: #8db566;
+		--mode-2: #b0c163;
+		--mode-3: #d9b95e;
+		--mode-4: #e59355;
+		--mode-5: #d97f61;
+		--mode-12: #e0699a;
+		--mode-6: #85b3d8;
+		--mode-7: #5cb8b0;
+		--mode-8: #8f9ae0;
+		--mode-9: #a992e0;
+		--mode-10: #63bd97;
+		--mode-11: #7480d8;
 		--scroll-thumb: #3c4430;
 		--scroll-thumb-hover: #4f5940;
 		--shadow-1: 0 1px 2px rgb(0 0 0 / 0.35);

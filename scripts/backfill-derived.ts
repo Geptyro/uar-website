@@ -5,7 +5,7 @@
  *   (leaderboard sort keys), plus `historyCount`/`classGames`/`latestFile`,
  *   which let a profile render without its whole replay history in hand.
  * - the per-class playtime boards in `meta`, and each replay's settled outcome
- *   (see `refreshDerived`).
+ *   and game mode (see `refreshDerived`).
  *
  * Required because uploads only rebuild the players in them, so a profile
  * whose owner never plays again would never gain the fields.
@@ -19,6 +19,7 @@
 
 import { MongoClient } from 'mongodb';
 import { closeDb, refreshDerived, withDerived } from '../src/lib/server/db.ts';
+import { counterModes } from '../src/lib/mode.ts';
 
 const apply = process.argv.includes('--apply');
 
@@ -78,7 +79,9 @@ if (!apply) {
 		);
 	}
 	if (changed.length > 5) console.log(`  … and ${changed.length - 5} more`);
-	console.log('\ndry run — re-run with --apply to write (also refreshes outcomes + class boards)');
+	console.log(
+		'\ndry run — re-run with --apply to write (also refreshes outcomes, modes + class boards)'
+	);
 } else {
 	if (changed.length) {
 		await players.bulkWrite(
@@ -89,8 +92,58 @@ if (!apply) {
 		);
 	}
 	console.log(`wrote ${changed.length} profiles`);
-	const { outcomes, boards, mates } = await refreshDerived();
-	console.log(`refreshDerived: ${outcomes} outcomes, ${boards} class boards, ${mates} teammate lists`);
+	const { outcomes, modes, boards, mates } = await refreshDerived();
+	console.log(
+		`refreshDerived: ${outcomes} outcomes, ${modes} modes, ${boards} class boards, ${mates} teammate lists`
+	);
+}
+
+/**
+ * The one health check on mode detection.
+ *
+ * A game's mode comes from two places: the opening vote, which the parser
+ * reads out of the file, and the per-mode win counters, which need no map
+ * constant at all. They should never disagree — the vote reader depends on
+ * where the map's dialog controls happen to be numbered, so a version of the
+ * map that shifts them would start reading the wrong mode and only the
+ * counters would notice. Any disagreement here means MODE_VOTE_BUTTONS in
+ * `server/replay/extract.ts` needs re-deriving.
+ */
+const replays = (await mongo
+	.db(process.env.MONGODB_DB || 'uar')
+	.collection('replays')
+	.find(
+		{ mode: { $exists: true } },
+		{
+			projection: {
+				playedAt: 1,
+				mode: 1,
+				'sightings.toon': 1,
+				'sightings.winsByMode': 1,
+				'sightings.gamesPlayed': 1
+			}
+		}
+	)
+	.toArray()) as unknown as {
+	_id: string;
+	playedAt: string;
+	mode: number;
+	sightings: { toon: string; winsByMode: number[]; gamesPlayed: number }[];
+}[];
+// settle from the counters alone, so the vote cannot vouch for itself — and
+// only where two or more players agree, since a lone reading is as likely to
+// be a leaver's delta pointing at some other game (see counterModes)
+const readings = counterModes(
+	replays.map((r) => ({ file: r._id, playedAt: r.playedAt, sightings: r.sightings ?? [] }))
+);
+const checked = replays.filter((r) => readings[r._id]?.support >= 2);
+const disagreed = checked.filter((r) => readings[r._id].mode !== r.mode);
+console.log(
+	`mode cross-check: ${checked.length} of ${replays.length} vote-read games also have a ` +
+		`corroborated counter reading, ${disagreed.length} disagree`
+);
+for (const r of disagreed.slice(0, 5)) {
+	console.log(`  ${r._id}: vote says ${r.mode}, counters say ${readings[r._id].mode}`);
 }
 
 await mongo.close();

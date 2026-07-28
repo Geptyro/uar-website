@@ -3,6 +3,7 @@
 	import Pager from '$lib/components/Pager.svelte';
 	import OutcomeMark from '$lib/components/OutcomeMark.svelte';
 	import { fmtDuration } from '$lib/outcome';
+	import ModeMark from '$lib/components/ModeMark.svelte';
 
 	let { data, children } = $props();
 	const replays = $derived(data.replays); // already newest-first from the server
@@ -31,7 +32,8 @@
 							<OutcomeMark outcome={r.outcome} />
 						</span>
 						<span class="rmeta">
-							{r.players} profile{r.players === 1 ? '' : 's'}{#if r.durationLoops}
+							{#if r.mode}<ModeMark mode={r.mode} /> ·
+							{/if}{r.players} profile{r.players === 1 ? '' : 's'}{#if r.durationLoops}
 								· <span class="rdur">{fmtDuration(r.durationLoops)}</span>{/if} ·
 							<span class:struck={r.blobPruned}>{fmtSize(r.size)}</span
 							>{#if r.blobPruned}<span

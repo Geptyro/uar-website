@@ -14,10 +14,10 @@
 	import { medals, camos, decals, type Camo, type Decal, type Medal } from '$lib/unlocks';
 	import { skillIdentifiers, mosById, mosList, siXpLabel, type Si } from '$lib/mos';
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
-	import DescCard from '$lib/components/DescCard.svelte';
 	import Tooltip from '$lib/components/Tooltip.svelte';
 	import Pager from '$lib/components/Pager.svelte';
 	import OutcomeMark from '$lib/components/OutcomeMark.svelte';
+	import ModeMark from '$lib/components/ModeMark.svelte';
 	import Seo from '$lib/components/Seo.svelte';
 	import { playerDescription } from '$lib/seo';
 	import { fmtDuration } from '$lib/outcome';
@@ -240,34 +240,86 @@
 			{/each}
 		</div>
 
-		<div class="duo">
-			{#if modes.length}
-				<section>
-					<h2 class="section">Wins by mode</h2>
-					<div class="tablewrap">
-						<table class="data modes">
-							<thead>
-								<tr><th>Mode</th><th class="num">Wins</th><th></th></tr>
-							</thead>
-							<tbody>
-								{#each modes as m (m.name)}
-									<tr>
-										<td>{m.name}</td>
-										<td class="num">{m.wins.toLocaleString('en')}</td>
-										<td class="barcell">
-											<div class="modebar" style="width: {(m.wins / modes[0].wins) * 100}%"></div>
-										</td>
-									</tr>
-								{/each}
-								<tr class="total">
-									<td>Total</td>
-									<td class="num">{totalWins(p).toLocaleString('en')}</td>
-									<td></td>
-								</tr>
-							</tbody>
-						</table>
-					</div>
-				</section>
+		<!-- Left column stacks the two things counted over a whole career; the
+		     right one holds the classes those games were played as. -->
+		<div class="duo boards">
+			{#if modes.length || data.teammates.length}
+				<div class="stack">
+					{#if modes.length}
+						<section>
+							<h2 class="section">Wins by mode</h2>
+							<div class="tablewrap">
+								<table class="data modes">
+									<thead>
+										<tr><th>Mode</th><th class="num">Wins</th><th></th></tr>
+									</thead>
+									<tbody>
+										{#each modes as m (m.name)}
+											<tr>
+												<td>{m.name}</td>
+												<td class="num">{m.wins.toLocaleString('en')}</td>
+												<td class="barcell">
+													<div class="modebar" style="width: {(m.wins / modes[0].wins) * 100}%"></div>
+												</td>
+											</tr>
+										{/each}
+										<tr class="total">
+											<td>Total</td>
+											<td class="num">{totalWins(p).toLocaleString('en')}</td>
+											<td></td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</section>
+					{/if}
+
+					{#if data.teammates.length}
+						<section>
+							<h2 class="section">Played with</h2>
+							<div class="tablewrap">
+								<table class="data modes">
+									<thead>
+										<tr><th>Player</th><th class="num">Time</th><th></th></tr>
+									</thead>
+									<tbody>
+										{#each data.teammates as t (t.toon || t.name)}
+											<tr>
+												<td>
+													<img
+														class="pportrait"
+														src={t.avatarUrl || anonPortrait}
+														alt=""
+														loading="lazy"
+													/>
+													{#if t.clan}<span class="pclan">&lt;{t.clan}&gt;</span>{/if}
+													{#if t.toon}
+														<a class="pname" href="/players/{t.toon}">{t.name}</a>
+													{:else}
+														<span class="pname">{t.name}</span>
+													{/if}
+												</td>
+												<td class="num" title="{t.games} game{t.games === 1 ? '' : 's'} together">
+													{fmtPlaytime(t.seconds)}
+												</td>
+												<td class="barcell">
+													<div
+														class="modebar"
+														style="width: {(100 * t.seconds) / data.teammates[0].seconds}%"
+													></div>
+												</td>
+											</tr>
+										{/each}
+									</tbody>
+								</table>
+							</div>
+							<p class="top-note">
+								Recorded time in games shared with {p.name}, across ingested replays. Hover a row for
+								the game count.
+							</p>
+						</section>
+					{/if}
+				</div>
 			{/if}
 
 			{#if classesPlayed.length}
@@ -456,7 +508,11 @@
 			{/each}
 		</div>
 		<p class="note"><a href="/camos">All camouflages →</a></p>
+	</div>
 
+	<!-- The rows are eleven columns wide, so they run the whole layout rather
+	     than the content column: it sits below the aside, not beside it. -->
+	<section class="history">
 		<h2 class="section">Replay history</h2>
 		<Pager
 			page={data.historyPage}
@@ -471,6 +527,7 @@
 					<tr>
 						<th>Game date</th>
 						<th title="Won, lost, or not known yet">Result</th>
+						<th title="The mode the lobby voted at the start of the game">Mode</th>
 						<th class="num">Length</th>
 						<th>Class</th>
 						<th class="num">Enlisted</th>
@@ -489,7 +546,7 @@
 							<tr class="gap">
 								<td
 									class="gapinfo"
-									colspan="4"
+									colspan="5"
 									title="only the game below is a recorded replay; the rest weren't"
 								>
 									⋯ over {span} games
@@ -513,6 +570,13 @@
 								{#if facts?.outcome}<OutcomeMark outcome={facts.outcome} />{:else}<span
 										class="unknown"
 										title="Not known yet — this game's recording stopped early and no later game has been uploaded"
+										>·</span
+									>{/if}
+							</td>
+							<td class="histmode">
+								{#if facts?.mode}<ModeMark mode={facts.mode} />{:else}<span
+										class="unknown"
+										title="Not known yet — this game was lost, or its recording stopped before the vote closed"
 										>·</span
 									>{/if}
 							</td>
@@ -543,7 +607,7 @@
 				</tbody>
 			</table>
 		</div>
-	</div>
+	</section>
 
 	<aside class="infobox">
 		<div class="card box">
@@ -603,44 +667,6 @@
 			{/if}
 		</div>
 
-		{#if data.teammates.length}
-			<DescCard label="Played with">
-				<ol class="top-list">
-					{#each data.teammates as t, i (t.toon || t.name)}
-						<li>
-							<div class="prow">
-								<img class="pportrait" src={t.avatarUrl || anonPortrait} alt="" loading="lazy" />
-								{#if t.clan}<span class="pclan">&lt;{t.clan}&gt;</span>{/if}
-								{#if t.toon}
-									<a class="pname" href="/players/{t.toon}">{t.name}</a>
-								{:else}
-									<span class="pname">{t.name}</span>
-								{/if}
-								<span class="ptime" title="{t.games} game{t.games === 1 ? '' : 's'} together"
-									>{fmtPlaytime(t.seconds)}</span
-								>
-							</div>
-							<div class="pfoot">
-								<span class="pos">{i + 1}</span>
-								<div class="pbar">
-									{#if t.seconds > 0}
-										<div
-											class="pbar-fill"
-											style="width: {(100 * t.seconds) / data.teammates[0].seconds}%"
-										></div>
-									{/if}
-								</div>
-							</div>
-						</li>
-					{/each}
-				</ol>
-				<p class="top-note">
-					Recorded time in games shared with {p.name}, across ingested replays. Hover a row for
-					the game count.
-				</p>
-			</DescCard>
-		{/if}
-
 		{#if playerGear.length}
 			<div class="card box">
 				<div class="box-label">Gear unlocks</div>
@@ -667,10 +693,10 @@
 </div>
 
 <style>
-	/* The rows scroll inside the section, not the page: this table sits
-	   under a profile and beside an aside, so it cannot take the viewport
-	   the way /players does. Capped so a full page of rows never pushes
-	   the rest of the profile out of reach. */
+	/* The rows scroll inside the section, not the page: this table sits at
+	   the foot of a profile, so it cannot take the viewport the way /players
+	   does. Capped so a full page of rows never pushes the pager and the
+	   rest of the profile out of reach. */
 	.histrows {
 		max-height: min(62vh, 620px);
 		overflow: auto;
@@ -683,6 +709,9 @@
 		box-shadow: inset 0 -1px 0 var(--border);
 	}
 
+	/* Profile beside its aside, with the replay table on its own row under
+	   both — placed explicitly so the table can run the full width while the
+	   markup keeps reading main-then-aside. */
 	.layout {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) 290px;
@@ -690,6 +719,14 @@
 		align-items: start;
 	}
 	.main {
+		grid-area: 1 / 1;
+		min-width: 0;
+	}
+	.infobox {
+		grid-area: 1 / 2;
+	}
+	.history {
+		grid-area: 2 / 1 / auto / -1;
 		min-width: 0;
 	}
 	.main :global(h2.section:first-child) {
@@ -763,37 +800,51 @@
 		color: var(--ink-3);
 	}
 
-	/* ---------- wins by mode + classes played ---------- */
+	/* ---------- wins by mode + played with + classes played ---------- */
 	.duo {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
 		gap: 0 24px;
 		align-items: start;
 	}
+	/* one grid cell, two sections down it — the wrapper is what keeps them in
+	   the same column instead of letting auto-fit reflow them side by side */
+	.stack {
+		min-width: 0;
+	}
+	/* three boards in two columns need the label to belong to what is under
+	   it more plainly than a single run of sections does */
+	.boards h2 {
+		margin-top: 46px;
+	}
 	table.modes {
 		width: 100%;
 	}
-	.classcell {
+	/* The label reads at its own width and the count at its own digits, so
+	   everything left over goes to the bar — the part worth having long. Each
+	   board's bars are read against its own top row and never across boards,
+	   so the three not lining up column-for-column costs nothing. */
+	table.modes th:first-child,
+	table.modes td:first-child {
+		width: 1%;
 		white-space: nowrap;
+	}
+	table.modes .num {
+		width: 1%;
+	}
+	.barcell {
+		width: 100%;
+		min-width: 90px;
 	}
 	.classcell a {
 		font-weight: 600;
 	}
-	.barcell {
-		width: 160px;
-	}
 	/* On a phone the class name gives way to its icon — the bar and the count
-	   carry the row, and both tables stay inside the content column. */
+	   carry the row, and the tables stay inside the content column. A player
+	   keeps their name: it is the row, and there is no icon that says it. */
 	@media (max-width: 899.98px) {
 		.classlink .class-name {
 			display: none;
-		}
-		/* 1% shrinks the cell to its icon; 100% makes the bar absorb the rest */
-		.classcell {
-			width: 1%;
-		}
-		.barcell {
-			width: 100%;
 		}
 	}
 	.modebar {
@@ -806,6 +857,34 @@
 	tr.total td {
 		font-weight: 650;
 		border-top: 1px solid var(--border);
+	}
+
+	/* ---------- played with ----------
+	   Same three-column row as the two boards it sits with: who, how much,
+	   and a bar read against the top row. The order is the ranking, so no
+	   position number is printed. */
+	.pportrait {
+		width: 22px;
+		height: 22px;
+		border-radius: 3px;
+		object-fit: cover;
+		border: 1px solid var(--border);
+		vertical-align: middle;
+		margin-right: 4px;
+	}
+	.pclan {
+		color: var(--ink-3);
+		font-size: 11px;
+		margin-right: 3px;
+	}
+	.pname {
+		font-weight: 600;
+	}
+	.top-note {
+		margin: 10px 0 0;
+		font-size: 11px;
+		line-height: 1.5;
+		color: var(--ink-3);
 	}
 
 	/* ---------- class icons ---------- */
@@ -825,6 +904,16 @@
 		white-space: nowrap;
 	}
 	.histresult .unknown {
+		color: var(--ink-3);
+		cursor: help;
+	}
+	/* the mode is unknown for a lost game nobody has a later save of, which is
+	   why the column carries the same middle dot the Result column does */
+	.histmode {
+		width: 1%;
+		white-space: nowrap;
+	}
+	.histmode .unknown {
 		color: var(--ink-3);
 		cursor: help;
 	}
@@ -1030,92 +1119,6 @@
 		padding: 4px var(--card-pad-x) 2px;
 	}
 
-	/* ---------- played with ---------- */
-	.top-list {
-		list-style: none;
-		margin: 2px 0 0;
-		padding: 0;
-		display: flex;
-		flex-direction: column;
-		gap: 7px;
-	}
-	.top-list li {
-		display: flex;
-		flex-direction: column;
-		gap: 3px;
-		min-width: 0;
-	}
-	.prow {
-		display: flex;
-		align-items: baseline;
-		gap: 6px;
-		font-size: 12.5px;
-		min-width: 0;
-	}
-	.pportrait {
-		width: 22px;
-		height: 22px;
-		border-radius: var(--r-sm);
-		object-fit: cover;
-		border: 1px solid var(--border);
-		align-self: center;
-		flex-shrink: 0;
-	}
-	/* the rank labels the bar rather than the portrait */
-	.pfoot {
-		display: flex;
-		align-items: center;
-		gap: 6px;
-	}
-	.pos {
-		font-family: var(--mono);
-		font-size: 10px;
-		line-height: 1;
-		color: var(--ink-3);
-		min-width: 15px;
-		text-align: right;
-		flex-shrink: 0;
-	}
-	.pclan {
-		color: var(--ink-3);
-		font-size: 11px;
-		flex-shrink: 0;
-	}
-	.pname {
-		font-weight: 550;
-		min-width: 0;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-	.ptime {
-		margin-left: auto;
-		font-family: var(--mono);
-		font-size: 11px;
-		color: var(--ink-2);
-		white-space: nowrap;
-		flex-shrink: 0;
-	}
-	/* shared time relative to the #1 teammate, zero-based */
-	.pbar {
-		flex: 1;
-		height: 3px;
-		border-radius: 99px;
-		background: var(--surface-2);
-		overflow: hidden;
-	}
-	.pbar-fill {
-		height: 100%;
-		min-width: 2px;
-		border-radius: inherit;
-		background: var(--accent);
-	}
-	.top-note {
-		margin: 10px 0 0;
-		font-size: 11px;
-		line-height: 1.5;
-		color: var(--ink-3);
-	}
 	.gear-head {
 		display: flex;
 		align-items: center;
@@ -1184,8 +1187,14 @@
 		/* stacked, the profile card leads: it is what you came to see, and it
 		   should not sit under a screenful of rank cards */
 		.infobox {
-			order: -1;
+			grid-area: 1 / 1;
 			margin: 0 0 18px;
+		}
+		.main {
+			grid-area: 2 / 1;
+		}
+		.history {
+			grid-area: 3 / 1;
 		}
 	}
 </style>

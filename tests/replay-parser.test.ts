@@ -171,6 +171,7 @@ function fakeReplay(file: string, playedAt: string, sightings: ReplaySighting[])
 			lobbyId: 42,
 			durationLoops: 1000,
 			outcome: null,
+			mode: null,
 			sightings
 		},
 		size: 1000

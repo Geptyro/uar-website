@@ -169,6 +169,54 @@
 </div>
 
 <aside class="infobox">
+	<!-- Signed out, the boards above are a list of other people: your own row is
+	     in them somewhere and nothing says so. That is the first thing to fix,
+	     so this heads the column and the companion card follows it — blue, the
+	     tone the account chip already owns in the top bar, so the two asks read
+	     as two different things rather than one shouted twice. -->
+	{#if data.showConnect}
+		<div class="promo connect">
+			<a class="promo-main" href="/auth/bnet">
+				<span class="promo-label">
+					<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+						<path
+							d="M18.94 8.296C15.9 6.892 11.534 6 7.426 6.332c.206-1.36.714-2.308 1.548-2.508 1.148-.275 2.4.48 3.594 1.854.782.102 1.71.28 2.355.429C12.747 2.013 9.828-.282 7.607.565c-1.688.644-2.553 2.97-2.448 6.094-2.2.468-3.915 1.3-5.013 2.495-.056.065-.181.227-.137.305.034.058.146-.008.194-.04 1.274-.89 2.904-1.373 5.027-1.676.303 3.333 1.713 7.56 4.055 10.952-1.28.502-2.356.536-2.946-.087-.812-.856-.784-2.318-.19-4.04a26.764 26.764 0 0 1-.807-2.254c-2.459 3.934-2.986 7.61-1.143 9.11 1.402 1.14 3.847.725 6.502-.926 1.505 1.672 3.083 2.74 4.667 3.094.084.015.287.043.332-.034.034-.06-.08-.124-.131-.149-1.408-.657-2.64-1.828-3.964-3.515 2.735-1.929 5.691-5.263 7.457-8.988 1.076.86 1.64 1.773 1.398 2.595-.336 1.131-1.615 1.84-3.403 2.185a27.697 27.697 0 0 1-1.548 1.826c4.634.16 8.08-1.22 8.458-3.565.286-1.786-1.295-3.696-4.053-5.17.696-2.139.832-4.04.346-5.588-.029-.08-.106-.27-.196-.27-.068 0-.067.13-.063.187.135 1.547-.263 3.2-1.062 5.19zm-8.533 9.869c-1.96-3.145-3.09-6.849-3.082-10.594 3.702-.124 7.474.748 10.714 2.627-1.743 3.269-4.385 6.1-7.633 7.966h.001z"
+						/>
+					</svg>
+					Your profile
+				</span>
+				<!-- the boards on this page already count them, so the ask is to claim
+				     a page that exists rather than to make an account. "Your stats are
+				     here" would be the louder line and a lie to anyone who has not
+				     played yet — this one is true either way. -->
+				<strong class="promo-title">Claim your player page.</strong>
+				<span class="promo-text">
+					Signing in with <b>Battle.net</b>:
+				</span>
+				<!-- same rule as the card below: one line each, verb first, near
+				     enough the same length -->
+				<ul class="promo-list">
+					<li>links your StarCraft&nbsp;II profile</li>
+					<li>keeps your page one click away</li>
+					<li>flags you ready for the next game</li>
+				</ul>
+				<span class="promo-cta">Connect with Battle.net →</span>
+			</a>
+			<!-- the doubt about a login is what it hands over, so the answer sits
+			     under the button — and it goes to /account, which spells the whole
+			     of it out rather than asking for that much trust in one line -->
+			<a class="promo-foot" href="/account">
+				<svg viewBox="0 0 24 24" aria-hidden="true">
+					<path
+						fill-rule="evenodd"
+						d="M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5Zm3 8H9V6a3 3 0 1 1 6 0v3Z"
+					/>
+				</svg>
+				Battletag only — no password
+			</a>
+		</div>
+	{/if}
+
 	<!-- Every board on this page is only as good as the replays we get, so the
 	     one thing a visitor can *do* about that heads the column — green and
 	     filled, the only call to action on the page. -->
@@ -204,7 +252,7 @@
 		     the reassurance sits under the button where the doubt lands — and it
 		     goes straight to the repo, so it can be checked rather than believed.
 		     A real link, hence its own <a> beside (not inside) the card link. -->
-		<a class="promo-oss" href={COMPANION_REPO} target="_blank" rel="noopener">
+		<a class="promo-foot" href={COMPANION_REPO} target="_blank" rel="noopener">
 			<svg viewBox="0 0 16 16" aria-hidden="true">
 				<path
 					fill-rule="evenodd"
@@ -341,18 +389,28 @@
 		}
 	}
 
-	/* the only ask on the page, so it is the only thing that goes green: a
-	   tinted card with an accent edge, and a filled bar at its foot so it
-	   reads as a button and not another read-only widget */
+	/* The two asks in the column share one shape — a tinted card with a
+	   coloured edge and a filled bar at its foot, so each reads as a button
+	   and not another read-only widget. Only the tint tells them apart, and
+	   it is the one thing a variant sets: green for the app, blue for the
+	   account (the tone the top-bar chip already uses for it). */
 	.promo {
+		--tint: var(--accent);
+		--tint-soft: var(--accent-soft);
+		--tint-hover: var(--accent-hover);
 		background:
-			linear-gradient(150deg, color-mix(in srgb, var(--accent) 16%, transparent), transparent 65%),
-			var(--accent-soft);
-		border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+			linear-gradient(150deg, color-mix(in srgb, var(--tint) 16%, transparent), transparent 65%),
+			var(--tint-soft);
+		border: 1px solid color-mix(in srgb, var(--tint) 45%, transparent);
 		border-radius: var(--r);
 		padding: 10px var(--card-pad-x) 11px;
-		/* the GitHub row bleeds to the card's edges — clip it to the radius */
+		/* the foot row bleeds to the card's edges — clip it to the radius */
 		overflow: hidden;
+	}
+	.promo.connect {
+		--tint: var(--mos);
+		--tint-soft: var(--mos-soft);
+		--tint-hover: var(--mos-hover);
 	}
 	/* the card itself never reacts: it holds two destinations now, so lifting the
 	   whole thing under either one says "you are about to click this card" when
@@ -371,7 +429,7 @@
 		font-weight: 650;
 		letter-spacing: 0.14em;
 		text-transform: uppercase;
-		color: var(--accent);
+		color: var(--tint);
 	}
 	.promo-label svg {
 		width: 13px;
@@ -428,13 +486,13 @@
 		width: 9px;
 		font-size: 11px;
 		font-weight: 700;
-		color: var(--accent);
+		color: var(--tint);
 	}
 	.promo-cta {
 		display: block;
 		margin-top: 10px;
 		border-radius: var(--r-sm);
-		background: var(--accent);
+		background: var(--tint);
 		color: var(--on-accent);
 		padding: 7px 9px;
 		font-size: 12px;
@@ -442,21 +500,21 @@
 		text-align: center;
 	}
 	.promo-main:hover .promo-cta {
-		background: var(--accent-hover);
+		background: var(--tint-hover);
 	}
 	/* a second, quieter destination under the button: hairline off the CTA so it
 	   reads as part of the card, not a stray link under it */
 	/* bled out to the card's edges so its hover is a band across the foot of the
 	   card — an underline or a colour shift alone is too quiet to read as the
 	   second clickable thing sitting under a filled button */
-	.promo-oss {
+	.promo-foot {
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		gap: 6px;
 		margin: 9px calc(-1 * var(--card-pad-x)) -11px;
 		padding: 9px var(--card-pad-x) 11px;
-		border-top: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+		border-top: 1px solid color-mix(in srgb, var(--tint) 22%, transparent);
 		border-radius: 0 0 calc(var(--r) - 1px) calc(var(--r) - 1px);
 		font-size: 12.5px;
 		font-weight: 550;
@@ -467,11 +525,11 @@
 			background 140ms ease,
 			color 140ms ease;
 	}
-	.promo-oss:hover {
-		background: color-mix(in srgb, var(--accent) 20%, transparent);
-		color: var(--accent);
+	.promo-foot:hover {
+		background: color-mix(in srgb, var(--tint) 20%, transparent);
+		color: var(--tint);
 	}
-	.promo-oss svg {
+	.promo-foot svg {
 		width: 14px;
 		height: 14px;
 		fill: currentColor;
