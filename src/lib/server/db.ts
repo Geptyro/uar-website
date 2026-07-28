@@ -1025,6 +1025,26 @@ export async function getPlayerDirectory(): Promise<
 	});
 }
 
+/**
+ * Every profile that has a page, with the date its data last moved — the
+ * sitemap's rows and their `lastmod`.
+ *
+ * Deliberately not getPlayerDirectory: that map is keyed by in-game name, so a
+ * player carrying no name, or sharing one with somebody else, loses their
+ * entry — five real profiles were missing from the sitemap that way. Two
+ * fields over the collection is as narrow as a read of it gets.
+ */
+export async function getPlayerSitemap(): Promise<{ toon: string; lastSeen?: string }[]> {
+	return cached('playerSitemap', async () => {
+		const d = await db();
+		const docs = (await d
+			.collection('players')
+			.find({}, { projection: { _id: 1, lastSeen: 1 } })
+			.toArray()) as unknown as { _id: string; lastSeen?: string }[];
+		return docs.map((p) => ({ toon: p._id, lastSeen: p.lastSeen }));
+	});
+}
+
 export async function getAvatarsByToon(): Promise<Record<string, string>> {
 	return cached('avatars', async () => {
 		const d = await db();

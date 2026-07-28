@@ -1,9 +1,9 @@
 import { units } from '$lib/units';
 import { mosList } from '$lib/mos';
-import { dbConfigured, getClanMembers, getPlayerDirectory } from '$lib/server/db';
+import { dbConfigured, getClanMembers, getPlayerSitemap } from '$lib/server/db';
 import { SITE_URL } from '$lib/seo';
-import { sitemapXml, type SitemapUrl } from '$lib/sitemap';
-import type { ClanMember } from '$lib/clans';
+import { sitemapDate, sitemapXml, type SitemapUrl } from '$lib/sitemap';
+import { buildClans, type ClanMember } from '$lib/clans';
 import type { RequestHandler } from './$types';
 
 /* Player and clan profiles are database rows, so this one route cannot join
@@ -35,24 +35,43 @@ const STATIC: SitemapUrl[] = [
 ];
 
 export const GET: RequestHandler = async ({ setHeaders }) => {
+	/* The wiki half carries no lastmod on purpose. Its pages change when the
+	   extractor is re-run, and nothing on disk records when that was — a git
+	   date is unavailable in the image, and a file mtime is the checkout's,
+	   which would claim all 505 changed on every deploy. Google leans on
+	   lastmod only while it proves accurate, and discounts a sitemap that
+	   cries wolf, so the honest thing is to say nothing for these. */
 	const urls: SitemapUrl[] = [
 		...STATIC,
 		...mosList.map((m) => ({ path: `/mos/${encodeURIComponent(m.id)}`, priority: 0.8 })),
 		...units.map((u) => ({ path: `/entities/${encodeURIComponent(u.id)}`, priority: 0.5 }))
 	];
 
-	/* Individual replays are deliberately absent: one page per game, growing
+	/* The player and clan halves do have a real per-page date, and it is worth
+	   the most here: most of the 850-odd profiles sit still for weeks, so a
+	   crawler that can tell which ones moved stops re-reading the rest — and
+	   every one of those reads comes out of a small Atlas budget.
+
+	   Individual replays are deliberately absent: one page per game, growing
 	   with every upload, and every one of them noindex. */
 	if (dbConfigured()) {
-		const [directory, clanMembers] = await Promise.all([
-			getPlayerDirectory(),
+		const [players, clanMembers] = await Promise.all([
+			getPlayerSitemap(),
 			getClanMembers() as Promise<unknown> as Promise<ClanMember[]>
 		]);
-		for (const { toon } of Object.values(directory))
-			urls.push({ path: `/players/${encodeURIComponent(toon)}`, priority: 0.4 });
-		const tags = new Set(clanMembers.map((m) => m.clan).filter(Boolean));
-		for (const tag of tags)
-			urls.push({ path: `/clans/${encodeURIComponent(tag)}`, priority: 0.4 });
+		for (const { toon, lastSeen } of players)
+			urls.push({
+				path: `/players/${encodeURIComponent(toon)}`,
+				lastmod: sitemapDate(lastSeen),
+				priority: 0.4
+			});
+		// buildClans already reduces each roster to its newest sighting
+		for (const clan of buildClans(clanMembers))
+			urls.push({
+				path: `/clans/${encodeURIComponent(clan.tag)}`,
+				lastmod: sitemapDate(clan.lastSeen),
+				priority: 0.4
+			});
 	}
 
 	setHeaders({

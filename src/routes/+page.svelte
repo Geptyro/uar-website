@@ -36,7 +36,7 @@
 
 <!-- the one page whose title is the brand rather than its subject -->
 <Seo
-	description="Unit database for the StarCraft II arcade map Undead Assault Reborn: player classes, undead roster, items and weapons, plus player profiles, clans and replays."
+	description="Undead Assault Reborn, the StarCraft II arcade map: every player class, undead, item and weapon, plus player profiles, clans, replays and a companion app."
 />
 
 <div class="layout">

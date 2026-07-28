@@ -39,9 +39,18 @@ export function sitemapXml(origin: string, urls: SitemapUrl[]): string {
 	);
 }
 
-/** `lastmod` wants a date, and the profiles carry a full timestamp. */
+/**
+ * `lastmod` wants a date; the profiles carry a full timestamp.
+ *
+ * Taken off the front of the string rather than through `Date`: the stored
+ * values carry no zone ("2026-07-27T17:37:49"), so Date reads them as local
+ * time and toISOString then converts to UTC — which moves the day for
+ * anything recorded near midnight.
+ */
 export function sitemapDate(iso: string | undefined | null): string | undefined {
 	if (!iso) return undefined;
+	const day = /^(\d{4}-\d{2}-\d{2})/.exec(iso);
+	if (day) return day[1];
 	const d = new Date(iso);
 	return Number.isNaN(d.getTime()) ? undefined : d.toISOString().slice(0, 10);
 }

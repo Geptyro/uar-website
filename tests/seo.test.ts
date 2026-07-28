@@ -26,8 +26,9 @@ const unit = {
 	tooltip: ''
 };
 
-test('fullTitle leads with the page, and the homepage with the brand', () => {
+test('fullTitle leads with the subject, homepage included', () => {
 	assert.equal(fullTitle(), HOME_TITLE);
+	assert.ok(HOME_TITLE.startsWith('Undead Assault Reborn'), 'the query people type leads the title');
 	assert.equal(fullTitle('AA-12'), 'AA-12 — Undead Assault Reborn unit database');
 	// an empty title is the homepage's case, not a page called ""
 	assert.equal(fullTitle(''), HOME_TITLE);

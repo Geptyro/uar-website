@@ -31,11 +31,12 @@ export function mosCardUrl(id: string): string {
 	return `${SITE_URL}/og/mos/${encodeURIComponent(id)}.png`;
 }
 
-/* Nobody searches "UAR Unit Database" — they search the map's name. So the
-   brand is the homepage's title and a suffix everywhere else, and the words
-   people actually type lead every other page. */
+/* Nobody searches "UAR Unit Database" — they search the map's name, or the
+   abbreviation. So the words people actually type lead every title, including
+   the homepage's, and the brand follows in the suffix. Both spellings are on
+   the homepage because both get typed. */
 const TITLE_SUFFIX = `${GAME} unit database`;
-export const HOME_TITLE = `${SITE_NAME} — ${GAME} (StarCraft II arcade)`;
+export const HOME_TITLE = `${GAME} (UAR) — unit database & player stats`;
 
 /** `undefined` means the homepage — the one page whose title is the brand. */
 export function fullTitle(title?: string | null): string {

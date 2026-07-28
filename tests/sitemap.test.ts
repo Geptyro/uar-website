@@ -45,6 +45,13 @@ test('sitemapDate reduces a timestamp to a day, and rejects nonsense', () => {
 	assert.equal(sitemapDate(null), undefined);
 });
 
+test('sitemapDate keeps the day a zoneless timestamp was written with', () => {
+	// what the profiles actually store: no zone. Read as local time and
+	// converted to UTC these both move a day, in opposite directions.
+	assert.equal(sitemapDate('2026-07-27T00:30:00'), '2026-07-27');
+	assert.equal(sitemapDate('2026-07-27T23:30:00'), '2026-07-27');
+});
+
 test('an empty sitemap is still valid XML', () => {
 	const xml = sitemapXml(ORIGIN, []);
 	assert.ok(xml.includes('<urlset'));
