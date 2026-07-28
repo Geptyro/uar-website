@@ -158,7 +158,25 @@ const TTL_MS = 30_000;
  * stall for one unlucky visitor.
  */
 const STALE_MS = 5 * 60_000;
+/**
+ * Cap on cached entries, evicting least-recently-used.
+ *
+ * Without it, anything keyed on a URL segment — a toon, a clan tag, a class id
+ * — could grow the map without bound, so those reads were simply left
+ * uncached. That made every profile view pay its full database cost however
+ * many times it was loaded: eight refreshes of one page, eight identical
+ * ~800ms reads. Bounding the map is what makes those keys safe to cache.
+ */
+const MAX_ENTRIES = 300;
 const cache = new Map<string, { at: number; value: unknown }>();
+
+/** Map iterates in insertion order, so re-inserting on read makes it an LRU. */
+function touch(key: string, entry: { at: number; value: unknown }): void {
+	cache.delete(key);
+	cache.set(key, entry);
+	while (cache.size > MAX_ENTRIES) cache.delete(cache.keys().next().value as string);
+}
+
 /** Reads currently in flight, so N concurrent misses share one query. */
 const inFlight = new Map<string, { gen: number; promise: Promise<unknown> }>();
 /** Bumped by every invalidation, so a read cannot cache pre-write data. */
@@ -174,7 +192,7 @@ function refresh<T>(key: string, load: () => Promise<T>): Promise<T> {
 			.then((value) => {
 				// a write landed while this read was in flight, so what it read is
 				// already out of date: hand it back, but do not cache it
-				if (gen === generation) cache.set(key, { at: Date.now(), value });
+				if (gen === generation) touch(key, { at: Date.now(), value });
 				return value;
 			})
 			.finally(() => {
@@ -189,7 +207,10 @@ async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
 	const hit = cache.get(key);
 	if (hit) {
 		const age = Date.now() - hit.at;
-		if (age < TTL_MS) return hit.value as T;
+		if (age < TTL_MS) {
+			touch(key, hit); // keep hot entries out of the LRU's way
+			return hit.value as T;
+		}
 		if (age < STALE_MS) {
 			// serve what we have and let the refresh finish in the background;
 			// a failed refresh just leaves the stale value for the next attempt
@@ -229,18 +250,15 @@ const CLAN_PROJECTION = {
  * ~2 MB — to compute sums over eleven small fields. One clan's roster is a
  * handful of documents.
  *
- * The single-clan read is uncached on purpose: `tag` comes from the URL, and
- * keying the cache on visitor input would grow the map without bound.
  */
 export async function getClanMembers(tag?: string): Promise<Record<string, unknown>[]> {
-	const read = async () => {
+	return cached(tag ? `clan:${tag}` : 'clans:members', async () => {
 		const d = await db();
 		return d
 			.collection('players')
 			.find(tag ? { clan: tag } : { clan: { $nin: ['', null] } }, { projection: CLAN_PROJECTION })
 			.toArray() as Promise<Record<string, unknown>[]>;
-	};
-	return tag ? read() : cached('clans:members', read);
+	});
 }
 
 /** Total profiles on record — a counter, not a reason to read the collection. */
@@ -290,9 +308,8 @@ function playerSearchFilter(q: string): Record<string, unknown> {
 /**
  * One page of the leaderboard, sorted, searched and paged by the database.
  *
- * Only the unsearched view is cached: the cache is keyed by string, and a
- * visitor-supplied `q` would let arbitrary queries grow the map without bound.
- * The read is one page either way.
+ * Every variant is cached, search included: the LRU bound is what keeps a
+ * visitor-supplied `q` from growing the map without end.
  */
 export async function getPlayersPage(opts: {
 	sort: string;
@@ -328,13 +345,15 @@ export async function getPlayersPage(opts: {
 			.skip((page - 1) * PER_PAGE)
 			.limit(PER_PAGE)
 			.toArray()) as Record<string, unknown>[];
-	const rows = opts.q ? await read() : await cached(`players:${field}:${opts.dir}:${page}`, read);
+	const rows = await cached(`players:${field}:${opts.dir}:${page}:${opts.q}`, read);
 	return { rows, page, pages, total, perPage: PER_PAGE };
 }
 
 export async function getPlayer(toon: string): Promise<Record<string, unknown> | null> {
-	const d = await db();
-	return d.collection('players').findOne({ _id: toon } as never, { projection: { _id: 0 } });
+	return cached(`player:${toon}`, async () => {
+		const d = await db();
+		return d.collection('players').findOne({ _id: toon } as never, { projection: { _id: 0 } });
+	});
 }
 
 /**
@@ -466,23 +485,27 @@ export async function getReplayStats(): Promise<{ count: number; latest: string 
  * the archive.
  */
 export async function getReplayFacts(
+	toon: string,
 	files: string[]
 ): Promise<Record<string, { durationLoops: number; outcome?: Outcome }>> {
-	const map: Record<string, { durationLoops: number; outcome?: Outcome }> = {};
-	if (!files.length) return map;
-	const d = await db();
-	const docs = await d
-		.collection<ReplayDoc>('replays')
-		.find(
-			{ _id: { $in: files } },
-			{ projection: { durationLoops: 1, outcome: 1, settledOutcome: 1 } }
-		)
-		.toArray();
-	for (const r of docs) {
-		const outcome = replayOutcomeOf(r);
-		map[r._id] = { durationLoops: r.durationLoops ?? 0, ...(outcome ? { outcome } : {}) };
-	}
-	return map;
+	if (!files.length) return {};
+	// keyed by whose history it is, so a reloaded profile does not re-read it
+	return cached(`replayFacts:${toon}`, async () => {
+		const map: Record<string, { durationLoops: number; outcome?: Outcome }> = {};
+		const d = await db();
+		const docs = await d
+			.collection<ReplayDoc>('replays')
+			.find(
+				{ _id: { $in: files } },
+				{ projection: { durationLoops: 1, outcome: 1, settledOutcome: 1 } }
+			)
+			.toArray();
+		for (const r of docs) {
+			const outcome = replayOutcomeOf(r);
+			map[r._id] = { durationLoops: r.durationLoops ?? 0, ...(outcome ? { outcome } : {}) };
+		}
+		return map;
+	});
 }
 
 export async function getReplay(file: string): Promise<ReplayDetail | null> {
@@ -525,13 +548,13 @@ const mosBoardId = (mosId: string) => `mosPlaytime:${mosId}`;
  * archive changes and stored, so this is a point read of about a kilobyte
  * rather than a scan of every replay's sightings.
  *
- * Deliberately uncached: `mosId` comes from the URL, and keying the read cache
- * on visitor input would grow the map without bound for a read this small.
  */
 export async function getMosTopPlayers(mosId: string): Promise<MosTopPlayer[]> {
-	const d = await db();
-	const doc = await d.collection('meta').findOne({ _id: mosBoardId(mosId) } as never);
-	return ((doc as { rows?: MosTopPlayer[] } | null)?.rows ?? []) as MosTopPlayer[];
+	return cached(`mosBoard:${mosId}`, async () => {
+		const d = await db();
+		const doc = await d.collection('meta').findOne({ _id: mosBoardId(mosId) } as never);
+		return ((doc as { rows?: MosTopPlayer[] } | null)?.rows ?? []) as MosTopPlayer[];
+	});
 }
 
 /**
@@ -540,23 +563,28 @@ export async function getMosTopPlayers(mosId: string): Promise<MosTopPlayer[]> {
  * the archive grows (unlike the boards above, which scan everything).
  */
 export async function getTeammates(toon: string): Promise<Teammate[]> {
-	const d = await db();
-	const docs = await d
-		.collection<ReplayDoc>('replays')
-		.find(
-			{ 'sightings.toon': toon },
-			{
-				projection: {
-					playedAt: 1,
-					durationLoops: 1,
-					'sightings.toon': 1,
-					'sightings.name': 1,
-					'sightings.clan': 1
+	// the heaviest read behind a profile page — every roster of every game the
+	// player appeared in, ~60 KB for an active player, which at the cluster's
+	// throughput is most of the page's time. Worth caching per toon.
+	return cached(`teammates:${toon}`, async () => {
+		const d = await db();
+		const docs = await d
+			.collection<ReplayDoc>('replays')
+			.find(
+				{ 'sightings.toon': toon },
+				{
+					projection: {
+						playedAt: 1,
+						durationLoops: 1,
+						'sightings.toon': 1,
+						'sightings.name': 1,
+						'sightings.clan': 1
+					}
 				}
-			}
-		)
-		.toArray();
-	return topTeammates(docs, toon);
+			)
+			.toArray();
+		return topTeammates(docs, toon);
+	});
 }
 
 export async function getWeeklyBoards(): Promise<WeeklyBoards> {

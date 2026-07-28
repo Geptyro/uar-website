@@ -25,7 +25,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const profile = player as unknown as PlayerProfile;
 	// length and result of each game in the history — asked for by file, so
 	// neither the read nor the payload grows with the archive
-	const replayFacts = await getReplayFacts(profile.history.map((h) => h.file));
+	const replayFacts = await getReplayFacts(
+		params.toon,
+		profile.history.map((h) => h.file)
+	);
 	return {
 		player: profile,
 		replayFacts: replayFacts as Record<string, { durationLoops: number; outcome?: Outcome }>,
