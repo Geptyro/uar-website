@@ -135,6 +135,34 @@ export async function db(): Promise<Db> {
 }
 
 /**
+ * Indexes the queries here rely on, created once at boot.
+ *
+ * `createIndex` is idempotent, so this is a no-op on every boot after the
+ * first. Kept deliberately short: every index costs storage against the
+ * cluster's limit, and none of these is currently a latency win — the
+ * collections are small enough that a scan is single-digit milliseconds
+ * server-side, and what a page waits on is bytes coming back, not the scan.
+ * They are here so that stays true as the archive grows.
+ */
+export async function ensureIndexes(): Promise<void> {
+	if (!dbConfigured()) return;
+	const d = await db();
+	await Promise.all([
+		// every read of one player's own games: the profile's teammates panel,
+		// and the per-player rebuild an upload runs (multikey over sightings)
+		d.collection('replays').createIndex({ 'sightings.toon': 1 }, { name: 'sightings_toon' }),
+		// upload dedupe — "do you already have this exact file?"
+		d.collection('replays').createIndex({ sha256: 1 }, { name: 'sha256', sparse: true }),
+		// replace-if-longer resolves an upload against the game it belongs to
+		d.collection('replays').createIndex({ lobbyId: 1 }, { name: 'lobbyId', sparse: true }),
+		// the leaderboard's default order, and the tiebreak under every other one
+		d.collection('players').createIndex({ careerXp: -1, _id: 1 }, { name: 'careerXp' }),
+		// clan pages select a roster by tag
+		d.collection('players').createIndex({ clan: 1 }, { name: 'clan' })
+	]);
+}
+
+/**
  * Drop the shared pool. The server never calls this — it holds one client for
  * its whole life — but a CLI that touched this module otherwise never exits,
  * because the pool keeps the event loop alive and its connections keep sitting
@@ -357,6 +385,56 @@ export async function getPlayer(toon: string): Promise<Record<string, unknown> |
 }
 
 /**
+ * A profile without its replay history — everything the page renders above the
+ * history table. `history` is the only field on a player that grows without
+ * bound (377 entries / 78 KB for the most active), and the page shows fifty
+ * rows of it at a time, so it is fetched separately by
+ * `getPlayerHistoryPage`.
+ */
+export async function getPlayerSummary(toon: string): Promise<Record<string, unknown> | null> {
+	return cached(`playerSummary:${toon}`, async () => {
+		const d = await db();
+		return d
+			.collection('players')
+			.findOne({ _id: toon } as never, { projection: { _id: 0, history: 0 } });
+	});
+}
+
+/**
+ * One page of a player's replay history, newest first.
+ *
+ * History is stored oldest first — that ordering is what makes the per-row
+ * deltas work, since the progress a game earned only shows up in the *next*
+ * sighting. So a page is sliced from the end, and carries one extra entry
+ * beyond its newest row (`lead`) precisely so that top row still has a next
+ * sighting to diff against. `$slice` does the slicing in the database, so the
+ * read shrinks rather than just the render.
+ */
+export async function getPlayerHistoryPage(
+	toon: string,
+	rawPage: string | null,
+	total: number
+): Promise<{ rows: Record<string, unknown>[]; lead: number; page: number; pages: number }> {
+	const pages = Math.max(1, Math.ceil(total / PER_PAGE));
+	const page = pageNumber(rawPage, pages);
+	// negative skip counts back from the newest entry; Mongo clamps it at the
+	// start of the array, which is exactly right for the oldest, partial page
+	const skip = -(page * PER_PAGE);
+	const lead = page > 1 ? 1 : 0;
+	const rows = await cached(`playerHistory:${toon}:${page}`, async () => {
+		const d = await db();
+		const doc = await d
+			.collection('players')
+			.findOne({ _id: toon } as never, {
+				projection: { _id: 0, history: { $slice: [skip, PER_PAGE + lead] } }
+			});
+		return ((doc as { history?: Record<string, unknown>[] } | null)?.history ??
+			[]) as Record<string, unknown>[];
+	});
+	return { rows, lead, page, pages };
+}
+
+/**
  * The fields a replay list row renders. Deliberately no sightings: they are
  * ~95% of a replay doc's bytes, and since `rebuildPlayers` settles outcomes
  * onto the doc, no read path needs them to work out who won.
@@ -485,12 +563,12 @@ export async function getReplayStats(): Promise<{ count: number; latest: string 
  * the archive.
  */
 export async function getReplayFacts(
-	toon: string,
+	cacheKey: string,
 	files: string[]
 ): Promise<Record<string, { durationLoops: number; outcome?: Outcome }>> {
 	if (!files.length) return {};
-	// keyed by whose history it is, so a reloaded profile does not re-read it
-	return cached(`replayFacts:${toon}`, async () => {
+	// keyed by which page of whose history it is, so a revisit does not re-read
+	return cached(`replayFacts:${cacheKey}`, async () => {
 		const map: Record<string, { durationLoops: number; outcome?: Outcome }> = {};
 		const d = await db();
 		const docs = await d
@@ -562,29 +640,16 @@ export async function getMosTopPlayers(mosId: string): Promise<MosTopPlayer[]> {
  * the player's own replays server-side, so this stays a small read even as
  * the archive grows (unlike the boards above, which scan everything).
  */
+/**
+ * Who this player has shared the most recorded game time with.
+ *
+ * Aggregated when the archive changes (see `persistTeammates`) and stored on
+ * the profile, so this rides along with the summary the page already reads
+ * rather than being the 300 KB scan it used to be.
+ */
 export async function getTeammates(toon: string): Promise<Teammate[]> {
-	// the heaviest read behind a profile page — every roster of every game the
-	// player appeared in, ~60 KB for an active player, which at the cluster's
-	// throughput is most of the page's time. Worth caching per toon.
-	return cached(`teammates:${toon}`, async () => {
-		const d = await db();
-		const docs = await d
-			.collection<ReplayDoc>('replays')
-			.find(
-				{ 'sightings.toon': toon },
-				{
-					projection: {
-						playedAt: 1,
-						durationLoops: 1,
-						'sightings.toon': 1,
-						'sightings.name': 1,
-						'sightings.clan': 1
-					}
-				}
-			)
-			.toArray();
-		return topTeammates(docs, toon);
-	});
+	const p = await getPlayerSummary(toon);
+	return (p?.teammates ?? []) as Teammate[];
 }
 
 export async function getWeeklyBoards(): Promise<WeeklyBoards> {
@@ -869,7 +934,7 @@ function takePending(): string[] {
 /** The work an upload triggers: the players it touched, then the archive-wide derivations. */
 async function runRebuild(toons: string[]): Promise<number> {
 	const count = await rebuildPlayersFor(toons);
-	await refreshDerived();
+	await refreshDerived(undefined, toons);
 	invalidateCache();
 	return count;
 }
@@ -992,8 +1057,9 @@ async function persistMosBoards(docs: DerivedDoc[]): Promise<number> {
  * already holds them (the full rebuild does) to skip the read entirely.
  */
 export async function refreshDerived(
-	docs?: DerivedDoc[]
-): Promise<{ outcomes: number; boards: number }> {
+	docs?: DerivedDoc[],
+	onlyToons?: string[]
+): Promise<{ outcomes: number; boards: number; mates: number }> {
 	const rows =
 		docs ??
 		((await (await db())
@@ -1002,22 +1068,69 @@ export async function refreshDerived(
 			.toArray()) as DerivedDoc[]);
 	const outcomes = await persistSettledOutcomes(rows);
 	const boards = await persistMosBoards(rows);
-	return { outcomes, boards };
+	const mates = await persistTeammates(rows, onlyToons);
+	return { outcomes, boards, mates };
 }
 
 /**
- * Sort keys for the leaderboard, stored alongside the profile.
+ * Store each player's top teammates on their profile.
  *
- * Both are derived from fields already on the doc, so they are never a source
- * of truth — they exist purely so `getPlayersPage` can order and page in the
- * database. The table still renders `careerXp(p)`/`totalWins(p)`, so what a
- * visitor reads cannot drift from these even if one goes stale.
+ * This is the read that used to dominate a profile page: working out who
+ * someone played with means reading every roster of every game they appeared
+ * in — 302 KB and 3.2s for the most active player, on every cold view. The
+ * pass above already reads a superset of what `topTeammates` needs, so
+ * computing it here costs no extra read at all.
+ *
+ * `onlyToons` narrows the write to the players an upload touched: a game can
+ * only change the teammate lists of the people who were in it.
  */
-function withSortKeys(p: Record<string, unknown>): Record<string, unknown> {
+async function persistTeammates(docs: DerivedDoc[], onlyToons?: string[]): Promise<number> {
+	let keys: string[];
+	if (onlyToons?.length) {
+		keys = [...new Set(onlyToons.filter(Boolean))];
+	} else {
+		const seen = new Set<string>();
+		for (const r of docs) for (const s of r.sightings ?? []) seen.add(s.toon || s.name);
+		keys = [...seen];
+	}
+	if (!keys.length) return 0;
+	const d = await db();
+	await d.collection('players').bulkWrite(
+		keys.map((key) => ({
+			updateOne: {
+				filter: { _id: key },
+				update: { $set: { teammates: topTeammates(docs, key) } }
+			}
+		})) as never[],
+		{ ordered: false }
+	);
+	return keys.length;
+}
+
+/**
+ * Values derived from a profile and stored alongside it.
+ *
+ * None is a source of truth — each is recomputed from the same doc on every
+ * rebuild. They exist so a page can be served without reading the parts of the
+ * profile they summarise: `careerXp`/`totalWins` let the leaderboard sort and
+ * page in the database, and the rest let a profile render without its whole
+ * history in hand (`history` is the only unbounded field on a player, 377
+ * entries and 78 KB for the most active).
+ */
+export function withDerived(p: Record<string, unknown>): Record<string, unknown> {
+	const history = (p.history ?? []) as { file: string; mos: string[] }[];
+	// class picks counted across every game — the one profile figure that
+	// genuinely needs the whole history, so it is tallied here instead
+	const classGames: Record<string, number> = {};
+	for (const h of history) for (const id of h.mos) classGames[id] = (classGames[id] ?? 0) + 1;
 	return {
 		...p,
 		careerXp: careerXp(p as Parameters<typeof careerXp>[0]),
-		totalWins: totalWins(p as Parameters<typeof totalWins>[0])
+		totalWins: totalWins(p as Parameters<typeof totalWins>[0]),
+		historyCount: history.length,
+		classGames,
+		// the newest game, pinned by retention and offered as a bank backup
+		latestFile: history.at(-1)?.file ?? null
 	};
 }
 
@@ -1083,7 +1196,7 @@ export async function rebuildPlayersFor(toons: string[]): Promise<number> {
 			updated.map((p) => ({
 				replaceOne: {
 					filter: { _id: p.toon as string },
-					replacement: withSortKeys(p),
+					replacement: withDerived(p),
 					upsert: true
 				}
 			})) as never[],
@@ -1125,7 +1238,7 @@ export async function rebuildPlayers(): Promise<number> {
 	if (players.length) {
 		await col.bulkWrite(
 			players.map((p) => ({
-				replaceOne: { filter: { _id: p.toon as string }, replacement: withSortKeys(p), upsert: true }
+				replaceOne: { filter: { _id: p.toon as string }, replacement: withDerived(p), upsert: true }
 			})) as never[]
 		);
 	}

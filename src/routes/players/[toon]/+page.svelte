@@ -19,33 +19,25 @@
 	import Pager from '$lib/components/Pager.svelte';
 	import OutcomeMark from '$lib/components/OutcomeMark.svelte';
 	import { fmtDuration } from '$lib/outcome';
-	import { PER_PAGE, pageNumber } from '$lib/paging';
-	import { page as currentPage } from '$app/state';
 
 	let { data } = $props();
 
-	// A long-standing player has hundreds of games. History is stored
-	// oldest first (that ordering is what makes the per-row deltas work),
-	// but reads newest first: page one is the tail, walked backwards, and
-	// rows within it descend too. Indices stay absolute — a row's delta
-	// must compare against the real next game, not the row above it.
-	const historyPages = $derived(Math.max(1, Math.ceil(data.player.history.length / PER_PAGE)));
-	const historyPage = $derived(
-		pageNumber(currentPage.url.searchParams.get('h'), historyPages)
+	// A long-standing player has hundreds of games, so the server sends one
+	// page of history rather than all of it. What arrives is still oldest
+	// first (that ordering is what makes the per-row deltas work) and is read
+	// newest first: rows descend from the end of the slice. `historyRows`
+	// excludes the extra newer sighting the slice carries so that the top row
+	// still has a next game to diff against.
+	const shownHistory = $derived.by(() =>
+		Array.from({ length: data.historyRows }, (_, i) => data.historyRows - 1 - i)
 	);
-	const shownHistory = $derived.by(() => {
-		const len = data.player.history.length;
-		const end = Math.max(0, len - (historyPage - 1) * PER_PAGE);
-		const start = Math.max(0, end - PER_PAGE);
-		return Array.from({ length: end - start }, (_, i) => end - 1 - i);
-	});
 	const p = $derived(data.player);
 
-	// History is oldest first, so the tail is this player's most recent game.
 	// Retention pins every player's latest replay (see lib/replayRetention.ts),
 	// so this file is the one blob we guarantee is still downloadable — which
-	// is what makes it usable as a progression backup.
-	const latestReplay = $derived(p.history.at(-1)?.file ?? null);
+	// is what makes it usable as a progression backup. It comes from the server
+	// because it is not on every page of the history.
+	const latestReplay = $derived(data.latestFile);
 
 	const tracks = $derived(
 		[
@@ -169,15 +161,13 @@
 			p.decal === d.num ? 'Equipped' : decalsUnlocked.has(d.num) ? 'Unlocked' : 'Locked'
 		);
 
-	const classesPlayed = $derived.by(() => {
-		const counts = new Map<string, number>();
-		for (const h of p.history) {
-			for (const id of h.mos) counts.set(id, (counts.get(id) ?? 0) + 1);
-		}
-		return [...counts.entries()]
+	// Counted across every game the player has ever played, so it is tallied
+	// when the profile is rebuilt rather than from the history on this page.
+	const classesPlayed = $derived(
+		Object.entries(data.classGames)
 			.sort((a, b) => b[1] - a[1])
-			.map(([id, games]) => ({ id, games, info: mosById.get(id) }));
-	});
+			.map(([id, games]) => ({ id, games, info: mosById.get(id) }))
+	);
 
 	// Sighting values are the save-file state at game start, so the progress
 	// earned in game i only shows up in sighting i+1 — attribute it back to row i.
@@ -460,9 +450,9 @@
 
 		<h2 class="section">Replay history</h2>
 		<Pager
-			page={historyPage}
-			pages={historyPages}
-			total={p.history.length}
+			page={data.historyPage}
+			pages={data.historyPages}
+			total={data.historyTotal}
 			label="replays"
 			param="h"
 		/>

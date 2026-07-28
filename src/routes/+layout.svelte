@@ -11,6 +11,7 @@
 	import { latestVersionInfo } from '$lib/changelog';
 	import { rememberUmamiId } from '$lib/analytics';
 	import ReadyToPlay from '$lib/components/ReadyToPlay.svelte';
+	import NavProgress from '$lib/components/NavProgress.svelte';
 
 	let { children } = $props();
 
@@ -283,6 +284,8 @@
 <svelte:head>
 	<link rel="icon" href={favicon} />
 </svelte:head>
+
+<NavProgress />
 
 <div class="shell" class:nav-open={navOpen === true} class:nav-closed={navOpen === false}>
 	<header class="topbar">
