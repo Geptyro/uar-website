@@ -23,11 +23,31 @@
 		<!-- Umami (self-hosted at stats.cedricdessalles.dev, cookieless, first-party;
 		     tracker renamed to insights.js to stay off adblock lists). SPA
 		     navigations are auto-tracked. -->
+		<script>
+			// Umami files a hit under uuid(websiteId, distinctId) as soon as a
+			// distinct id is present, and under the anonymous ip+ua hash when it
+			// isn't — so the landing pageview, sent before the layout's async
+			// /api/me can call umami.identify(), would land in a different
+			// session than everything after it: one signed-in visit, two
+			// visitors. Stamp the battletag cached last time (see
+			// $lib/analytics.ts, same key) on the way out instead. This only
+			// fills the gap before identify() runs — after that the tracker
+			// sets payload.id itself and that value wins.
+			try {
+				var uid = localStorage.getItem('uar:umami-id');
+				if (uid)
+					window.uarUmamiId = function (type, payload) {
+						if (!payload.id) payload.id = uid;
+						return payload;
+					};
+			} catch (e) {}
+		</script>
 		<script
 			defer
 			src="https://stats.cedricdessalles.dev/insights.js"
 			data-website-id="26805153-0055-4d03-8219-fbe7f2b5a6ad"
 			data-domains="uar.cedricdessalles.dev"
+			data-before-send="uarUmamiId"
 		></script>
 	</body>
 </html>

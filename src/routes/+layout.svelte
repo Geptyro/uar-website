@@ -9,6 +9,7 @@
 	import { onMount } from 'svelte';
 	import { mosList, mosById } from '$lib/mos';
 	import { latestVersionInfo } from '$lib/changelog';
+	import { rememberUmamiId } from '$lib/analytics';
 	import ReadyToPlay from '$lib/components/ReadyToPlay.svelte';
 
 	let { children } = $props();
@@ -237,6 +238,11 @@
 		try {
 			const res = await fetch('/api/me');
 			me = res.ok ? await res.json() : signedOut;
+			// Cached for app.html, which stamps it on the landing pageview of
+			// the next load — identify() below always arrives too late for that
+			// one. A fetch that threw leaves the cache alone rather than
+			// guessing signed-out.
+			rememberUmamiId(me?.battletag ?? null);
 		} catch {
 			me = signedOut;
 		}

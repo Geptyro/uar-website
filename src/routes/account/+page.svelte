@@ -1,6 +1,7 @@
 <script lang="ts">
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
 	import { onMount } from 'svelte';
+	import { rememberUmamiId } from '$lib/analytics';
 
 	let { data } = $props();
 
@@ -118,8 +119,13 @@
 
 		<div class="actions">
 			<a class="chip" href="/auth/bnet">Refresh from Battle.net</a>
-			<form method="POST" action="?/logout"><button class="chip">Sign out</button></form>
-			<form method="POST" action="?/unlink">
+			<!-- Both actions end the session and redirect, i.e. a full reload:
+			     drop the cached analytics id here or that reload's first
+			     pageview still goes out under the old battletag. -->
+			<form method="POST" action="?/logout" onsubmit={() => rememberUmamiId(null)}>
+				<button class="chip">Sign out</button>
+			</form>
+			<form method="POST" action="?/unlink" onsubmit={() => rememberUmamiId(null)}>
 				<button class="chip danger">Disconnect &amp; remove link</button>
 			</form>
 		</div>
