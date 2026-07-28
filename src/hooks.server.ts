@@ -1,6 +1,6 @@
 import type { Handle } from '@sveltejs/kit';
 import { readSession } from '$lib/server/session';
-import { cacheStats, ensureIndexes } from '$lib/server/db';
+import { cacheStats, ensureIndexes, warmCache } from '$lib/server/db';
 import { warmReplayWorker } from '$lib/server/replay/offthread';
 
 // one parsing worker for the lifetime of the server, started before the
@@ -13,6 +13,12 @@ warmReplayWorker();
 // serving at all (a fresh deploy against an unreachable database would
 // otherwise never come up).
 void ensureIndexes().catch((e) => console.error('index setup failed:', e));
+
+// The cache lives in this process's memory, so a deploy empties it. Fill it
+// before anyone asks, rather than charging the first visitor after a release
+// for the whole cold read. Not awaited: the server should serve immediately,
+// and a request that beats the warm-up shares its in-flight read anyway.
+void warmCache().catch((e) => console.error('cache warm failed:', e));
 
 // Where the reads actually go, in `fly logs` rather than an admin page: a hit
 // rate that has drifted, or a build that has grown expensive, is the signal

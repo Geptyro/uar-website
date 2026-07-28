@@ -19,6 +19,7 @@ import type { Sc2Profile } from './bnet.ts';
 import { buildPlayersData, type ReplaySighting } from './replay/extract.ts';
 import { outcomeChanges, type Outcome } from '../outcome.ts';
 import { PER_PAGE, pageNumber, type Paged } from '../paging.ts';
+import { cacheState } from '../cache.ts';
 import { escapeRegex } from '../search.ts';
 import { careerXp, totalWins } from '../xp.ts';
 import { bucketConfigured, deleteObject } from './replay/s3.ts';
@@ -163,6 +164,38 @@ export async function ensureIndexes(): Promise<void> {
 }
 
 /**
+ * Fill the read cache with what the landing pages need, at boot.
+ *
+ * A deploy restarts the machine, and the cache lives in its memory — so
+ * without this the first visitor after every release pays the full cold read
+ * of whichever page they happen to open. They are the least deserving person
+ * to charge for it, and on a release day it is the same person repeatedly.
+ *
+ * Sequential on purpose: the cluster throttles on bytes returned, so firing
+ * these together would only make them queue, and nobody is waiting on this.
+ */
+export async function warmCache(): Promise<void> {
+	if (!dbConfigured()) return;
+	const warmers: [string, () => Promise<unknown>][] = [
+		['replays', () => getReplaysPage(null)],
+		['players', () => getPlayersPage({ sort: 'career', dir: -1, q: '', page: null })],
+		['clans', () => getClanMembers()],
+		['overview', () => getWeeklyBoards()],
+		['overview:recent', () => getRecentReplays(5)],
+		['overview:stats', () => getReplayStats()],
+		['avatars', () => getAvatarsByToon()]
+	];
+	for (const [name, run] of warmers) {
+		try {
+			await run();
+		} catch (e) {
+			// a cold cache is the worst this can cost; never hold up the server
+			console.error(`cache warm failed (${name}):`, e);
+		}
+	}
+}
+
+/**
  * Drop the shared pool. The server never calls this — it holds one client for
  * its whole life — but a CLI that touched this module otherwise never exits,
  * because the pool keeps the event loop alive and its connections keep sitting
@@ -195,13 +228,18 @@ const SHORT_TTL_MS = 30_000;
 const ttlFor = (key: string) =>
 	SHORT_TTL_KEYS.has(key) || key.startsWith('replays:activity') ? SHORT_TTL_MS : TTL_MS;
 /**
- * How long a stale entry may still be served while its refresh runs. Past the
- * TTL the value is refetched, but nobody is made to *wait* for that refetch —
- * otherwise whichever page view happens to land on the expiry pays the whole
- * read, which is exactly how a slow query turns into a random multi-second
- * stall for one unlucky visitor.
+ * How long past its TTL an entry may still be served while its refresh runs.
+ * Past the TTL the value is refetched, but nobody is made to *wait* for that
+ * refetch — otherwise whichever page view happens to land on the expiry pays
+ * the whole read, which is exactly how a slow query turns into a random
+ * multi-second stall for one unlucky visitor.
+ *
+ * A window measured *from the TTL*, not an absolute age. It was the latter
+ * once, which quietly broke the moment the TTL was raised past it: the
+ * stale branch became unreachable and every expiry blocked a visitor again.
+ * Expressed this way it cannot be outrun by whatever a TTL is set to.
  */
-const STALE_MS = 5 * 60_000;
+const STALE_WINDOW_MS = 30 * 60_000;
 /**
  * Cap on cached entries, evicting least-recently-used.
  *
@@ -298,13 +336,13 @@ function refresh<T>(key: string, load: () => Promise<T>): Promise<T> {
 async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
 	const hit = cache.get(key);
 	if (hit) {
-		const age = Date.now() - hit.at;
-		if (age < ttlFor(key)) {
+		const state = cacheState(Date.now() - hit.at, ttlFor(key), STALE_WINDOW_MS);
+		if (state === 'fresh') {
 			stat(key).hits++;
 			touch(key, hit); // keep hot entries out of the LRU's way
 			return hit.value as T;
 		}
-		if (age < STALE_MS) {
+		if (state === 'stale') {
 			stat(key).stale++;
 			// serve what we have and let the refresh finish in the background;
 			// a failed refresh just leaves the stale value for the next attempt
