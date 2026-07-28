@@ -67,9 +67,12 @@
 	const decalsUnlocked = $derived(new Set([0, ...p.unlocks.decals]));
 	const sisSorted = [...skillIdentifiers].sort((a, b) => a.num - b.num);
 
+	// `num` is the 1-based mode number the rest of the site keys off (see
+	// lib/mode.ts) — winsByMode is aligned with modeNames, so it is the index
+	// plus one, and it is what ModeMark and the --mode-* tokens both want
 	const modes = $derived(
 		modeNames
-			.map((name, i) => ({ name, wins: p.winsByMode[i] ?? 0 }))
+			.map((name, i) => ({ name, num: i + 1, wins: p.winsByMode[i] ?? 0 }))
 			.filter((m) => m.wins > 0)
 			.sort((a, b) => b.wins - a.wins)
 	);
@@ -256,10 +259,14 @@
 									<tbody>
 										{#each modes as m (m.name)}
 											<tr>
-												<td>{m.name}</td>
+												<td><ModeMark mode={m.num} /></td>
 												<td class="num">{m.wins.toLocaleString('en')}</td>
 												<td class="barcell">
-													<div class="modebar" style="width: {(m.wins / modes[0].wins) * 100}%"></div>
+													<div
+														class="modebar"
+														style="width: {(m.wins / modes[0].wins) *
+															100}%; --bar: var(--mode-{m.num})"
+													></div>
 												</td>
 											</tr>
 										{/each}
@@ -847,10 +854,13 @@
 			display: none;
 		}
 	}
+	/* One bar for the three boards. Wins by mode passes --bar so each row is
+	   drawn in its own mode's colour, the same ramp the icons carry; the other
+	   two boards set nothing and stay on the accent. */
 	.modebar {
 		height: 8px;
 		border-radius: 2px;
-		background: var(--accent);
+		background: var(--bar, var(--accent));
 		opacity: 0.55;
 		min-width: 2px;
 	}
