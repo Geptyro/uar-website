@@ -8,7 +8,8 @@
 	 * Client-side fetch + polling because the layout is prerendered.
 	 */
 	import { onMount } from 'svelte';
-	import { PresenceChips, HoverPop, ReadyPlayers, ReadyChip } from 'uar-shared';
+	import { HoverPop } from 'sveltekit-commons';
+	import { PresenceChips, ReadyPlayers, ReadyChip } from 'uar-shared';
 	import { activeReady, minutesLeft, readyLevel, type ReadyPlayer } from '$lib/ready';
 	import { splitPresence, type PresenceEntry, type PresenceGroup } from '$lib/presence';
 

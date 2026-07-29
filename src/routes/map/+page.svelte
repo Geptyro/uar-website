@@ -361,7 +361,7 @@
 		backdrop-filter: blur(6px);
 		border: 1px solid var(--border-strong);
 		border-left: 3px solid var(--c);
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		box-shadow: var(--shadow-2);
 		padding: 9px 12px;
 		pointer-events: none;
@@ -378,7 +378,7 @@
 		font-weight: 650;
 	}
 	.tip-cat {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 9.5px;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
@@ -386,20 +386,20 @@
 		white-space: nowrap;
 	}
 	.tip-meta {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10px;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		margin-top: 2px;
 	}
 	.tip-meta.dim {
 		margin-top: 6px;
 	}
 	.tip-label {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 9.5px;
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		margin: 8px 0 3px;
 	}
 	.tip-missions {
@@ -410,19 +410,19 @@
 	.tip-missions li {
 		font-size: 12px;
 		line-height: 1.5;
-		color: var(--ink-2);
+		color: var(--text-dim);
 	}
 	.tip-xp {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10.5px;
 		font-weight: 650;
 		color: var(--accent);
 		margin-right: 4px;
 	}
 	.tip-more {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10px;
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 
 	.region-list {
@@ -432,23 +432,23 @@
 		margin-top: 12px;
 	}
 	.region-pill {
-		font: 500 11px/1 var(--mono);
-		color: var(--ink-2);
+		font: 500 11px/1 var(--font-mono);
+		color: var(--text-dim);
 		background: var(--surface);
 		border: 1px solid var(--border);
 		border-left: 3px solid var(--c);
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		padding: 5px 9px;
 		cursor: pointer;
 	}
 	.region-pill.hl,
 	.region-pill:hover {
-		background: var(--surface-2);
-		color: var(--ink);
+		background: var(--surface-raised);
+		color: var(--text);
 	}
 	.region-pill.sel {
 		background: var(--accent);
-		color: var(--on-accent);
+		color: var(--accent-contrast);
 		border-color: var(--accent);
 	}
 
@@ -464,24 +464,24 @@
 		align-items: center;
 		gap: 10px;
 		font-size: 13px;
-		color: var(--ink-2);
+		color: var(--text-dim);
 		background: var(--accent-soft);
 		border: 1px solid var(--accent);
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		padding: 7px 12px;
 		margin-bottom: 12px;
 	}
 	.filter-banner b {
-		color: var(--ink);
+		color: var(--text);
 	}
 	.filter-banner .chip {
 		margin-left: auto;
 		padding: 4px 10px;
 	}
 	.trig {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10px;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		margin-top: 2px;
 	}
 	.gain {
@@ -492,7 +492,7 @@
 		color: var(--hostile);
 	}
 	.empty {
-		color: var(--ink-3);
+		color: var(--text-faint);
 		text-align: center;
 		padding: 20px;
 	}

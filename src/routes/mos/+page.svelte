@@ -169,7 +169,7 @@
 		user-select: none;
 	}
 	th.sortable:hover {
-		color: var(--ink);
+		color: var(--text);
 	}
 	.dir {
 		color: var(--accent);
@@ -189,7 +189,7 @@
 	.role {
 		margin-left: 8px;
 		font-size: 11px;
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 	td.barcell {
 		min-width: 132px;
@@ -199,7 +199,7 @@
 		font-variant-numeric: tabular-nums;
 	}
 	.v.none {
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 	/* one hue per column — the categories are nominal, so bar length is the only encoding */
 	.bar {
@@ -207,7 +207,7 @@
 		margin-top: 3px;
 		height: 3px;
 		border-radius: 99px;
-		background: var(--surface-2);
+		background: var(--surface-raised);
 		overflow: hidden;
 	}
 	.fill {

@@ -139,7 +139,7 @@
 	.feat p {
 		margin: 0;
 		font-size: 13px;
-		color: var(--ink-2);
+		color: var(--text-dim);
 		line-height: 1.5;
 	}
 	/* the one card on the page that is about trust rather than a feature, so it
@@ -182,7 +182,7 @@
 	.oss-text {
 		font-size: 13px;
 		line-height: 1.5;
-		color: var(--ink-2);
+		color: var(--text-dim);
 	}
 	.oss-repo {
 		font-size: 12px;
@@ -219,11 +219,11 @@
 	}
 	.dl-note {
 		font-size: 12px;
-		color: var(--ink-2);
+		color: var(--text-dim);
 	}
 	.dl-size {
 		font-size: 11px;
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 	.small {
 		font-size: 12px;

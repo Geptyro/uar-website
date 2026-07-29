@@ -32,7 +32,7 @@
 	 * edge on a phone.
 	 */
 	import type { Snippet } from 'svelte';
-	import { placeFloating, type Placement } from 'uar-shared/place';
+	import { placeFloating, type Placement } from 'sveltekit-commons/place';
 
 	let {
 		children,
@@ -317,9 +317,9 @@
 		gap: 4px;
 		padding: 8px 11px;
 		background: var(--surface);
-		color: var(--ink);
+		color: var(--text);
 		border: 1px solid var(--border-strong);
-		border-radius: var(--r);
+		border-radius: var(--radius-3);
 		box-shadow: var(--shadow-2);
 		font-size: 12.5px;
 		line-height: 1.5;
@@ -356,7 +356,7 @@
 		font-weight: 600;
 	}
 	.tt-text {
-		color: var(--ink-2);
+		color: var(--text-dim);
 		white-space: pre-line;
 	}
 	.tt-arrow {

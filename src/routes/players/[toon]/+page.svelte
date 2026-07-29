@@ -772,10 +772,10 @@
 		margin-top: 4px;
 	}
 	.counthint {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 11.5px;
 		font-weight: 400;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		margin-left: 6px;
 	}
 
@@ -806,14 +806,14 @@
 		font-size: 11px;
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 	.rc-rank {
 		font-weight: 650;
 		font-size: 13.5px;
 	}
 	.rc-prefix {
-		color: var(--ink-2);
+		color: var(--text-dim);
 		font-size: 11px;
 		margin-right: 2px;
 	}
@@ -836,7 +836,7 @@
 		font-variant-numeric: tabular-nums;
 	}
 	.rc-next {
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 
 	/* ---------- wins by mode + played with + classes played ---------- */
@@ -884,7 +884,7 @@
 	   and a bar read against the top row. The order is the ranking, so no
 	   position number is printed. */
 	.pclan {
-		color: var(--ink-3);
+		color: var(--text-faint);
 		font-size: 11px;
 		margin-right: 3px;
 	}
@@ -895,7 +895,7 @@
 		margin: 10px 0 0;
 		font-size: 11px;
 		line-height: 1.5;
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 
 	/* ---------- class pictures in the replay history ----------
@@ -927,14 +927,14 @@
 		border-radius: 3px;
 	}
 	.histfig.placeholder {
-		background: var(--surface-2);
+		background: var(--surface-raised);
 	}
 	.histresult {
 		width: 1%;
 		white-space: nowrap;
 	}
 	.histresult .unknown {
-		color: var(--ink-3);
+		color: var(--text-faint);
 		cursor: help;
 	}
 	/* the mode is unknown for a lost game nobody has a later save of, which is
@@ -956,7 +956,7 @@
 	}
 	.histmode .unknown,
 	.histmods .none {
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 	.histmode .unknown {
 		cursor: help;
@@ -986,7 +986,7 @@
 		align-items: center;
 		gap: 4px;
 		width: 100%;
-		color: var(--ink-2);
+		color: var(--text-dim);
 	}
 	.utile.locked {
 		opacity: 0.3;
@@ -1002,7 +1002,7 @@
 		width: 64px;
 		height: 64px;
 		object-fit: cover;
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		border: 1px solid var(--border);
 	}
 	/* a swatch is a flat texture: the dark bed keeps a light one readable */
@@ -1020,8 +1020,8 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		background: var(--surface-2);
-		color: var(--ink-3);
+		background: var(--surface-raised);
+		color: var(--text-faint);
 	}
 	.uimg.placeholder.star {
 		font-size: 26px;
@@ -1035,7 +1035,7 @@
 	/* an SI is known by its two letters as much as by its name */
 	.ucode {
 		font-size: 9.5px;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		text-align: center;
 		margin-top: -1px;
 	}
@@ -1052,8 +1052,8 @@
 		background: var(--surface);
 	}
 	.gapinfo {
-		font: 500 10.5px/1.6 var(--mono);
-		color: var(--ink-3);
+		font: 500 10.5px/1.6 var(--font-mono);
+		color: var(--text-faint);
 		white-space: nowrap;
 	}
 
@@ -1070,16 +1070,16 @@
 		display: block;
 		margin: 10px 14px 0;
 		padding: 7px 12px;
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		background: var(--accent);
-		color: var(--on-accent);
+		color: var(--accent-contrast);
 		font-weight: 650;
 		font-size: 12px;
 		text-align: center;
 		text-decoration: none;
 	}
 	.dl-latest:hover {
-		background: var(--accent-hover);
+		background: var(--accent-dim);
 	}
 	.idhead {
 		display: flex;
@@ -1090,7 +1090,7 @@
 	.portrait-lg {
 		width: 56px;
 		height: 56px;
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		object-fit: cover;
 		border: 1px solid var(--border-strong);
 		flex-shrink: 0;
@@ -1110,7 +1110,7 @@
 		white-space: nowrap;
 	}
 	.idclan {
-		color: var(--ink-3);
+		color: var(--text-faint);
 		font-size: 13px;
 		font-weight: 500;
 		margin-right: 5px;
@@ -1122,11 +1122,11 @@
 	.facts dt {
 		float: left;
 		clear: left;
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10px;
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		line-height: 2.1;
 	}
 	.facts dd {
@@ -1142,7 +1142,7 @@
 		border-bottom: none;
 	}
 	.idhead .you {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10px;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
@@ -1155,11 +1155,11 @@
 		text-underline-offset: 3px;
 	}
 	.box-label {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10px;
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		padding: 4px var(--card-pad-x) 2px;
 	}
 
@@ -1194,7 +1194,7 @@
 	}
 	.gear-count {
 		font-size: 10px;
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 	.gear {
 		padding: 2px var(--card-pad-x) 6px;
@@ -1208,17 +1208,17 @@
 		padding: 2px 0;
 	}
 	.gear li.locked {
-		color: var(--ink-3);
+		color: var(--text-faint);
 		opacity: 0.6;
 	}
 	.tick {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		color: var(--accent);
 		width: 12px;
 		flex: none;
 	}
 	.gear li.locked .tick {
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 	.backlink {
 		font-size: 12.5px;

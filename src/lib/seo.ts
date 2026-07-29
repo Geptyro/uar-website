@@ -47,19 +47,13 @@ export function fullTitle(title?: string | null): string {
  * Google renders about 160 characters of a description and then either cuts it
  * mid-word or writes its own from the page. Everything here is clamped, so a
  * generated description can be assembled without counting.
+ *
+ * Re-exported rather than reimplemented: the clamp itself is in commons, where
+ * STALZONE uses it too. This module keeps only what is UAR's — the origin, the
+ * card sizes and the title templates below.
  */
-export const DESC_MAX = 160;
-
-export function clampText(text: string, max = DESC_MAX): string {
-	const s = text.replace(/\s+/g, ' ').trim();
-	if (s.length <= max) return s;
-	const cut = s.slice(0, max - 1);
-	const space = cut.lastIndexOf(' ');
-	// back off to a word boundary, unless that would throw away most of the
-	// budget (one very long token), in which case take the hard cut
-	const kept = space > max * 0.6 ? cut.slice(0, space) : cut;
-	return kept.replace(/[\s,;:.·—-]+$/, '') + '…';
-}
+import { DESC_MAX, clampText } from 'sveltekit-commons/text';
+export { DESC_MAX, clampText };
 
 /** How each extracted category reads inside a sentence. */
 const KIND: Record<string, string> = {

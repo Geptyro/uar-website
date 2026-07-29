@@ -171,7 +171,7 @@
 	.portrait {
 		width: 32px;
 		height: 32px;
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		object-fit: cover;
 		border: 1px solid var(--border);
 		flex-shrink: 0;
@@ -180,7 +180,7 @@
 		min-width: 0;
 	}
 	.clan {
-		color: var(--ink-3);
+		color: var(--text-faint);
 		font-size: 12px;
 		margin-right: 4px;
 	}
@@ -190,7 +190,7 @@
 	.toon {
 		display: block;
 		font-size: 10.5px;
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 	.rankcell {
 		display: inline-flex;

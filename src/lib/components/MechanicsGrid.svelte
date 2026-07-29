@@ -153,18 +153,18 @@
 	.mech-card {
 		background: var(--surface);
 		border: 1px solid var(--border);
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		box-shadow: var(--shadow-1);
 		padding: 12px 14px;
 		min-width: 0;
 	}
 	.mech-card h3 {
 		margin: 0 0 8px;
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10px;
 		letter-spacing: 0.14em;
 		text-transform: uppercase;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		font-weight: 500;
 	}
 	.stat {
@@ -181,42 +181,42 @@
 		font-variant-numeric: tabular-nums;
 	}
 	.stat .unit {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10.5px;
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 	.line {
 		margin: 0 0 4px;
 		font-size: 12.5px;
-		color: var(--ink-2);
+		color: var(--text-dim);
 		display: flex;
 		align-items: baseline;
 		gap: 8px;
 		font-variant-numeric: tabular-nums;
 	}
 	.line .k {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10px;
 		letter-spacing: 0.04em;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		flex: 1;
 		min-width: 0;
 	}
 	.hint {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10px;
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 	.note {
 		margin: 8px 0 0;
 		font-size: 11.5px;
 		line-height: 1.5;
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 	.mech-link {
 		display: inline-block;
 		margin-top: 10px;
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10.5px;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
@@ -241,6 +241,6 @@
 	.gdesc {
 		font-size: 11.5px;
 		line-height: 1.5;
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 </style>

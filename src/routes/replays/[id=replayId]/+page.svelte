@@ -165,15 +165,15 @@
 	.dl {
 		display: inline-block;
 		padding: 7px 16px;
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		background: var(--accent);
-		color: var(--on-accent);
+		color: var(--accent-contrast);
 		font-weight: 650;
 		font-size: 13px;
 		text-decoration: none;
 	}
 	.dl:hover {
-		background: var(--accent-hover);
+		background: var(--accent-dim);
 	}
 	.pruned {
 		max-width: 640px;
@@ -181,9 +181,9 @@
 		padding-left: 12px;
 	}
 	.namecell .clan {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 11px;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		text-decoration: none;
 		margin-right: 5px;
 	}
@@ -217,6 +217,6 @@
 		border-radius: 3px;
 	}
 	.none {
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 </style>

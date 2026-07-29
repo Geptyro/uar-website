@@ -143,7 +143,7 @@
 		stroke-linecap: round;
 	}
 	.cross {
-		stroke: var(--ink-3);
+		stroke: var(--text-faint);
 		stroke-width: 1;
 	}
 	.dot {
@@ -152,19 +152,19 @@
 		stroke-width: 2;
 	}
 	.tick {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 8px;
-		fill: var(--ink-3);
+		fill: var(--text-faint);
 	}
 	figcaption {
 		margin-top: 4px;
 		font-size: 11.5px;
 		line-height: 1.45;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		min-height: 2.9em;
 	}
 	figcaption b {
-		color: var(--ink);
+		color: var(--text);
 		font-variant-numeric: tabular-nums;
 	}
 	/* Hidden in flow, not out of it. `position: absolute` had no positioned

@@ -190,7 +190,7 @@
 	/* ---------- main column ---------- */
 	.applies {
 		font-size: 11px;
-		color: var(--ink-2);
+		color: var(--text-dim);
 		max-width: 340px;
 	}
 	.itembox {
@@ -209,12 +209,12 @@
 		padding-left: 18px;
 	}
 	.mods li {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 11.5px;
-		color: var(--ink-2);
+		color: var(--text-dim);
 	}
 	.mods .scope {
-		color: var(--ink-3);
+		color: var(--text-faint);
 		margin-left: 0.4em;
 	}
 	.crumbs {
@@ -223,12 +223,12 @@
 		margin-bottom: 18px;
 	}
 	.crumbs a {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 11px;
 		letter-spacing: 0.07em;
 		text-transform: uppercase;
 		text-decoration: none;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		transition: color 120ms ease;
 	}
 	.crumbs a:hover {
@@ -253,7 +253,7 @@
 		text-underline-offset: 3px;
 	}
 	.dim {
-		color: var(--ink-3);
+		color: var(--text-faint);
 		font-size: 12px;
 	}
 </style>

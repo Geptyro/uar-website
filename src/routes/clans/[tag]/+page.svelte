@@ -82,7 +82,7 @@
 
 <style>
 	.rank-pos {
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 	.career {
 		font-weight: 650;
@@ -96,7 +96,7 @@
 	.toon {
 		display: block;
 		font-size: 10.5px;
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 	.rankcell {
 		display: inline-flex;

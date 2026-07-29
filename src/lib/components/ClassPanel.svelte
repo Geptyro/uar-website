@@ -47,7 +47,7 @@
 		padding: 8px 10px;
 		background: var(--surface);
 		border: 1px solid var(--border);
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		box-shadow: var(--shadow-1);
 	}
 	.pk-icon {
@@ -58,7 +58,7 @@
 		flex-shrink: 0;
 	}
 	.pk-icon.placeholder {
-		background: var(--surface-2);
+		background: var(--surface-raised);
 	}
 	.pk-text {
 		display: flex;
@@ -67,7 +67,7 @@
 		min-width: 0;
 	}
 	.pk-kbd {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10px;
 		font-weight: 650;
 		letter-spacing: 0.04em;
@@ -91,7 +91,7 @@
 	.pk-desc {
 		font-size: 11px;
 		line-height: 1.45;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		white-space: pre-line;
 		/* long add-on tooltips would blow out the grid — hover for the rest */
 		display: -webkit-box;

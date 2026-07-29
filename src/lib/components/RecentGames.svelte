@@ -4,7 +4,7 @@
 	import ModeMark from './ModeMark.svelte';
 	import ModifierMark from './ModifierMark.svelte';
 	import { orderModifiers } from '$lib/modifiers';
-	import { timeAgo } from '$lib/timeago';
+	import { timeAgo } from 'sveltekit-commons/time';
 
 	let { games }: { games: ReplayMeta[] } = $props();
 
@@ -76,11 +76,11 @@
 
 <style>
 	.g-label {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10px;
 		letter-spacing: 0.14em;
 		text-transform: uppercase;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		margin-bottom: 3px;
 	}
 	ol {
@@ -109,9 +109,9 @@
 		padding: 8px 9px 8px 10px;
 		margin: 0 -9px;
 		border-left: 4px solid transparent;
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		text-decoration: none;
-		background: var(--surface-2);
+		background: var(--surface-raised);
 		transition:
 			background 120ms ease,
 			border-color 120ms ease;
@@ -149,11 +149,11 @@
 	}
 	.g-when {
 		line-height: 1;
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 12px;
 		font-variant-numeric: tabular-nums;
 		font-weight: 550;
-		color: var(--ink);
+		color: var(--text);
 	}
 	/* a flex row, so the mode mark and the modifier chips sit on one centre
 	   line — as inline boxes they aligned on their own baselines, and a chip
@@ -169,15 +169,15 @@
 		   leading left in, each side centres on a different point and the two
 		   read as off by a pixel or two even though the boxes are centred */
 		line-height: 1;
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 	.g-dur {
 		flex: none;
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 11.5px;
 		line-height: 1;
 		font-variant-numeric: tabular-nums;
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 	/* the glyph carries the word, so the count reads as a figure rather than
 	   "11 profiles" spelled out down every row */
@@ -189,7 +189,7 @@
 		font-size: 11px;
 		line-height: 1;
 		font-variant-numeric: tabular-nums;
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 	.g-players svg {
 		width: 11px;

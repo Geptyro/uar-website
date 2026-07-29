@@ -372,7 +372,7 @@
 		gap: 12px;
 	}
 	.tl-time {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 12px;
 		font-weight: 650;
 		color: var(--accent);
@@ -386,7 +386,7 @@
 		padding: 0;
 		font: inherit;
 		font-size: 13px;
-		color: var(--ink);
+		color: var(--text);
 		cursor: pointer;
 		text-align: left;
 	}
@@ -396,7 +396,7 @@
 		text-underline-offset: 3px;
 	}
 	.dim {
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 
 	.graph-controls {
@@ -433,21 +433,21 @@
 		border: none;
 		font: inherit;
 		font-size: 13px;
-		color: var(--ink);
+		color: var(--text);
 		text-align: left;
 		padding: 7px 10px;
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		cursor: pointer;
 	}
 	.result:hover {
-		background: var(--surface-2);
+		background: var(--surface-raised);
 	}
 	.legend {
 		display: flex;
 		gap: 14px;
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 11px;
-		color: var(--ink-2);
+		color: var(--text-dim);
 		margin-left: auto;
 	}
 	.legend span {
@@ -498,10 +498,10 @@
 		max-width: 210px;
 		text-align: left;
 		font: inherit;
-		color: var(--ink);
-		background: var(--surface-2);
+		color: var(--text);
+		background: var(--surface-raised);
 		border: 1px solid var(--border-strong);
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		padding: 8px 11px;
 		cursor: pointer;
 		transition: border-color 120ms ease;
@@ -535,9 +535,9 @@
 		line-height: 1.3;
 	}
 	.ev {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10px;
-		color: var(--ink-2);
+		color: var(--text-dim);
 		line-height: 1.45;
 	}
 	.ev.gain {
@@ -565,11 +565,11 @@
 		gap: 14px;
 	}
 	.sub-label {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 9.5px;
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		margin-bottom: 3px;
 	}
 </style>

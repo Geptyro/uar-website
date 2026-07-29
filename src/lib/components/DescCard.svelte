@@ -25,18 +25,18 @@
 		overflow: hidden;
 	}
 	.box-label {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10px;
 		letter-spacing: 0.14em;
 		text-transform: uppercase;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		margin-bottom: 6px;
 	}
 	.box.desc p {
 		margin: 0;
 		font-size: 12.5px;
 		line-height: 1.6;
-		color: var(--ink-2);
+		color: var(--text-dim);
 		white-space: pre-line;
 	}
 </style>

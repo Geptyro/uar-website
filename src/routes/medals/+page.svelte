@@ -96,14 +96,14 @@
 		width: 46px;
 		height: 46px;
 		object-fit: contain;
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		flex-shrink: 0;
 	}
 	.medal-icon.placeholder,
 	.decal-icon.placeholder {
 		display: inline-block;
-		background: var(--surface-2);
-		border-radius: var(--r-sm);
+		background: var(--surface-raised);
+		border-radius: var(--radius-2);
 	}
 	.body {
 		flex: 1;
@@ -122,7 +122,7 @@
 		letter-spacing: -0.01em;
 	}
 	.xp {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10.5px;
 		font-weight: 650;
 		color: var(--accent);
@@ -131,7 +131,7 @@
 	.desc {
 		margin: 4px 0 0;
 		font-size: 12.5px;
-		color: var(--ink-2);
+		color: var(--text-dim);
 		white-space: pre-line;
 	}
 </style>

@@ -106,12 +106,12 @@
 		min-width: 200px;
 	}
 	.label {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10px;
 		font-weight: 600;
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 	.label em {
 		font-style: normal;
@@ -122,9 +122,9 @@
 	textarea,
 	input[type='text'] {
 		background: var(--surface);
-		color: var(--ink);
+		color: var(--text);
 		border: 1px solid var(--border-strong);
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		padding: 8px 12px;
 		font: inherit;
 		transition: border-color 120ms ease, box-shadow 120ms ease;
@@ -142,7 +142,7 @@
 	}
 	textarea::placeholder,
 	input[type='text']::placeholder {
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 	.row {
 		display: flex;
@@ -165,15 +165,15 @@
 	.actions button {
 		padding: 8px 20px;
 		border: none;
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		background: var(--accent);
-		color: var(--on-accent);
+		color: var(--accent-contrast);
 		font-weight: 650;
 		font-size: 13px;
 		cursor: pointer;
 	}
 	.actions button:hover {
-		background: var(--accent-hover);
+		background: var(--accent-dim);
 	}
 	.actions button:disabled {
 		opacity: 0.6;
@@ -199,7 +199,7 @@
 	.thanks-sub {
 		margin: 6px 0 0;
 		font-size: 12.5px;
-		color: var(--ink-2);
+		color: var(--text-dim);
 	}
 	.thanks-sub a {
 		color: var(--accent);

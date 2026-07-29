@@ -37,7 +37,7 @@
 		height: 280px;
 		background: radial-gradient(
 			ellipse 70% 30% at 50% 80%,
-			color-mix(in srgb, var(--ink) 8%, transparent),
+			color-mix(in srgb, var(--text) 8%, transparent),
 			transparent
 		);
 	}
@@ -45,11 +45,11 @@
 		position: absolute;
 		right: 12px;
 		bottom: 9px;
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10px;
 		letter-spacing: 0.14em;
 		text-transform: uppercase;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		pointer-events: none;
 	}
 </style>

@@ -71,16 +71,16 @@
 
 	const COLORS: Record<StatIconName, string> = {
 		role: 'var(--mos)',
-		type: 'var(--ink-2)',
+		type: 'var(--text-dim)',
 		life: 'var(--hostile)',
 		armor: 'var(--mos)',
 		speed: 'var(--accent)',
 		energy: 'var(--item)',
 		bag: 'var(--item)',
 		trees: 'var(--accent)',
-		items: 'var(--ink-2)',
+		items: 'var(--text-dim)',
 		regen: 'var(--accent)',
-		sight: 'var(--ink-2)'
+		sight: 'var(--text-dim)'
 	};
 </script>
 

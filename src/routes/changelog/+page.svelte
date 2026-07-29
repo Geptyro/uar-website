@@ -56,14 +56,14 @@
 	}
 	.rel-head h2 {
 		margin: 0;
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 17px;
 		font-weight: 700;
 		letter-spacing: -0.01em;
 	}
 	.rel-head time {
 		font-size: 12px;
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 	.entries {
 		display: flex;
@@ -81,7 +81,7 @@
 	.also {
 		margin: 2px 0 0;
 		font-size: 12px;
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 	.entry h3 {
 		margin: 0;
@@ -94,13 +94,13 @@
 	.area {
 		flex-shrink: 0;
 		font-size: 11px;
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 	.body {
 		margin-top: 5px;
 		font-size: 13px;
 		line-height: 1.55;
-		color: var(--ink-2);
+		color: var(--text-dim);
 	}
 	.body :global(p) {
 		margin: 0 0 6px;
@@ -114,11 +114,11 @@
 		padding-left: 20px;
 	}
 	.body :global(code) {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 12px;
-		background: var(--surface-2);
+		background: var(--surface-raised);
 		padding: 1px 4px;
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 	}
 	.body :global(a) {
 		color: var(--accent);

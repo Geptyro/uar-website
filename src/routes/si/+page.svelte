@@ -96,9 +96,9 @@
 	}
 	.count {
 		margin-left: auto;
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 11.5px;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		font-variant-numeric: tabular-nums;
 	}
 
@@ -121,12 +121,12 @@
 		width: 38px;
 		height: 38px;
 		object-fit: cover;
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		flex-shrink: 0;
 	}
 	.si-icon.placeholder {
 		display: inline-block;
-		background: var(--surface-2);
+		background: var(--surface-raised);
 	}
 	.head-text {
 		flex: 1;
@@ -139,7 +139,7 @@
 		letter-spacing: -0.01em;
 	}
 	.code {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10px;
 		font-weight: 650;
 		color: var(--accent);
@@ -158,15 +158,15 @@
 		border-radius: 3px;
 	}
 	.xp {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10.5px;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		letter-spacing: 0.04em;
 	}
 	.desc {
 		margin: 0;
 		font-size: 12.5px;
-		color: var(--ink-2);
+		color: var(--text-dim);
 		white-space: pre-line;
 	}
 </style>

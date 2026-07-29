@@ -527,7 +527,7 @@
 	.handling .note {
 		font-size: 11.5px;
 		line-height: 1.5;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		margin-bottom: 10px;
 	}
 	.unlock-grid {
@@ -543,7 +543,7 @@
 		gap: 3px;
 		padding: 8px 2px 6px;
 		border: 1px solid var(--border);
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		text-align: center;
 		min-width: 0;
 	}
@@ -554,16 +554,16 @@
 	.unlock-wf {
 		width: 30px;
 		height: 30px;
-		background: var(--ink-2);
+		background: var(--text-dim);
 		-webkit-mask: var(--wf) center / contain no-repeat;
 		mask: var(--wf) center / contain no-repeat;
 	}
 	.unlock-tracklabel {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 8.5px;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		white-space: nowrap;
 	}
 	.unlock-rankslot {
@@ -582,22 +582,22 @@
 		line-height: 1.2;
 	}
 	.unlock-sub {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10px;
-		color: var(--ink-2);
+		color: var(--text-dim);
 		min-height: 12px;
 		white-space: pre;
 	}
 	.unlock-alt {
 		margin: 8px 0 0;
 		font-size: 12.5px;
-		color: var(--ink-2);
+		color: var(--text-dim);
 	}
 	.unlock-note {
 		margin: 8px 0 0;
 		font-size: 11.5px;
 		line-height: 1.5;
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 
 	.pg-item {
@@ -612,9 +612,9 @@
 		gap: 7px;
 	}
 	.pg-rank {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10px;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		flex: none;
 	}
 	.pg-name {
@@ -625,16 +625,16 @@
 		margin: 2px 0 0;
 		font-size: 11.5px;
 		line-height: 1.5;
-		color: var(--ink-2);
+		color: var(--text-dim);
 	}
 	.pg-req {
 		margin: 2px 0 0;
 		font-size: 11px;
 		line-height: 1.5;
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 	.pg-req-k {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 9px;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
@@ -656,20 +656,20 @@
 		width: 26px;
 		height: 26px;
 		object-fit: cover;
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		flex-shrink: 0;
 	}
 	.si-desc {
 		margin: 4px 0 0;
 		font-size: 12px;
 		line-height: 1.55;
-		color: var(--ink-2);
+		color: var(--text-dim);
 		white-space: pre-line;
 	}
 	.si-all {
 		display: inline-block;
 		margin-top: 10px;
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10.5px;
 		letter-spacing: 0.06em;
 		text-transform: uppercase;
@@ -684,7 +684,7 @@
 	   name and a duration beside a bar want the room, and the rail could not
 	   give it — at 290px the row was cut off rather than laid out. */
 	.toplist .pclan {
-		color: var(--ink-3);
+		color: var(--text-faint);
 		font-size: 11px;
 		margin-right: 3px;
 	}
@@ -750,18 +750,18 @@
 		width: 28px;
 		height: 28px;
 		object-fit: cover;
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		flex-shrink: 0;
 	}
 	.skill-icon.placeholder {
 		display: inline-block;
-		background: var(--surface-2);
+		background: var(--surface-raised);
 	}
 	.skill-name {
 		flex: 1;
 	}
 	.si-code {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10px;
 		font-weight: 650;
 		color: var(--accent);
@@ -771,7 +771,7 @@
 		flex-shrink: 0;
 	}
 	.lv {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10px;
 		font-weight: 550;
 		color: var(--accent);
@@ -783,7 +783,7 @@
 	.card-tip {
 		margin: 0;
 		font-size: 12.5px;
-		color: var(--ink-2);
+		color: var(--text-dim);
 		white-space: pre-line;
 	}
 
@@ -807,7 +807,7 @@
 		   card, and white line-art ones vanish on the light surface */
 		background: var(--sidebar);
 		border: 1px solid var(--border);
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		box-shadow: var(--shadow-1);
 		cursor: help;
 		transition:
@@ -825,7 +825,7 @@
 		width: 100%;
 	}
 	.abil-fallback {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 12px;
 		font-weight: 650;
 		color: var(--sidebar-ink-2);
@@ -870,7 +870,7 @@
 		border-radius: 4px;
 	}
 	.row-icon.placeholder {
-		background: var(--surface-2);
+		background: var(--surface-raised);
 	}
 	td.effect {
 		overflow-wrap: anywhere;

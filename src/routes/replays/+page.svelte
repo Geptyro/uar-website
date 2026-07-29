@@ -118,15 +118,15 @@
 	.upload button {
 		padding: 7px 18px;
 		border: none;
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		background: var(--accent);
-		color: var(--on-accent);
+		color: var(--accent-contrast);
 		font-weight: 650;
 		font-size: 13px;
 		cursor: pointer;
 	}
 	.upload button:hover {
-		background: var(--accent-hover);
+		background: var(--accent-dim);
 	}
 	.upload button:disabled {
 		opacity: 0.6;
@@ -136,7 +136,7 @@
 		flex-basis: 100%;
 		margin: 0;
 		font-size: 11.5px;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		line-height: 1.45;
 	}
 	.result {

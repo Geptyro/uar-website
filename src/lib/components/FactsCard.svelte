@@ -80,7 +80,7 @@
 		letter-spacing: -0.01em;
 	}
 	.box-title span {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10px;
 		color: var(--mos);
 		letter-spacing: 0.06em;
@@ -102,11 +102,11 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 6px;
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10px;
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		line-height: 2.1;
 	}
 	.facts dd {
@@ -122,19 +122,19 @@
 		border-bottom: none;
 	}
 	.facts dd.small {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 11px;
-		color: var(--ink-2);
+		color: var(--text-dim);
 	}
 	.unit-link {
 		display: block;
 		text-align: center;
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 11px;
 		letter-spacing: 0.07em;
 		text-transform: uppercase;
 		text-decoration: none;
-		color: var(--ink-2);
+		color: var(--text-dim);
 		border-top: 1px solid var(--border);
 		padding: 10px 12px;
 		margin-top: 10px;
@@ -142,7 +142,7 @@
 	}
 	.unit-link:hover {
 		color: var(--accent);
-		background: var(--surface-2);
+		background: var(--surface-raised);
 	}
 	.box-pad {
 		height: 12px;

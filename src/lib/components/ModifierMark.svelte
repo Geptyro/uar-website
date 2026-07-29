@@ -100,7 +100,7 @@
 		gap: 3px;
 		padding: 0 4px;
 		border: 1px solid color-mix(in srgb, var(--mod) 35%, transparent);
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		background: color-mix(in srgb, var(--mod) 13%, transparent);
 		color: var(--mod);
 		white-space: nowrap;

@@ -15,8 +15,17 @@ export default defineConfig(({ mode }) => {
 		preview: {
 			port: 6677
 		},
-		// grid-router ships Svelte source — keep it out of prebundling
-		optimizeDeps: { exclude: ['grid-router'] },
+		// these three ship Svelte source — keep them out of prebundling
+		optimizeDeps: { exclude: ['grid-router', 'sveltekit-commons', 'uar-shared'] },
+		ssr: {
+			// Source-`svelte`-export packages have to be processed by Vite rather
+			// than left to node's resolver. It doubles as the guard on the commons
+			// server subpath: SvelteKit's $lib/server import protection does not
+			// reach into node_modules, but a bundled dependency at least turns a
+			// leak into the client bundle into a build error instead of a shipped
+			// database client.
+			noExternal: ['sveltekit-commons', 'uar-shared']
+		},
 		plugins: [
 			sveltekit({
 				compilerOptions: {

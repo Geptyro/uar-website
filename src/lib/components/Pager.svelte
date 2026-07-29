@@ -4,7 +4,7 @@
 	 * intact. Renders nothing when everything fits on one page.
 	 */
 	import { page as currentPage } from '$app/state';
-	import { pageWindow } from '$lib/paging';
+	import { pageWindow } from 'sveltekit-commons/paging';
 
 	let {
 		page,
@@ -53,7 +53,7 @@
 		margin: 14px 0 4px;
 	}
 	.count {
-		color: var(--ink-3);
+		color: var(--text-faint);
 		font-size: 11px;
 	}
 	.links {
@@ -66,11 +66,11 @@
 	.gap {
 		min-width: 26px;
 		padding: 4px 7px;
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		text-align: center;
-		font: 500 12px/1 var(--mono);
+		font: 500 12px/1 var(--font-mono);
 		text-decoration: none;
-		color: var(--ink-2);
+		color: var(--text-dim);
 	}
 	.links a {
 		border: 1px solid var(--border);
@@ -82,7 +82,7 @@
 	.here {
 		border: 1px solid var(--accent);
 		background: var(--accent);
-		color: var(--on-accent);
+		color: var(--accent-contrast);
 	}
 	.gap {
 		border: none;

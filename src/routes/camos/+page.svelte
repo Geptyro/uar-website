@@ -113,7 +113,7 @@
 		width: 64px;
 		height: 64px;
 		object-fit: cover;
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		border: 1px solid var(--border);
 		background: #101010;
 		flex-shrink: 0;
@@ -123,7 +123,7 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		background: var(--surface-2);
+		background: var(--surface-raised);
 	}
 	.light-dot {
 		width: 22px;
@@ -153,7 +153,7 @@
 	.desc {
 		margin: 4px 0 0;
 		font-size: 12.5px;
-		color: var(--ink-2);
+		color: var(--text-dim);
 		white-space: pre-line;
 	}
 </style>

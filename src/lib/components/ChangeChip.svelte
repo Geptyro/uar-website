@@ -9,7 +9,7 @@
 <style>
 	.chip {
 		flex-shrink: 0;
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10px;
 		font-weight: 650;
 		text-transform: uppercase;

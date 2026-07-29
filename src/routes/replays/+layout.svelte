@@ -76,12 +76,12 @@
 		flex: 0 0 218px;
 		position: sticky;
 		top: 0;
-		max-height: calc(100dvh - var(--topbar-h) - 52px);
+		max-height: calc(100dvh - var(--chrome-h) - 52px);
 		display: flex;
 		flex-direction: column;
 		background: var(--surface);
 		border: 1px solid var(--border);
-		border-radius: var(--r);
+		border-radius: var(--radius-3);
 		box-shadow: var(--shadow-1);
 		overflow: hidden;
 	}
@@ -89,12 +89,12 @@
 		display: flex;
 		align-items: baseline;
 		gap: 6px;
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10.5px;
 		font-weight: 600;
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
-		color: var(--ink-2);
+		color: var(--text-dim);
 		text-decoration: none;
 		padding: 11px 13px 9px;
 		border-bottom: 1px solid var(--border);
@@ -108,7 +108,7 @@
 	}
 	.counthint {
 		font-weight: 400;
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 
 	ol {
@@ -122,12 +122,12 @@
 		flex-direction: column;
 		gap: 1px;
 		padding: 6px 9px;
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		text-decoration: none;
 		transition: background 100ms ease;
 	}
 	ol a:hover {
-		background: var(--surface-2);
+		background: var(--surface-raised);
 	}
 	ol a.active {
 		background: var(--accent-soft);
@@ -137,10 +137,10 @@
 		display: flex;
 		align-items: center;
 		gap: 6px;
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 12px;
 		font-variant-numeric: tabular-nums;
-		color: var(--ink);
+		color: var(--text);
 		font-weight: 550;
 	}
 	ol a.active .rdate {
@@ -148,7 +148,7 @@
 	}
 	.rmeta {
 		font-size: 11px;
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 	/* the mode mark and the modifier chips share a centre line rather than a
 	   baseline — a bordered chip and plain coloured text do not sit on the same
@@ -161,7 +161,7 @@
 		vertical-align: middle;
 	}
 	.rmeta .rdur {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-variant-numeric: tabular-nums;
 	}
 	/* the size stays part of the game's record, but the bytes are gone — strike

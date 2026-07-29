@@ -105,14 +105,14 @@
 		user-select: none;
 	}
 	th.sortable:hover {
-		color: var(--ink);
+		color: var(--text);
 	}
 	.dir {
 		color: var(--accent);
 		font-size: 11px;
 	}
 	.rank-pos {
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 	.career {
 		font-weight: 650;

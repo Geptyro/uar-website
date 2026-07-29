@@ -163,9 +163,9 @@
 		position: absolute;
 		right: calc(100% + 6px);
 		top: -0.7em;
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10px;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		font-variant-numeric: tabular-nums;
 	}
 	.area {
@@ -195,9 +195,9 @@
 		position: absolute;
 		top: calc(100% + 5px);
 		transform: translateX(-50%);
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10px;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		white-space: nowrap;
 	}
 	.cross {
@@ -223,16 +223,16 @@
 		transform: translateX(-50%);
 		background: var(--surface);
 		border: 1px solid var(--border-strong);
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		padding: 3px 8px;
 		font-size: 11px;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		white-space: nowrap;
 		pointer-events: none;
 	}
 	.tip b {
 		font-size: 12px;
-		color: var(--ink);
+		color: var(--text);
 		font-weight: 650;
 	}
 	.tip-when {

@@ -2,7 +2,7 @@ import { units } from '$lib/units';
 import { mosList } from '$lib/mos';
 import { dbConfigured, getClanMembers, getPlayerSitemap } from '$lib/server/db';
 import { SITE_URL } from '$lib/seo';
-import { sitemapDate, sitemapXml, type SitemapUrl } from '$lib/sitemap';
+import { sitemapDate, sitemapXml, type SitemapUrl } from 'sveltekit-commons/sitemap';
 import { buildClans, type ClanMember } from '$lib/clans';
 import type { RequestHandler } from './$types';
 

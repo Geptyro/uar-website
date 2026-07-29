@@ -170,8 +170,8 @@
 	.bnet-btn {
 		display: inline-block;
 		background: var(--accent);
-		color: var(--on-accent);
-		border-radius: var(--r-sm);
+		color: var(--accent-contrast);
+		border-radius: var(--radius-2);
 		padding: 10px 18px;
 		font-weight: 650;
 		font-size: 14px;
@@ -179,7 +179,7 @@
 		transition: background 120ms ease;
 	}
 	.bnet-btn:hover {
-		background: var(--accent-hover);
+		background: var(--accent-dim);
 	}
 	.fineprint {
 		margin-top: 10px;
@@ -196,14 +196,14 @@
 	.who-avatar {
 		width: 44px;
 		height: 44px;
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		object-fit: cover;
 		border: 1px solid var(--border-strong);
 	}
 	.portrait {
 		width: 34px;
 		height: 34px;
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		object-fit: cover;
 		border: 1px solid var(--border);
 		align-self: center;
@@ -226,7 +226,7 @@
 		align-items: baseline;
 		gap: 4px 10px;
 		border: 1px solid var(--border);
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		padding: 8px 12px;
 	}
 	.linked a {
@@ -240,11 +240,11 @@
 	}
 	.noplayer {
 		font-weight: 550;
-		color: var(--ink-2);
+		color: var(--text-dim);
 	}
 	.meta {
 		font-size: 12px;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		flex-basis: 100%;
 	}
 	.actions {

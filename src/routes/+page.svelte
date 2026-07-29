@@ -417,12 +417,12 @@
 	.promo {
 		--tint: var(--accent);
 		--tint-soft: var(--accent-soft);
-		--tint-hover: var(--accent-hover);
+		--tint-hover: var(--accent-dim);
 		background:
 			linear-gradient(150deg, color-mix(in srgb, var(--tint) 16%, transparent), transparent 65%),
 			var(--tint-soft);
 		border: 1px solid color-mix(in srgb, var(--tint) 45%, transparent);
-		border-radius: var(--r);
+		border-radius: var(--radius-3);
 		padding: 10px var(--card-pad-x) 11px;
 		/* the foot row bleeds to the card's edges — clip it to the radius */
 		overflow: hidden;
@@ -444,7 +444,7 @@
 		display: flex;
 		align-items: center;
 		gap: 5px;
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10px;
 		font-weight: 650;
 		letter-spacing: 0.14em;
@@ -465,7 +465,7 @@
 		font-weight: 650;
 		line-height: 1.3;
 		letter-spacing: -0.01em;
-		color: var(--ink);
+		color: var(--text);
 		text-wrap: balance;
 	}
 	/* the lead-in and the bullets are one block of copy, so they share a size
@@ -474,10 +474,10 @@
 		display: block;
 		font-size: 12.5px;
 		line-height: 1.45;
-		color: var(--ink-2);
+		color: var(--text-dim);
 	}
 	.promo-text b {
-		color: var(--ink);
+		color: var(--text);
 		font-weight: 600;
 	}
 	.promo-list {
@@ -489,7 +489,7 @@
 		gap: 6px;
 		font-size: 12.5px;
 		line-height: 1.45;
-		color: var(--ink-2);
+		color: var(--text-dim);
 	}
 	/* the tick is a flex item aligned on the text's own baseline — hanging it
 	   with position/top lands it wherever the glyph's box happens to start,
@@ -511,9 +511,9 @@
 	.promo-cta {
 		display: block;
 		margin-top: 10px;
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		background: var(--tint);
-		color: var(--on-accent);
+		color: var(--accent-contrast);
 		padding: 7px 9px;
 		font-size: 12px;
 		font-weight: 600;
@@ -535,11 +535,11 @@
 		margin: 9px calc(-1 * var(--card-pad-x)) -11px;
 		padding: 9px var(--card-pad-x) 11px;
 		border-top: 1px solid color-mix(in srgb, var(--tint) 22%, transparent);
-		border-radius: 0 0 calc(var(--r) - 1px) calc(var(--r) - 1px);
+		border-radius: 0 0 calc(var(--radius-3) - 1px) calc(var(--radius-3) - 1px);
 		font-size: 12.5px;
 		font-weight: 550;
 		line-height: 1.3;
-		color: var(--ink-2);
+		color: var(--text-dim);
 		text-decoration: none;
 		transition:
 			background 140ms ease,
@@ -564,14 +564,14 @@
 			linear-gradient(150deg, color-mix(in srgb, var(--gold) 10%, transparent), transparent 60%),
 			var(--gold-soft);
 		border: 1px solid var(--gold-line);
-		border-radius: var(--r);
+		border-radius: var(--radius-3);
 		padding: 10px var(--card-pad-x) 11px;
 	}
 	.pr-label {
 		display: inline-flex;
 		align-items: baseline;
 		gap: 5px;
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10px;
 		font-weight: 650;
 		letter-spacing: 0.14em;
@@ -587,7 +587,7 @@
 	}
 	.pr-when {
 		font-weight: 400;
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 	.pr-list {
 		list-style: none;
@@ -621,7 +621,7 @@
 	.pr-portrait {
 		width: 24px;
 		height: 24px;
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		object-fit: cover;
 		/* a ring rather than a border: it cannot eat into the portrait */
 		box-shadow: 0 0 0 1px var(--gold-line);
@@ -639,22 +639,22 @@
 		text-underline-offset: 3px;
 	}
 	.pr-jump {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10.5px;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		white-space: nowrap;
 	}
 	.pr-arrow {
 		opacity: 0.6;
 	}
 	.pr-level {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 11px;
 		font-weight: 700;
 		letter-spacing: 0.02em;
 		background: var(--gold);
 		color: var(--bg);
-		border-radius: var(--r-sm);
+		border-radius: var(--radius-2);
 		padding: 2px 7px;
 		white-space: nowrap;
 	}
@@ -677,7 +677,7 @@
 		flex-shrink: 0;
 	}
 	.card-icon.placeholder {
-		background: var(--surface-2);
+		background: var(--surface-raised);
 	}
 	.card-body {
 		min-width: 0;
@@ -690,7 +690,7 @@
 		letter-spacing: -0.01em;
 	}
 	.code {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10px;
 		color: var(--mos);
 		letter-spacing: 0.04em;
@@ -703,9 +703,9 @@
 		display: flex;
 		gap: 12px;
 		flex-wrap: wrap;
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 10.5px;
-		color: var(--ink-3);
+		color: var(--text-faint);
 		font-variant-numeric: tabular-nums;
 	}
 	.kv span {
@@ -715,7 +715,7 @@
 	}
 	.kv b {
 		font-weight: 600;
-		color: var(--ink-2);
+		color: var(--text-dim);
 	}
 	/* in a 290px column the head cannot hold one line: let the date and the
 	   changelog link drop under the title rather than squeezing it */
@@ -732,7 +732,7 @@
 		letter-spacing: -0.01em;
 	}
 	.wn-ver {
-		font-family: var(--mono);
+		font-family: var(--font-mono);
 		font-size: 12px;
 		font-weight: 700;
 		color: var(--accent);
@@ -741,7 +741,7 @@
 	.wn-date {
 		margin-left: auto;
 		font-size: 11px;
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 	/* the way out of the card sits at its foot, on its own rule — in a 290px
 	   column it cannot share the title's line without pushing it around */
@@ -774,16 +774,16 @@
 		margin: 0;
 		font-size: 13px;
 		line-height: 1.45;
-		color: var(--ink-2);
+		color: var(--text-dim);
 	}
 	.wn-list dd.major {
 		font-weight: 600;
-		color: var(--ink);
+		color: var(--text);
 	}
 	.wn-empty {
 		margin: 9px 0 0;
 		font-size: 12.5px;
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 	.boards {
 		display: grid;
@@ -800,7 +800,7 @@
 		margin-right: 3px;
 	}
 	.pclan {
-		color: var(--ink-3);
+		color: var(--text-faint);
 		font-size: 11px;
 		flex-shrink: 0;
 	}
@@ -814,6 +814,6 @@
 	.top-note {
 		margin: 10px 0 0;
 		font-size: 11px;
-		color: var(--ink-3);
+		color: var(--text-faint);
 	}
 </style>
