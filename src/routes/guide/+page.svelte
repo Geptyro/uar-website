@@ -93,6 +93,24 @@
 	   the thing that happens, then the thing to do about it. */
 	const JAM_ICON = '/icons/btn-upgrade-tychus-weapons-level1.png';
 	const UNJAM_ICON = '/icons/btn-tips-mercenary.png';
+	/* The submenu Z opens before A does anything — the map's AdditionalActions
+	   button. SC2 ships this whole icon family as a white glyph the game plates
+	   itself, hence the plate in the CSS rather than art with one baked in. */
+	const SUBMENU_ICON = '/icons/btn-techupgrade-terran-neosteelbunker.png';
+
+	/* Eight arrows converging on the jam icon, one per compass point. The
+	   corner four rest further out than the edge four: the icon is a square,
+	   so one radius for all eight would bury the corners in the art and leave
+	   the edges stranded. Distances are to the top of the arrow's own box, and
+	   `far` is where each starts its run in. */
+	const ARROWS = [0, 45, 90, 135, 180, 225, 270, 315].map((deg, i) => {
+		/* distance to the *top* of the arrow's box; its apex sits one arrow
+		   length nearer, so these carry the triangle's height plus the gap the
+		   tip should keep from a 52px icon — 26px to a flat edge, 37 to a
+		   corner. */
+		const near = deg % 90 === 0 ? 38 : 48;
+		return { deg, near, far: near + 9 };
+	});
 </script>
 
 <Seo
@@ -163,22 +181,39 @@
 		<div class="node alert c-bad">
 			<span class="n-k">sooner or later</span>
 			<b>Your weapon <em class="k">jams</em></b>
-			<span class="do">
+			<span class="jam-focus">
+				{#each ARROWS as a (a.deg)}
+					<span
+						class="arr"
+						style="--a: {a.deg}deg; --near: {a.near}px; --far: {a.far}px"
+						aria-hidden="true"
+					></span>
+				{/each}
 				<span class="btn-icon jam" title="What a jam puts on screen">
 					<img src={JAM_ICON} alt="Weapon jammed" />
 				</span>
-				<span class="to" aria-hidden="true">→</span>
-				<img
-					class="btn-icon"
-					src={UNJAM_ICON}
-					alt="Immediate/Remedial Action"
-					title="Immediate/Remedial Action"
-				/>
-				<span class="do-t">
-					<span class="keys"><kbd>Z</kbd> <span class="then">then</span> <kbd>A</kbd></span>
-					<span class="do-d">or click the button on your command card</span>
+			</span>
+
+			<!-- the two clicks the hotkey is short for: Z opens the submenu, A is
+			     the action inside it -->
+			<span class="do">
+				<span class="step">
+					<span class="step-row">
+						<img class="btn-icon glyph" src={SUBMENU_ICON} alt="" />
+						<kbd>Z</kbd>
+					</span>
+					<span class="lab">Additional actions</span>
+				</span>
+				<span class="sep" aria-hidden="true">→</span>
+				<span class="step">
+					<span class="step-row">
+						<img class="btn-icon" src={UNJAM_ICON} alt="" />
+						<kbd>A</kbd>
+					</span>
+					<span class="lab">Immediate/Remedial</span>
 				</span>
 			</span>
+			<span class="do-d">the two command-card buttons, or their keys</span>
 			<span class="n-d">Nothing clears it on its own. Step behind the line, then press it.</span>
 		</div>
 	</div>
@@ -512,31 +547,65 @@
 	/* what to press, and what to click */
 	.do {
 		display: inline-flex;
-		align-items: center;
-		gap: 10px;
-		margin-top: 10px;
-		padding: 7px 12px 7px 7px;
+		align-items: stretch;
+		gap: 12px;
+		margin-top: 12px;
+		padding: 9px 14px;
 		border: 1px solid var(--border);
 		border-radius: var(--radius-2);
 		background: var(--surface-raised);
 	}
+	.step {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 6px;
+	}
+	.step-row {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+	.lab {
+		font-family: var(--font-mono);
+		font-size: 9.5px;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--text-faint);
+		white-space: nowrap;
+	}
 	.btn-icon {
-		width: 36px;
-		height: 36px;
-		border-radius: 4px;
-		border: 1px solid var(--border-strong);
+		width: 44px;
+		height: 44px;
 		display: block;
+	}
+	/* SC2 ships this family as a white glyph and plates it itself; the painted
+	   icons carry their own plate, so only this one needs one drawn here. */
+	.btn-icon.glyph {
+		background: #0d1014;
+		border-radius: 6px;
+		padding: 4px;
+	}
+	/* Z opens the submenu, A picks the action out of it: one step then the
+	   next, which is a sequence and wants an arrow, not a rule */
+	.sep {
+		align-self: center;
+		margin-bottom: 15px;
+		font-size: 34px;
+		line-height: 1;
+		color: var(--text-dim);
 	}
 	/* The alert, not a button. The game draws this one red, and the red is half
 	   of how it is recognised — multiply rather than a filter, because that is
 	   what the tint does there: it leaves the dark plate black and turns the
-	   steel red. The tint is the whole signal, so the frame stays neutral like
-	   its neighbour's. `isolation` keeps the blend off whatever is behind. */
+	   steel red.
+	 *
+	 * Masked with the icon's own alpha, which is the whole trick: an unmasked
+	 * overlay has nothing to multiply against out on that transparent margin,
+	 * so it lands as flat #ff3a20 and reads as a thick red border. */
 	.btn-icon.jam {
 		position: relative;
 		isolation: isolate;
-		overflow: hidden;
-		padding: 0;
 	}
 	.btn-icon.jam img {
 		display: block;
@@ -549,19 +618,75 @@
 		inset: 0;
 		background: #ff3a20;
 		mix-blend-mode: multiply;
+		mask-image: url('/icons/btn-upgrade-tychus-weapons-level1.png');
+		mask-size: 100% 100%;
+		-webkit-mask-image: url('/icons/btn-upgrade-tychus-weapons-level1.png');
+		-webkit-mask-size: 100% 100%;
 	}
-	.to {
-		font-size: 15px;
-		line-height: 1;
-		color: var(--text-faint);
+
+	/* ---------- the jam icon, pointed at from every side ---------- */
+	.jam-focus {
+		position: relative;
+		display: block;
+		/* wide enough for the corner arrows at full stretch, and no wider */
+		width: 116px;
+		height: 116px;
+		margin: 4px auto -4px;
 	}
-	.do-t {
-		text-align: left;
+	/* the one the arrows are for, so it is the bigger of the two */
+	.jam-focus .btn-icon.jam {
+		position: absolute;
+		left: 50%;
+		top: 50%;
+		width: 52px;
+		height: 52px;
+		transform: translate(-50%, -50%);
 	}
-	.keys {
-		display: flex;
-		align-items: center;
-		gap: 6px;
+	/* a zero-size box at the centre, turned to its compass point; the arrow
+	   itself is the pseudo-element, so it can run in and out along that one
+	   axis without the rotation having to be repeated in every keyframe */
+	.arr {
+		position: absolute;
+		left: 50%;
+		top: 50%;
+		width: 0;
+		height: 0;
+		transform: rotate(var(--a));
+	}
+	.arr::before {
+		content: '';
+		position: absolute;
+		width: 0;
+		height: 0;
+		border-left: 6px solid transparent;
+		border-right: 6px solid transparent;
+		/* a triangle whose apex points down — which is inward, once rotated.
+		   The icon's own tint rather than --hostile: the pair has to read as
+		   one alarm, and the theme's hostile is a muted salmon next to it. */
+		border-top: 9px solid #ff3a20;
+		/* alternate, and never all the way out: eight arrows that fade to
+		   nothing together leave the icon unmarked for half of every cycle
+		   (and unmarked in any screenshot of it) */
+		/* All eight on the same beat — a ring that closes in together reads as
+		   one alarm, where a staggered one reads as a spinner. */
+		animation: jam-converge 0.9s ease-in-out infinite alternate;
+	}
+	@keyframes jam-converge {
+		from {
+			transform: translate(-50%, calc(-1 * var(--far)));
+			opacity: 0.45;
+		}
+		to {
+			transform: translate(-50%, calc(-1 * var(--near)));
+			opacity: 1;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.arr::before {
+			animation: none;
+			transform: translate(-50%, calc(-1 * var(--near)));
+			opacity: 0.9;
+		}
 	}
 	kbd {
 		font-family: var(--font-mono);
@@ -574,16 +699,9 @@
 		border-radius: 5px;
 		padding: 2px 9px;
 	}
-	.then {
-		font-family: var(--font-mono);
-		font-size: 9.5px;
-		letter-spacing: 0.1em;
-		text-transform: uppercase;
-		color: var(--text-faint);
-	}
 	.do-d {
 		display: block;
-		margin-top: 3px;
+		margin-top: 6px;
 		font-size: 10.5px;
 		line-height: 1.3;
 		color: var(--text-faint);
