@@ -85,7 +85,13 @@
 		? ((city.x2 ?? 0) - (city.x1 ?? 0) + ((city.y2 ?? 0) - (city.y1 ?? 0))) / 4
 		: 0;
 
-	/** command-card button for Immediate/Remedial Action, from the map's data */
+	/* Both from the map's ButtonData for ImmediateRemedialAction. The alert
+	   icon is what a jam puts on screen — red-tinted there, so it is tinted
+	   here (checked against the game, not inferred from the data: the trigger
+	   only prints a subtitle, and the ailments panel draws the other one).
+	   The button icon is what sits on the command card. Shown in that order:
+	   the thing that happens, then the thing to do about it. */
+	const JAM_ICON = '/icons/btn-upgrade-tychus-weapons-level1.png';
 	const UNJAM_ICON = '/icons/btn-tips-mercenary.png';
 </script>
 
@@ -158,7 +164,16 @@
 			<span class="n-k">sooner or later</span>
 			<b>Your weapon <em class="k">jams</em></b>
 			<span class="do">
-				<img class="btn-icon" src={UNJAM_ICON} alt="Immediate/Remedial Action" />
+				<span class="btn-icon jam" title="What a jam puts on screen">
+					<img src={JAM_ICON} alt="Weapon jammed" />
+				</span>
+				<span class="to" aria-hidden="true">→</span>
+				<img
+					class="btn-icon"
+					src={UNJAM_ICON}
+					alt="Immediate/Remedial Action"
+					title="Immediate/Remedial Action"
+				/>
 				<span class="do-t">
 					<span class="keys"><kbd>Z</kbd> <span class="then">then</span> <kbd>A</kbd></span>
 					<span class="do-d">or click the button on your command card</span>
@@ -511,6 +526,34 @@
 		border-radius: 4px;
 		border: 1px solid var(--border-strong);
 		display: block;
+	}
+	/* The alert, not a button. The game draws this one red, and the red is half
+	   of how it is recognised — multiply rather than a filter, because that is
+	   what the tint does there: it leaves the dark plate black and turns the
+	   steel red. The tint is the whole signal, so the frame stays neutral like
+	   its neighbour's. `isolation` keeps the blend off whatever is behind. */
+	.btn-icon.jam {
+		position: relative;
+		isolation: isolate;
+		overflow: hidden;
+		padding: 0;
+	}
+	.btn-icon.jam img {
+		display: block;
+		width: 100%;
+		height: 100%;
+	}
+	.btn-icon.jam::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background: #ff3a20;
+		mix-blend-mode: multiply;
+	}
+	.to {
+		font-size: 15px;
+		line-height: 1;
+		color: var(--text-faint);
 	}
 	.do-t {
 		text-align: left;
