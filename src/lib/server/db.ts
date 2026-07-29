@@ -522,6 +522,38 @@ export async function getPlayersPage(opts: {
 	return { rows, page, pages, total, perPage: PER_PAGE };
 }
 
+/** The five fields a palette row shows, and nothing else. */
+const PLAYER_SEARCH_PROJECTION = { _id: 0, name: 1, toon: 1, clan: 1, careerXp: 1 };
+
+/**
+ * The best few players matching `q`, for the command palette.
+ *
+ * Deliberately not `getPlayersPage`: this one runs behind a search box, so it
+ * is on the hook for a read per (debounced) keystroke. It carries no count —
+ * `countDocuments` is a second query and the palette shows a handful of rows,
+ * not a total — a five-field projection, and a hard `limit`, which together
+ * put a ceiling of a few kilobytes on what any one query can pull back. That
+ * ceiling is the point on a free-tier cluster with a read-throughput cap.
+ *
+ * Cached per query string, so a visitor deleting and retyping a name pays for
+ * one read; the LRU bound on the cache is what keeps visitor-supplied keys
+ * from growing the map without end.
+ */
+export async function searchPlayers(q: string, limit: number): Promise<Record<string, unknown>[]> {
+	if (!q) return [];
+	return cached(`playerSearch:${q.toLowerCase()}:${limit}`, async () => {
+		const d = await db();
+		return (await d
+			.collection('players')
+			.find(playerSearchFilter(q), { projection: PLAYER_SEARCH_PROJECTION })
+			// the career board's own order, so the palette offers the player most
+			// people mean first when several names share a fragment
+			.sort({ careerXp: -1, _id: 1 })
+			.limit(limit)
+			.toArray()) as Record<string, unknown>[];
+	});
+}
+
 /**
  * A profile without its replay history — everything the page renders above the
  * history table. `history` is the only field on a player that grows without

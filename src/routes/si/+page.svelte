@@ -42,7 +42,10 @@
 </div>
 
 {#snippet siCard(si: Si)}
-	<article class="card si">
+	<!-- the anchor the command palette links to: an SI has no page of its own,
+	     and landing at the top of a screen of thirty cards would leave the
+	     reader to find by eye what they just picked by name -->
+	<article class="card si" id="si-{si.num}">
 		<header>
 			{#if si.icon}
 				<img class="si-icon" src={si.icon} alt="" loading="lazy" />
@@ -111,6 +114,9 @@
 		display: flex;
 		flex-direction: column;
 		gap: 7px;
+		/* arriving from the palette's /si#si-<n> link, the card stops clear of
+		   the sticky chrome instead of under it */
+		scroll-margin-top: 16px;
 	}
 	.si header {
 		display: flex;

@@ -18,6 +18,7 @@ const MAX_AGE = 3600;
 /** The pages that are not generated from a list. */
 const STATIC: SitemapUrl[] = [
 	{ path: '/', priority: 1 },
+	{ path: '/guide', priority: 0.9 },
 	{ path: '/entities', priority: 0.9 },
 	{ path: '/mos', priority: 0.9 },
 	{ path: '/players', priority: 0.8 },
