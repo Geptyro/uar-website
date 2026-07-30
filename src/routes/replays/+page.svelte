@@ -34,7 +34,7 @@
 			if (res.ok && payload?.ok) {
 				result = {
 					ok: true,
-					text: `Accepted: game from ${payload.playedAt.replace('T', ' ').replace('Z', ' UTC')} with ${payload.profiles} player profiles. ${payload.message}`
+					text: `Accepted: game from ${(payload.startedAt ?? payload.playedAt).replace('T', ' ').replace('Z', ' UTC')} with ${payload.profiles} player profiles. ${payload.message}`
 				};
 				if (fileInput) fileInput.value = '';
 				await invalidateAll(); // refresh the ingested-replays list

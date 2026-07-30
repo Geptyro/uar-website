@@ -636,6 +636,7 @@ export async function getPlayerHistoryPage(
  */
 const LIST_PROJECTION = {
 	playedAt: 1,
+	startedAt: 1,
 	players: 1,
 	size: 1,
 	durationLoops: 1,
@@ -683,6 +684,7 @@ function toRow(r: ReplayDoc): ReplayMeta {
 	return {
 		file: r._id,
 		playedAt: r.playedAt,
+		startedAt: r.startedAt ?? startedAtOf(r.playedAt, r.durationLoops),
 		players: r.players,
 		size: r.size,
 		durationLoops: r.durationLoops ?? 0,
@@ -797,6 +799,8 @@ export async function getReplayStats(): Promise<{ count: number; latest: string 
 
 /** What a page needs about a game it lists but does not load in full. */
 export interface ReplayFacts {
+	/** When the game began, UTC — what a history row should date itself by. */
+	startedAt: string;
 	/** The recording's length — what the "recorded" tile reports. */
 	durationLoops: number;
 	/** The game's own length — what a duration column should show. */
@@ -827,6 +831,8 @@ export async function getReplayFacts(
 				{ _id: { $in: files } },
 				{
 					projection: {
+						playedAt: 1,
+						startedAt: 1,
 						durationLoops: 1,
 						gameLoops: 1,
 						outcome: 1,
@@ -842,6 +848,7 @@ export async function getReplayFacts(
 			const outcome = replayOutcomeOf(r);
 			const mode = replayModeOf(r);
 			map[r._id] = {
+				startedAt: r.startedAt ?? startedAtOf(r.playedAt, r.durationLoops),
 				durationLoops: r.durationLoops ?? 0,
 				gameLoops: gameLoopsOf(r),
 				...(outcome ? { outcome } : {}),
@@ -1014,13 +1021,22 @@ export async function replayExistsBySha(sha256: string): Promise<boolean> {
 /** As above, plus what the upload endpoint needs to explain the rejection. */
 export async function findReplayBySha(
 	sha256: string
-): Promise<{ file: string; playedAt: string; blobPruned: boolean } | null> {
+): Promise<{ file: string; startedAt: string; blobPruned: boolean } | null> {
 	const d = await db();
 	const doc = await d
 		.collection<ReplayDoc>('replays')
-		.findOne({ sha256 }, { projection: { _id: 1, playedAt: 1, blobPrunedAt: 1 } });
+		.findOne(
+			{ sha256 },
+			{ projection: { _id: 1, playedAt: 1, startedAt: 1, durationLoops: 1, blobPrunedAt: 1 } }
+		);
+	// the start, so a rejection names the game by the time the uploader played
+	// it rather than by the time their recording happened to stop
 	return doc
-		? { file: doc._id, playedAt: doc.playedAt, blobPruned: Boolean(doc.blobPrunedAt) }
+		? {
+				file: doc._id,
+				startedAt: doc.startedAt ?? startedAtOf(doc.playedAt, doc.durationLoops),
+				blobPruned: Boolean(doc.blobPrunedAt)
+			}
 		: null;
 }
 

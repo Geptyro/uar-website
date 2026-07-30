@@ -27,8 +27,10 @@
 	const rows = $derived(
 		games.map((g) => ({
 			id: g.file.replace(/\.SC2Replay$/, ''),
-			when: timeAgo(g.playedAt, now) ?? fmtWhen.format(new Date(g.playedAt)),
-			exact: fmtWhen.format(new Date(g.playedAt)),
+			// startedAt, not playedAt: the latter is when the recording stopped,
+			// which on a game somebody idled in is hours after they played it
+			when: timeAgo(g.startedAt, now) ?? fmtWhen.format(new Date(g.startedAt)),
+			exact: fmtWhen.format(new Date(g.startedAt)),
 			players: g.players,
 			duration: g.gameLoops ? fmtDuration(g.gameLoops) : '',
 			outcome: g.outcome,

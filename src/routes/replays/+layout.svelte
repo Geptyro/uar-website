@@ -30,7 +30,7 @@
 				<li>
 					<a href="/replays/{id}" class:active={page.params.id === id}>
 						<span class="rdate">
-							{r.playedAt.slice(0, 16).replace('T', ' ')}
+							{r.startedAt.slice(0, 16).replace('T', ' ')}
 							<OutcomeMark outcome={r.outcome} />
 						</span>
 						<span class="rmeta">

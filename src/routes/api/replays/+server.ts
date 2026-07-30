@@ -81,7 +81,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 		error(
 			409,
 			known.blobPruned
-				? `This replay was already processed (${known.playedAt}). The file itself is no longer stored — every player in that game has a more recent replay — but the game is on record.`
+				? `This replay was already processed (${known.startedAt}). The file itself is no longer stored — every player in that game has a more recent replay — but the game is on record.`
 				: 'This exact replay file is already ingested.'
 		);
 	}
@@ -115,8 +115,8 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 			error(
 				409,
 				existing?.blobPruned
-					? `This game (${peeked.playedAt}) was already processed. The replay file is no longer stored — every player in it has a more recent replay — but the game is on record.`
-					: `This game (${peeked.playedAt}) is already ingested.`
+					? `This game (${startedAtOf(peeked.playedAt, peeked.durationLoops)}) was already processed. The replay file is no longer stored — every player in it has a more recent replay — but the game is on record.`
+					: `This game (${startedAtOf(peeked.playedAt, peeked.durationLoops)}) is already ingested.`
 			);
 		}
 		const name = decision.name;
@@ -179,6 +179,9 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 	return json({
 		ok: true,
 		file: name,
+		// the game's start, which is what the uploader recognises as "the game
+		// I just played" — parsed.playedAt is when their recording stopped
+		startedAt: startedAtOf(parsed.playedAt, parsed.durationLoops),
 		playedAt: parsed.playedAt,
 		profiles: parsed.sightings.length,
 		protocolExact: parsed.protocolExact,

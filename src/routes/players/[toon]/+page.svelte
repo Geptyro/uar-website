@@ -585,7 +585,7 @@
 						<tr>
 							<td class="mono">
 								<a href="/replays/{h.file.replace(/\.SC2Replay$/, '')}" title="View replay"
-									>{fmtDate(h.playedAt)}</a
+									>{fmtDate(facts?.startedAt ?? h.playedAt)}</a
 								>
 							</td>
 							<td class="histresult">

@@ -130,7 +130,11 @@ const progression = rawProgression as { modes: string[] };
 
 export interface ReplayMeta {
 	file: string;
+	/** When the recording stopped — see ReplayDoc.playedAt. Rows show
+	 * `startedAt`; this is here for ordering and identity, not for display. */
 	playedAt: string;
+	/** When the game began, UTC — the time to put in front of a player. */
+	startedAt: string;
 	players: number;
 	/** Size of the recorded file in bytes. Kept as part of the game's record
 	 * even once the file itself is no longer stored (see blobPruned). */
