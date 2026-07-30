@@ -1,13 +1,10 @@
 <script lang="ts">
 	import { units, categories, categoryCount, weaponLabel } from '$lib/units';
 	import StatIcon from '$lib/components/StatIcon.svelte';
-	import ChangeChip from '$lib/components/ChangeChip.svelte';
+	// the widget itself drops `minor` entries — "a player would not notice
+	// unless told" is what that field means, not a call each site re-makes
+	import { WhatsNew } from 'sveltekit-commons';
 	import { latestRelease } from '$lib/changelog-data';
-
-	// minor entries stay off the widget; the changelog page lists them
-	const wnEntries = latestRelease
-		? latestRelease.entries.filter((e) => e.impact !== 'minor')
-		: [];
 	import DescCard from '$lib/components/DescCard.svelte';
 	import ActivityChart from '$lib/components/ActivityChart.svelte';
 	import RecentGames from '$lib/components/RecentGames.svelte';
@@ -321,29 +318,7 @@
 		<RecentGames games={data.recent} />
 	{/if}
 
-	{#if latestRelease}
-		<section class="whatsnew card">
-			<div class="wn-head">
-				<h2>What's new <span class="wn-ver">{latestRelease.version}</span></h2>
-				{#if latestRelease.date}<time class="wn-date" datetime={latestRelease.date}
-						>{latestRelease.date}</time
-					>{/if}
-			</div>
-			{#if wnEntries.length}
-				<!-- type and headline are a pair, and a two-column grid lines every
-				     headline up on the same edge whatever the chip is called -->
-				<dl class="wn-list">
-					{#each wnEntries as e (e.title)}
-						<dt><ChangeChip type={e.type} /></dt>
-						<dd class:major={e.impact === 'major'}>{e.title}</dd>
-					{/each}
-				</dl>
-			{:else}
-				<p class="wn-empty">Small fixes and tweaks — see the full changelog.</p>
-			{/if}
-			<a class="wn-all" href="/changelog">Full changelog →</a>
-		</section>
-	{/if}
+	<WhatsNew release={latestRelease} />
 
 	<!-- the roster by category: a way in to /entities, not a headline -->
 	<div class="tiles">
@@ -716,74 +691,6 @@
 	.kv b {
 		font-weight: 600;
 		color: var(--text-dim);
-	}
-	/* in a 290px column the head cannot hold one line: let the date and the
-	   changelog link drop under the title rather than squeezing it */
-	.wn-head {
-		display: flex;
-		align-items: baseline;
-		flex-wrap: wrap;
-		gap: 2px 10px;
-	}
-	.wn-head h2 {
-		margin: 0;
-		font-size: 13.5px;
-		font-weight: 650;
-		letter-spacing: -0.01em;
-	}
-	.wn-ver {
-		font-family: var(--font-mono);
-		font-size: 12px;
-		font-weight: 700;
-		color: var(--accent);
-		margin-left: 3px;
-	}
-	.wn-date {
-		margin-left: auto;
-		font-size: 11px;
-		color: var(--text-faint);
-	}
-	/* the way out of the card sits at its foot, on its own rule — in a 290px
-	   column it cannot share the title's line without pushing it around */
-	.wn-all {
-		display: block;
-		margin-top: 11px;
-		padding-top: 9px;
-		border-top: 1px solid var(--border);
-		font-size: 12px;
-		color: var(--accent);
-		text-decoration: none;
-		white-space: nowrap;
-	}
-	.wn-all:hover {
-		text-decoration: underline;
-		text-underline-offset: 3px;
-	}
-	.wn-list {
-		display: grid;
-		/* the chip column takes the widest chip; every headline starts after it */
-		grid-template-columns: max-content minmax(0, 1fr);
-		align-items: baseline;
-		gap: 7px 9px;
-		margin: 10px 0 0;
-	}
-	.wn-list dt {
-		display: flex;
-	}
-	.wn-list dd {
-		margin: 0;
-		font-size: 13px;
-		line-height: 1.45;
-		color: var(--text-dim);
-	}
-	.wn-list dd.major {
-		font-weight: 600;
-		color: var(--text);
-	}
-	.wn-empty {
-		margin: 9px 0 0;
-		font-size: 12.5px;
-		color: var(--text-faint);
 	}
 	.boards {
 		display: grid;

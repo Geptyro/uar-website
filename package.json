@@ -16,6 +16,7 @@
 		"feedback:list": "node --env-file=.env scripts/list-feedback.ts",
 		"test": "node --test \"tests/**/*.test.ts\"",
 		"test:integration": "bash tests/integration/run.sh",
+		"changelog:check": "node --test tests/changelog-entries.test.ts",
 		"link:shared": "npm i ../shared --no-save --install-links",
 		"unlink:shared": "npm i",
 		"og": "node scripts/build-og.ts",
@@ -46,7 +47,7 @@
 		"grid-router": "git+https://github.com/Geptyro/grid-router.git",
 		"mongodb": "^7.5.0",
 		"seek-bzip": "^2.0.0",
-		"sveltekit-commons": "git+https://github.com/Geptyro/sveltekit-commons.git#semver:^0.6.0",
+		"sveltekit-commons": "git+https://github.com/Geptyro/sveltekit-commons.git#semver:^0.8.0",
 		"uar-shared": "git+https://github.com/Geptyro/uar-shared.git#semver:^0.8.0"
 	}
 }

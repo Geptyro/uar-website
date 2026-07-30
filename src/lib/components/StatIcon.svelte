@@ -14,7 +14,8 @@
 		| 'trees'
 		| 'items'
 		| 'regen'
-		| 'sight';
+		| 'sight'
+		| 'damage';
 
 	const ICONS: Record<StatIconName, { p: string; o: number }[]> = {
 		role: [
@@ -66,6 +67,11 @@
 			{ p: '2,12 12,5.5 22,12', o: 0.45 },
 			{ p: '2,12 12,18.5 22,12', o: 0.7 },
 			{ p: '12,8 16,12 12,16 8,12', o: 1 }
+		],
+		// a round, lit down the middle like life/armor — reads as damage dealt
+		damage: [
+			{ p: '12,2 7.5,9 7.5,21 12,21', o: 1 },
+			{ p: '12,2 16.5,9 16.5,21 12,21', o: 0.55 }
 		]
 	};
 
@@ -80,7 +86,8 @@
 		trees: 'var(--accent)',
 		items: 'var(--text-dim)',
 		regen: 'var(--accent)',
-		sight: 'var(--text-dim)'
+		sight: 'var(--text-dim)',
+		damage: 'var(--item)'
 	};
 </script>
 

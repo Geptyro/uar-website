@@ -1,86 +1,37 @@
-/** Unit tests for the command palette's row model and ranking (npm test). */
+/**
+ * Unit tests for what this site puts in the command palette (npm test).
+ *
+ * The ranking and the keyboard rules moved to `sveltekit-commons/palette` and
+ * are tested there. What is left here is the mapping onto its row model — and
+ * one test that the weights those builders assign still produce the order the
+ * palette is meant to have, since that is the part a reader notices.
+ */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { rankRows, type PaletteRow } from 'sveltekit-commons/palette';
 import {
+	browseRows,
 	entityRows,
 	mosRows,
 	pageRows,
 	playerRows,
-	rankRows,
 	shortCategory,
-	siRows,
-	step,
-	type PaletteRow
+	siRows
 } from '../src/lib/palette.ts';
-
-const row = (over: Partial<PaletteRow>): PaletteRow => ({
-	kind: 'entity',
-	id: 'x',
-	href: '/x',
-	label: 'X',
-	...over
-});
 
 const labels = (rows: PaletteRow[]) => rows.map((r) => r.label);
 
-test('a prefix beats a word start, which beats a match mid-word', () => {
-	const rows = [
-		row({ id: 'c', label: 'Ripsniper' }),
-		row({ id: 'b', label: 'Undead Sniper' }),
-		row({ id: 'a', label: 'Sniper' })
-	];
-	assert.deepEqual(labels(rankRows(rows, 'snip')), ['Sniper', 'Undead Sniper', 'Ripsniper']);
-});
-
-test('the label outranks an alias, however well the alias matches', () => {
-	const rows = [
-		row({ id: 'a', label: 'Zealot', alias: ['SiegeTank'] }),
-		row({ id: 'b', label: 'Siege engine' })
-	];
-	assert.deepEqual(labels(rankRows(rows, 'siege')), ['Siege engine', 'Zealot']);
-});
-
 test('among equal matches a page comes before a class, and a class before an entity', () => {
 	const rows = [
-		row({ kind: 'entity', id: 'a', label: 'Medic drone' }),
-		row({ kind: 'page', id: 'b', label: 'Medic pages' }),
-		row({ kind: 'mos', id: 'c', label: 'Medic class' })
+		...entityRows([{ i: 'MedicDrone', n: 'Medic drone', c: 'deployable' }]),
+		...pageRows([{ href: '/medic', label: 'Medic pages' }]),
+		...mosRows([{ id: 'Medic', name: 'Medic class', mos: '', role: '', icon: null }])
 	];
 	assert.deepEqual(
 		rankRows(rows, 'medic').map((r) => r.kind),
 		['page', 'mos', 'entity']
 	);
-});
-
-test('among equals the shorter name wins', () => {
-	const rows = [
-		row({ id: 'a', label: 'Sniper Rifle Ammo Crate' }),
-		row({ id: 'b', label: 'Sniper Rifle' })
-	];
-	assert.deepEqual(labels(rankRows(rows, 'sniper')), ['Sniper Rifle', 'Sniper Rifle Ammo Crate']);
-});
-
-test('folds case and accents', () => {
-	const rows = [row({ label: 'Détecteur' })];
-	assert.equal(rankRows(rows, 'DETEC').length, 1);
-});
-
-test('an empty or blank query matches nothing — the caller shows its own default', () => {
-	const rows = [row({ label: 'Sniper' })];
-	assert.deepEqual(rankRows(rows, ''), []);
-	assert.deepEqual(rankRows(rows, '   '), []);
-});
-
-test('honours the limit', () => {
-	const rows = Array.from({ length: 30 }, (_, i) => row({ id: `u${i}`, label: `Undead ${i}` }));
-	assert.equal(rankRows(rows, 'undead', 7).length, 7);
-});
-
-test('step wraps at both ends and survives an empty list', () => {
-	assert.equal(step(0, -1, 5), 4);
-	assert.equal(step(4, 1, 5), 0);
-	assert.equal(step(0, 1, 0), 0);
 });
 
 test('shortCategory folds the long category names, and passes others through', () => {
@@ -113,7 +64,13 @@ test('an id with a slash in it survives the round trip into an href', () => {
 
 test('a class matches on its in-game code and on its role', () => {
 	const rows = mosRows([
-		{ id: 'AlligatorLK19', name: 'Alligator LK19', mos: 'LK19', role: 'Combat Helicopter', icon: null }
+		{
+			id: 'AlligatorLK19',
+			name: 'Alligator LK19',
+			mos: 'LK19',
+			role: 'Combat Helicopter',
+			icon: null
+		}
 	]);
 	assert.equal(rows[0].href, '/mos/AlligatorLK19');
 	assert.equal(rows[0].note, 'LK19');
@@ -127,10 +84,13 @@ test('an SI deep-links to its card and matches on its code', () => {
 	assert.equal(rankRows(rows, 'rf').length, 1);
 });
 
-test('a page matches on an alias the label does not carry', () => {
-	const rows = pageRows([{ href: '/players', label: 'Players', alias: ['leaderboard'] }]);
+test('a page matches on an alias the label does not carry, and carries the sidebar mark', () => {
+	const rows = pageRows([
+		{ href: '/players', label: 'Players', alias: ['leaderboard'], icon: '<svg/>' }
+	]);
 	assert.equal(rankRows(rows, 'leaderboard').length, 1);
 	assert.equal(rows[0].href, '/players');
+	assert.equal(rows[0].glyph, '<svg/>');
 });
 
 test('a player row shows the clan tag, and falls back to the toon when unnamed', () => {
@@ -140,7 +100,25 @@ test('a player row shows the clan tag, and falls back to the toon when unnamed',
 	]);
 	assert.equal(rows[0].href, '/players/2-S2-1-123');
 	assert.equal(rows[0].note, '<UAR>');
+	assert.ok(rows[0].round, 'a portrait is a face, so it is drawn round');
 	assert.equal(rows[1].label, '2-S2-1-999');
 	assert.equal(rows[1].note, 'player');
 	assert.equal(rows[1].icon, null);
+});
+
+test('the browse rows carry the typed term through to the list pages', () => {
+	const rows = browseRows('  sniper rifle  ');
+	assert.deepEqual(
+		rows.map((r) => r.href),
+		['/entities?q=sniper%20rifle', '/players?q=sniper%20rifle']
+	);
+	assert.ok(rows.every((r) => r.muted));
+	assert.deepEqual(labels(rows), [
+		'All entities matching “sniper rifle”',
+		'All players matching “sniper rifle”'
+	]);
+});
+
+test('nothing typed is nothing to browse', () => {
+	assert.deepEqual(browseRows('   '), []);
 });

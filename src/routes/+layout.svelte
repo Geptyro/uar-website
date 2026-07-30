@@ -18,7 +18,8 @@
 	import { changelogIcon, navItems } from '$lib/nav';
 	import CommandPalette from '$lib/components/CommandPalette.svelte';
 	import ReadyToPlay from '$lib/components/ReadyToPlay.svelte';
-	import SearchButton from '$lib/components/SearchButton.svelte';
+	import { SearchChip } from 'sveltekit-commons';
+	import { isSearchShortcut } from 'sveltekit-commons/palette';
 	import { AppShell, NavItem, NavProgress, NavSection } from 'sveltekit-commons/app';
 
 	let { children } = $props();
@@ -29,25 +30,12 @@
 
 	let palette = $state<ReturnType<typeof CommandPalette> | null>(null);
 
-	/* Ctrl/Cmd+F opens the palette, and the top bar names that one: it is the
-	   key already in the hand of anyone looking for something on a page. The
-	   cost is that it shadows the browser's find-in-page, so Ctrl/Cmd+K and "/"
-	   open it too and anyone who wants that key back has two other ways in.
-	   Esc closes, which is the <dialog> element's own doing.
-
-	   "/" is ignored while typing: a search box or a textarea has a better claim
-	   on a printable character than any shortcut does. The modified pair is not,
-	   because Ctrl+F inside a filter box still means "search the site". */
+	/* Ctrl/Cmd+F, Ctrl/Cmd+K and "/" — the binding set lives in commons so this
+	   site and STALZONE cannot drift on which keys open search, and the chip in
+	   the bar names the first of them. Esc closes, which is the <dialog>
+	   element's own doing. */
 	function onWindowKeydown(e: KeyboardEvent) {
-		const mod = e.ctrlKey || e.metaKey;
-		const wanted = (mod && (e.key === 'f' || e.key === 'k')) || (!mod && e.key === '/');
-		if (!wanted || e.altKey) return;
-
-		const el = e.target as HTMLElement | null;
-		const typing =
-			el?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el?.tagName ?? '');
-		if (typing && !mod) return;
-
+		if (!isSearchShortcut(e)) return;
 		e.preventDefault();
 		palette?.open();
 	}
@@ -189,7 +177,7 @@
 		<!-- outside the sign-in gate below: search has nothing to do with being
 		     signed in, and waiting on /api/me would leave the bar's one visible
 		     search affordance missing for the first moment of every visit -->
-		<SearchButton onopen={() => palette?.open()} compact={compactChips} />
+		<SearchChip onopen={() => palette?.open()} compact={compactChips} />
 		{#if me !== undefined}
 			<ReadyToPlay signedIn={me.battletag != null} compact={compactChips} />
 			<div class="acct-group">
@@ -270,31 +258,28 @@
 		{/each}
 
 		{#if siteVersion}
-			<!-- the release the site is running, at the foot of the list: a step
-			     below the destinations, because it is where the site's news lives
-			     rather than another place to go. The dot is the only loud part,
-			     and only until you have read it. -->
-			<div class="nav-ver">
-				<NavItem
-					href="/changelog"
-					label="Changelog"
-					active={page.url.pathname === '/changelog'}
-					onclick={close}
-					title={newChanges
-						? `Changelog — ${siteVersion} is new`
-						: `Changelog — running ${siteVersion}`}
-				>
-					{#snippet icon()}
-						{@html changelogIcon}
-						{#if newChanges}<span
-								class="ver-dot"
-								class:inverted={page.url.pathname === '/changelog'}
-								aria-hidden="true"
-							></span>{/if}
-					{/snippet}
-					{#snippet trailing()}{siteVersion}{/snippet}
-				</NavItem>
-			</div>
+			<!-- the release the site is running, at the foot of the list: this is
+			     where the site's news lives rather than another place to go. The
+			     dot is the only loud part, and only until you have read it. -->
+			<NavItem
+				href="/changelog"
+				label="Changelog"
+				active={page.url.pathname === '/changelog'}
+				onclick={close}
+				title={newChanges
+					? `Changelog — ${siteVersion} is new`
+					: `Changelog — running ${siteVersion}`}
+			>
+				{#snippet icon()}
+					{@html changelogIcon}
+					{#if newChanges}<span
+							class="ver-dot"
+							class:inverted={page.url.pathname === '/changelog'}
+							aria-hidden="true"
+						></span>{/if}
+				{/snippet}
+				{#snippet trailing()}{siteVersion}{/snippet}
+			</NavItem>
 		{/if}
 
 		<NavSection>MOS</NavSection>
@@ -372,6 +357,20 @@
 		   scale: they stack inside their own scroller and never meet the
 		   chrome.) */
 		--z-float: 60;
+
+		/* Changelog entry kinds — one per `type` in CHANGELOG_SCHEMA
+		   ($lib/changelog), read by name by commons' ChangeChip:
+		   `var(--change-<type>)`.
+
+		   Here rather than in uar-shared/palette.css because these are not
+		   colours: they are four references to colours this site already has,
+		   and the mapping is this site's changelog vocabulary rather than
+		   anything the map's palette knows about. Adding a fifth entry type
+		   means adding a line here, or the chip renders neutral. */
+		--change-feature: var(--accent);
+		--change-improvement: var(--mos);
+		--change-fix: var(--hostile);
+		--change-data: var(--item);
 	}
 	/* ---------- base ---------- */
 	:global(*) {
@@ -996,10 +995,6 @@
 		background: color-mix(in srgb, var(--accent-contrast) 30%, var(--mos));
 	}
 
-	/* a step below the destinations in the list */
-	.nav-ver {
-		margin-top: 5px;
-	}
 	/* unread release: a dot on the icon — visible in the rail too, and gone for
 	   good once the changelog has been opened. The ring is the rail's own
 	   colour rather than following the row's hover, because the row belongs to

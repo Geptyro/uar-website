@@ -3,6 +3,7 @@ import rawItems from '$lib/data/items.json';
 import rawSi from '$lib/data/si.json';
 import rawRanks from '$lib/data/ranks.json';
 import type { Weapon } from '$lib/units';
+import { rankRewardsForMos, type MosRankReward, type RankTrack } from './ranks';
 
 export interface Skill {
 	id: string;
@@ -126,26 +127,25 @@ export interface Si {
 	special: boolean;
 }
 
-export interface Rank {
-	idx: number;
-	icon: string | null;
-	xp: number;
-	prefix: string;
-	name: string;
-}
-
-export interface RankTrack {
-	track: number;
-	name: string;
-	/** Track wireframe portrait from the in-game rank-set choice dialog. */
-	icon: string | null;
-	ranks: Rank[];
-}
+export type {
+	Rank,
+	RankBonus,
+	RankBonusTotals,
+	RankReward,
+	RankTrack,
+	MosRankReward
+} from './ranks';
+export { rankBonusAt, rankStacks } from './ranks';
 
 export const allMos: Mos[] = rawMos as Mos[];
 export const items: Item[] = rawItems as Item[];
 export const skillIdentifiers: Si[] = rawSi as Si[];
 export const rankTracks: RankTrack[] = rawRanks as RankTrack[];
+
+/** Rank rewards this class earns, across all three tracks. */
+export function rankRewardsFor(mosId: string): MosRankReward[] {
+	return rankRewardsForMos(rankTracks, mosId);
+}
 
 /** Classes shown in the sidebar / index — the selectable roster. */
 export const mosList = allMos.filter((m) => m.id !== 'TemplateMOS');

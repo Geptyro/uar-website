@@ -5,6 +5,7 @@
 		itemTypeOrder,
 		modsFor,
 		rankTracks,
+		rankRewardsFor,
 		type Item,
 		type UnlockReq
 	} from '$lib/mos';
@@ -122,6 +123,10 @@
 		return rank ? `${rank.name} · ${xp}` : xp;
 	}
 
+	// what each track eventually hands this class — earned at its own rank, which is
+	// almost never the rank that unlocked the class
+	const trackRewards = $derived(rankRewardsFor(mos.id));
+
 	const unlockCells = $derived(
 		unlock
 			? rankTracks.map((t, i) => {
@@ -138,7 +143,8 @@
 								? 'Start'
 								: (req.rank ?? `${fmtXpShort(req.xp ?? 0)} XP`),
 						sub: req && req.xp && req.rank ? `${fmtXpShort(req.xp)} XP` : null,
-						title: unlockTitle(req, rank)
+						title: unlockTitle(req, rank),
+						rewards: trackRewards.filter((r) => r.track === t.track)
 					};
 				})
 			: []
@@ -411,7 +417,7 @@
 			</section>
 		{/if}
 		{#if unlock}
-			<DescCard label="Unlock requirements">
+			<DescCard label="Rank tracks">
 				<div class="unlock-grid">
 					{#each unlockCells as c (c.short)}
 						<div class="unlock-cell" class:off={c.off} title={c.title}>
@@ -426,6 +432,18 @@
 							</span>
 							<b class="unlock-main">{c.main}</b>
 							<span class="unlock-sub">{c.sub ?? ' '}</span>
+							{#each c.rewards as rw (rw.id)}
+								<span class="unlock-reward" title={rw.tooltip || rw.name}>
+									{#if rw.icon}
+										<img class="unlock-reward-icon" src={rw.icon} alt="" loading="lazy" />
+									{/if}
+									<b class="unlock-reward-name">{rw.name}</b>
+									<span class="unlock-reward-at">
+										{rw.kind === 'unit' ? 'free at' : 'at'}
+										{rw.rankPrefix}
+									</span>
+								</span>
+							{/each}
 						</div>
 					{/each}
 				</div>
@@ -441,7 +459,7 @@
 				<p class="unlock-note">
 					Max picks per game: {unlock.charges}. Any prestige unlocks all rank requirements.
 				</p>
-				<a class="si-all" href="/ranks">Rank tracks →</a>
+				<a class="si-all" href="/ranks">All ranks and track bonuses →</a>
 			</DescCard>
 		{/if}
 		{#if progressionGear}
@@ -587,6 +605,32 @@
 		color: var(--text-dim);
 		min-height: 12px;
 		white-space: pre;
+	}
+	/* what the track hands you later — earned at its own rank, not the unlock rank */
+	.unlock-reward {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 2px;
+		margin-top: 6px;
+		padding-top: 6px;
+		border-top: 1px dashed var(--line);
+		width: 100%;
+	}
+	.unlock-reward-icon {
+		width: 22px;
+		height: 22px;
+		object-fit: contain;
+	}
+	.unlock-reward-name {
+		font-size: 11px;
+		line-height: 1.2;
+		text-align: center;
+	}
+	.unlock-reward-at {
+		font-family: var(--font-mono);
+		font-size: 10px;
+		color: var(--text-dim);
 	}
 	.unlock-alt {
 		margin: 8px 0 0;

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import ChangeChip from '$lib/components/ChangeChip.svelte';
+	import { ChangeChip } from 'sveltekit-commons';
 	import Seo from '$lib/components/Seo.svelte';
 
 	let { data } = $props();

@@ -32,6 +32,10 @@ tweaks players wouldn't notice unless told; body written for players, not
 developers — see `changelog/unreleased/README.md`). `npm run release vX.Y.Z`
 rolls entries into `changelog/vX.Y.Z/` before tagging.
 
+An off-schema `type`/`area` does not fail the build, it silently falls back and
+files the change under a heading it never touched, so run
+`npm run changelog:check` after writing an entry (`npm test` runs it too).
+
 ## Dev & tests
 
 - `npm run dev` needs `.env` (gitignored). Server code reads `process.env`
