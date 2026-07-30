@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import type { PageData } from './$types';
 	import Seo from '$lib/components/Seo.svelte';
+	import shot from '$lib/assets/companion-app.png';
 
 	let { data }: { data: PageData } = $props();
 	const release = $derived(data.release);
@@ -36,36 +37,50 @@
 </p>
 
 <h2 class="section">What it does</h2>
-<div class="features">
-	<div class="card feat">
-		<h3>Uploads your replays</h3>
-		<p>
-			Every Undead Assault Reborn replay is sent here right after the game, so your
-			<a href="/players">profile</a>, XP history and the leaderboards stay current without you
-			uploading anything by hand.
-		</p>
+<div class="does">
+	<div class="features">
+		<div class="card feat">
+			<h3>Uploads your replays</h3>
+			<p>
+				Every Undead Assault Reborn replay is sent here right after the game, so your
+				<a href="/players">profile</a>, XP history and the leaderboards stay current without you
+				uploading anything by hand.
+			</p>
+		</div>
+		<div class="card feat">
+			<h3>Ready to play, from the tray</h3>
+			<p>
+				Flag yourself ready without opening the site, and get a desktop notification when someone
+				else does. Joining a lobby or starting a game withdraws your flag automatically.
+			</p>
+		</div>
+		<div class="card feat">
+			<h3>Live lobbies &amp; games</h3>
+			<p>
+				See which UAR lobbies are forming and which games are running, with the players in each —
+				the same chips you get in the top bar here, right next to your clock.
+			</p>
+		</div>
+		<div class="card feat">
+			<h3>Stays up to date</h3>
+			<p>
+				The app checks for new versions on launch and installs them itself on Windows and Linux,
+				so you are never left on a build the site has moved past.
+			</p>
+		</div>
 	</div>
-	<div class="card feat">
-		<h3>Ready to play, from the tray</h3>
-		<p>
-			Flag yourself ready without opening the site, and get a desktop notification when someone
-			else does. Joining a lobby or starting a game withdraws your flag automatically.
-		</p>
-	</div>
-	<div class="card feat">
-		<h3>Live lobbies &amp; games</h3>
-		<p>
-			See which UAR lobbies are forming and which games are running, with the players in each —
-			the same chips you get in the top bar here, right next to your clock.
-		</p>
-	</div>
-	<div class="card feat">
-		<h3>Stays up to date</h3>
-		<p>
-			The app checks for new versions on launch and installs them itself on Windows and Linux, so
-			you are never left on a build the site has moved past.
-		</p>
-	</div>
+
+	<figure class="shot">
+		<img
+			src={shot}
+			width="1391"
+			height="822"
+			alt="The UAR Companion window: a sidebar, a top bar with open-lobby and running-game counts
+			next to a &quot;Ready to play now?&quot; button, and the Settings pane showing the
+			auto-detected replay folder, notification toggles and the installed version."
+		/>
+		<figcaption>Settings — the replay folder is found for you; the rest is toggles.</figcaption>
+	</figure>
 </div>
 
 <!-- it is an executable that watches a folder on their PC, so the answer to
@@ -126,11 +141,39 @@
 </p>
 
 <style>
+	/* features beside the screenshot, half each, across the full content column
+	   — the rest of the page caps at 760px, but splitting 760 leaves the shot
+	   too small to read anything in. auto-fit stacks the two back up before
+	   either half gets cramped. */
+	.does {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+		align-items: start;
+		gap: 16px;
+	}
+	/* the screenshot is a window capture with its own dark chrome, so it gets a
+	   frame and a radius rather than sitting flush on the page background */
+	.shot {
+		margin: 0;
+	}
+	.shot img {
+		display: block;
+		width: 100%;
+		height: auto;
+		border: 1px solid var(--border);
+		border-radius: var(--radius-2);
+		box-shadow: var(--shadow-2);
+	}
+	.shot figcaption {
+		margin-top: 6px;
+		font-size: 12px;
+		color: var(--text-faint);
+	}
+	/* one card per row: the grid is the half-column now, and letting auto-fit
+	   decide inside it flips between one and two columns on a few pixels */
 	.features {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
 		gap: 12px;
-		max-width: 760px;
 	}
 	.feat h3 {
 		margin: 0 0 6px;
