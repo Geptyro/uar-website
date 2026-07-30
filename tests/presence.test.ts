@@ -1,6 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { groupPresence, validateBeat, type PresenceEntry } from '../src/lib/presence.ts';
+import { bareName, groupPresence, validateBeat, type PresenceEntry } from '../src/lib/presence.ts';
+
+test('bareName: the character code the battlelobby file appends comes off', () => {
+	// the lobby file spells a profile "KanaxStratz#451"; /game, the player
+	// directory and the reporter's own selfName all spell it "KanaxStratz",
+	// and matching the two raw placed no reporter on their own roster line
+	assert.equal(bareName('KanaxStratz#451'), 'KanaxStratz');
+	assert.equal(bareName('KanaxStratz'), 'KanaxStratz');
+	// only a trailing code goes; nothing else about the name is touched
+	assert.equal(bareName('Ke$ha 2'), 'Ke$ha 2');
+});
 
 test('validateBeat: accepts real heartbeats, clamps junk', () => {
 	assert.deepEqual(validateBeat({ status: 'ingame', uar: true, players: 12, displayTime: 57.9 }), {
@@ -29,7 +39,7 @@ test('validateBeat: accepts real heartbeats, clamps junk', () => {
 });
 
 function entry(partial: Partial<PresenceEntry> & { battletag: string }): PresenceEntry {
-	return { toon: null, avatar: null, status: 'ingame', uar: true, ...partial };
+	return { name: null, toon: null, avatar: null, status: 'ingame', uar: true, ...partial };
 }
 
 test('groupPresence: lobbyId first, roster fallback, solo last resort', () => {

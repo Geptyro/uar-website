@@ -10,6 +10,12 @@ export const READY_DURATION_MS = 60 * 60 * 1000;
 /** One flagged player, as served by GET /api/ready. */
 export interface ReadyPlayer {
 	battletag: string;
+	/**
+	 * SC2 profile name of `toon` — what the row shows, since that is the name
+	 * everyone reads in a lobby. Null when the site cannot resolve one, and
+	 * the battletag stands in.
+	 */
+	name: string | null;
 	/** Toon handle of the player's primary profile — links to /players/{toon}. */
 	toon: string | null;
 	/** SC2 portrait URL, if the account has one. */

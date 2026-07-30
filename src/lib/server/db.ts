@@ -1162,7 +1162,7 @@ export async function upsertAccount(
 	await d
 		.collection<AccountDoc>('accounts')
 		.updateOne({ _id: sub }, { $set: set, $setOnInsert: { linkedAt: iso } }, { upsert: true });
-	invalidateCache('avatars', 'playerDirectory', 'accountByToon');
+	invalidateCache('avatars', 'names', 'playerDirectory', 'accountByToon');
 }
 
 /** The account's primary profile: first seen in UAR replays, else the first. */
@@ -1236,6 +1236,31 @@ export async function getAvatarsByToon(): Promise<Record<string, string>> {
 	});
 }
 
+/**
+ * toon -> SC2 profile name, across every linked account.
+ *
+ * Ready flags and presence heartbeats are keyed by Battle.net account, and an
+ * account only knows its battletag — so the rosters used to read out as
+ * "Kanax#2515" where the lobby, the player pages and everything else say
+ * "KanaxStratz". Resolved here rather than stamped into the session or the
+ * documents: it then also covers flags raised before this shipped, and a
+ * player who renames does not have to sign in again.
+ */
+export async function getNamesByToon(): Promise<Record<string, string>> {
+	return cached('names', async () => {
+		const d = await db();
+		const docs = await d
+			.collection<AccountDoc>('accounts')
+			.find({}, { projection: { profiles: 1 } })
+			.toArray();
+		const map: Record<string, string> = {};
+		for (const a of docs) {
+			for (const p of a.profiles ?? []) if (p.name) map[p.toon] = p.name;
+		}
+		return map;
+	});
+}
+
 export async function getAccount(sub: string): Promise<AccountDoc | null> {
 	const d = await db();
 	return d.collection<AccountDoc>('accounts').findOne({ _id: sub });
@@ -1256,7 +1281,7 @@ export async function getAccountByToon(toon: string): Promise<AccountDoc | null>
 export async function deleteAccount(sub: string): Promise<void> {
 	const d = await db();
 	await d.collection<AccountDoc>('accounts').deleteOne({ _id: sub });
-	invalidateCache('avatars', 'playerDirectory', 'accountByToon');
+	invalidateCache('avatars', 'names', 'playerDirectory', 'accountByToon');
 }
 
 /**

@@ -5,7 +5,14 @@
  * restarts the hour.
  */
 import { error, json } from '@sveltejs/kit';
-import { clearReady, dbConfigured, getPresence, getReadyPlayers, setReady } from '$lib/server/db';
+import {
+	clearReady,
+	dbConfigured,
+	getNamesByToon,
+	getPresence,
+	getReadyPlayers,
+	setReady
+} from '$lib/server/db';
 import { publishReadyChange } from '$lib/server/events';
 import { READY_DURATION_MS, type ReadyPlayer } from '$lib/ready';
 import { PRESENCE_STALE_MS } from '$lib/presence';
@@ -32,12 +39,15 @@ async function state(
 	sub: string | undefined
 ): Promise<{ me: boolean; until: string | null; players: ReadyPlayer[] }> {
 	const docs = dbConfigured() ? await getReadyPlayers() : [];
+	// the flag only stores the account; the profile name comes from the link
+	const names = docs.length > 0 ? await getNamesByToon() : {};
 	const mine = sub === undefined ? undefined : docs.find((p) => p._id === sub);
 	return {
 		me: mine !== undefined,
 		until: mine?.until ?? null,
 		players: docs.map((p) => ({
 			battletag: p.battletag,
+			name: (p.toon ? names[p.toon] : null) ?? null,
 			toon: p.toon ?? null,
 			avatar: p.avatar ?? null,
 			until: p.until

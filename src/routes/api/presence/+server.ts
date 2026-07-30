@@ -22,12 +22,19 @@ import {
 	dbConfigured,
 	deletePresence,
 	getActivePresence,
+	getNamesByToon,
 	getPlayerDirectory,
 	getReadyPlayers,
 	upsertPresence
 } from '$lib/server/db';
 import { publishReadyChange } from '$lib/server/events';
-import { PRESENCE_STALE_MS, splitPresence, validateBeat, type PresenceEntry } from '$lib/presence';
+import {
+	PRESENCE_STALE_MS,
+	bareName,
+	splitPresence,
+	validateBeat,
+	type PresenceEntry
+} from '$lib/presence';
 import type { RequestHandler } from './$types';
 
 export const prerender = false;
@@ -40,8 +47,11 @@ export const GET: RequestHandler = async ({ locals, setHeaders }) => {
 	const docs = await getActivePresence(PRESENCE_STALE_MS);
 	// the widget colors its own chip by where the session user is
 	const mine = locals.session ? docs.find((d) => d._id === locals.session!.sub) : undefined;
+	// a heartbeat only carries the account; the profile name comes from the link
+	const names = docs.length > 0 ? await getNamesByToon() : {};
 	const players: PresenceEntry[] = docs.map((d) => ({
 		battletag: d.battletag,
+		name: (d.toon ? names[d.toon] : null) ?? null,
 		toon: d.toon ?? null,
 		avatar: d.avatar ?? null,
 		status: d.status as 'lobby' | 'ingame',
@@ -54,12 +64,15 @@ export const GET: RequestHandler = async ({ locals, setHeaders }) => {
 	}));
 
 	// resolve the roster names we recognise, so a live lobby can link to the
-	// profiles of players who never installed the companion app
-	const names = new Set(players.flatMap((p) => p.roster ?? []));
+	// profiles of players who never installed the companion app. Keyed bare,
+	// like the directory and like the lookup on the other side: a lobby roster
+	// straight from the battlelobby file spells names "Name#451", and matching
+	// that against the directory recognised nobody.
+	const rosterNames = new Set(players.flatMap((p) => (p.roster ?? []).map(bareName)));
 	const known: Record<string, { toon: string; avatar?: string }> = {};
-	if (names.size > 0) {
+	if (rosterNames.size > 0) {
 		const directory = await getPlayerDirectory();
-		for (const name of names) if (directory[name]) known[name] = directory[name];
+		for (const name of rosterNames) if (directory[name]) known[name] = directory[name];
 	}
 	return json({
 		players,

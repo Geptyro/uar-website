@@ -29,6 +29,12 @@ export interface PresenceBeat {
 /** One public presence entry (GET /api/presence). */
 export interface PresenceEntry extends PresenceBeat {
 	battletag: string;
+	/**
+	 * SC2 profile name of `toon`. Only shown for a reporter the roster could
+	 * not place — everyone else is drawn from the roster itself — but that is
+	 * exactly the row that used to read out as a battletag.
+	 */
+	name: string | null;
 	toon: string | null;
 	avatar: string | null;
 	status: 'lobby' | 'ingame';
@@ -64,4 +70,4 @@ export function validateBeat(body: unknown): PresenceBeat | null {
 }
 
 // grouping lives in uar-shared (the tray renders the same groups)
-export { groupPresence, splitPresence, type PresenceGroup } from 'uar-shared/presence';
+export { bareName, groupPresence, splitPresence, type PresenceGroup } from 'uar-shared/presence';
