@@ -14,6 +14,7 @@ import { MPQArchive } from './mpq.ts';
 import {
 	getProtocol,
 	hasProtocol,
+	type Protocol,
 	decodeReplayHeader,
 	decodeReplayDetails,
 	decodeReplayInitdata,
@@ -24,6 +25,13 @@ import { hx1, hxList, decodeUnlocks, XP_CAP, type Unlocks } from './bank.ts';
 import { decodeAttributes, lobbyVotedMode } from './attributes.ts';
 import { tallyModeVotes, type ModeVoter } from '../../mode.ts';
 import { tallyModifiers, type ModifierEvent } from './modifiers.ts';
+import {
+	exitDialogLoop,
+	gameEndLoop,
+	needsExitScan,
+	type DialogClick,
+	type PlayerEnd
+} from '../../gameEnd.ts';
 
 const utf8 = new TextDecoder('utf-8');
 
@@ -68,7 +76,12 @@ export type ReplayOutcome = 'win' | 'loss';
  * Win: the map's ending cinematic spawns a "Planet" prop (MapScript.galaxy,
  * gf_IniGameEndCinematic and gf_InvasionGameEndCinematicSuccess). Every path
  * that reaches it goes on to gf_RegularGameCompleted — the function that
- * increments the players' win counter — and no losing path spawns it.
+ * increments the players' win counter — and no losing path spawns it. It does
+ * not cover every win: the Ch4-Zulu, Specimen and Jashan-dies endings reach
+ * gf_RegularGameCompleted without a cinematic, and the units they do spawn
+ * ("Zulu", "Hopper") are ordinary hostile types. Those games read `null` here
+ * and are settled from the save-file counters instead — and for the game's
+ * length, `gameEnd.ts` falls back to the map's exit dialog.
  *
  * Loss: the map's game-over condition is libNtve_gf_UnitGroupIsDead on the
  * hero group. It replaces each fallen hero with a DeadHeroIndicator unit
@@ -159,6 +172,15 @@ export interface ParsedReplay {
 	 * recording is shorter than one that saw the game end. */
 	durationLoops: number;
 	/**
+	 * How long the game itself lasted, in the same loops. Equal to
+	 * `durationLoops` unless the client sat in the map after the game was
+	 * over, which SC2 counts and nothing in the header separates out — see
+	 * lib/gameEnd.ts. This is the length every read path should show or
+	 * aggregate; `durationLoops` stays the recording's own length, which is
+	 * what the upload dedupe compares.
+	 */
+	gameLoops: number;
+	/**
 	 * How the game ended, or null when the recording stopped mid-game (the
 	 * uploader left early, which is the common case for a leaver's copy).
 	 */
@@ -203,6 +225,30 @@ export function peekReplay(
 		lobbyId: initdata.m_syncLobbyState.m_gameDescription.m_randomValue as number,
 		durationLoops: header.m_elapsedGameLoops as number
 	};
+}
+
+/**
+ * Every dialog-button click in the whole game-events stream, for the
+ * exit-dialog scan. Decoding all of it costs around a second on a long game,
+ * which is why `needsExitScan` gates the call; a stream that stops mid-event
+ * still dates everything it did decode.
+ */
+function scanDialogClicks(protocol: Protocol, archive: MPQArchive): DialogClick[] {
+	const clicks: DialogClick[] = [];
+	try {
+		for (const ev of decodeReplayGameEvents(protocol, archive.readFile('replay.game.events')!)) {
+			if (!(ev._event as string).endsWith('STriggerDialogControlEvent')) continue;
+			if ((ev.m_eventType as number) !== DIALOG_CLICKED) continue;
+			clicks.push({
+				user: ev._userid.m_userId as number,
+				control: ev.m_controlId as number,
+				loop: ev._gameloop as number
+			});
+		}
+	} catch {
+		// truncated stream — keep the clicks it yielded
+	}
+	return clicks;
 }
 
 export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>): ParsedReplay {
@@ -319,17 +365,34 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 	/** unit tag -> owning player, for the dead-hero markers standing right now */
 	const markers = new Map<string, number>();
 	const markedPlayers = new Set<number>();
+	// the loop each marker landed on, for the game's length rather than its
+	// result: the cinematic prop's birth, and the loop the wipe last became
+	// true and stayed true (an earlier wipe that heroes were revived out of
+	// dates nothing)
+	let winLoop: number | null = null;
+	let wipeLoop: number | null = null;
+	/** playerId -> last loop that player was still receiving stats */
+	const lastStats = new Map<number, number>();
 	for (const ev of decodeReplayTrackerEvents(protocol, archive.readFile('replay.tracker.events')!)) {
 		const t = ev._event as string;
+		const loop = ev._gameloop as number;
 		if (t.endsWith('SPlayerSetupEvent')) {
 			if (ev.m_userId !== null && ev.m_userId !== undefined) {
 				playerToUser.set(ev.m_playerId as number, ev.m_userId as number);
 			}
+			continue;
+		} else if (t.endsWith('SPlayerStatsEvent')) {
+			// ticks every ten game-seconds until the client is out of the game
+			lastStats.set(ev.m_playerId as number, loop);
+			continue;
 		} else if (t.endsWith('SUnitBornEvent')) {
 			const unit = utf(ev.m_unitTypeName);
 			const pid = ev.m_controlPlayerId as number;
 			const uid = playerToUser.get(pid);
-			if (unit === WIN_PROP) endCinematic = true;
+			if (unit === WIN_PROP) {
+				endCinematic = true;
+				winLoop ??= loop;
+			}
 			if (unit.startsWith(DEAD_HERO)) {
 				markers.set(`${ev.m_unitTagIndex}/${ev.m_unitTagRecycle}`, pid);
 				markedPlayers.add(pid);
@@ -349,13 +412,36 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 				// markers is standing (heroes with more than one body)
 				if (![...markers.values()].includes(pid)) markedPlayers.delete(pid);
 			}
+		} else {
+			continue;
 		}
+		// only births and deaths can move the wipe condition
+		if (heroOwners.size > 0 && [...heroOwners].every((p) => markedPlayers.has(p))) wipeLoop ??= loop;
+		else wipeLoop = null;
 	}
-	const outcome: ReplayOutcome | null = endCinematic
-		? 'win'
-		: heroOwners.size > 0 && [...heroOwners].every((p) => markedPlayers.has(p))
-			? 'loss'
-			: null;
+	const outcome: ReplayOutcome | null = endCinematic ? 'win' : wipeLoop !== null ? 'loss' : null;
+
+	// How long the game itself lasted. The recording keeps counting for as
+	// long as the client sits in the map, which the header cannot separate
+	// out; lib/gameEnd.ts explains what dates the real ending.
+	const durationLoops = header.m_elapsedGameLoops as number;
+	const humanEnds: PlayerEnd[] = [];
+	for (const [pid, uid] of playerToUser) {
+		const last = lastStats.get(pid);
+		if (last !== undefined) humanEnds.push({ user: uid, lastLoop: last });
+	}
+	const markerLoop = winLoop ?? wipeLoop;
+	// the whole of game.events is only decoded for the marker-less endings
+	// that leave nothing cheaper to date — a second of CPU on a long game
+	const exitLoop = needsExitScan(humanEnds, durationLoops, markerLoop)
+		? exitDialogLoop(scanDialogClicks(protocol, archive), humanEnds)
+		: null;
+	const gameLoops = gameEndLoop({
+		recordingLoops: durationLoops,
+		markerLoop,
+		exitLoop,
+		players: humanEnds
+	});
 
 	const sightings: ReplaySighting[] = [];
 	for (const [uid, bank] of banks) {
@@ -439,7 +525,8 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 		baseBuild,
 		protocolExact: hasProtocol(baseBuild),
 		lobbyId: initdata.m_syncLobbyState.m_gameDescription.m_randomValue as number,
-		durationLoops: header.m_elapsedGameLoops as number,
+		durationLoops,
+		gameLoops,
 		outcome,
 		mode,
 		modifiers,

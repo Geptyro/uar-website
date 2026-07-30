@@ -14,8 +14,10 @@
 
 import { json, error } from '@sveltejs/kit';
 import { createHash } from 'node:crypto';
+import { rateLimiter } from 'sveltekit-commons/rate-limit';
 import { parseReplayOffThread, peekReplayOffThread } from '$lib/server/replay/offthread';
 import { decideIngest, canonicalName } from '$lib/server/replay/ingest';
+import { startedAtOf } from '$lib/gameEnd';
 import { putObject } from '$lib/server/replay/s3';
 import {
 	dbConfigured,
@@ -43,17 +45,11 @@ const mosIds = new Set((rawMos as { id: string }[]).map((m) => m.id));
 // games one after another, and that is exactly what we want it to do. This
 // only stops something pathological — ingest is serialised and the player
 // rebuild is coalesced, so a legitimate backfill costs little.
-const ATTEMPT_LIMIT = 1000;
-const RATE_WINDOW_MS = 60 * 60 * 1000;
-const attemptsByIp = new Map<string, number[]>();
-
-function rateLimited(ip: string): boolean {
-	const attempts = (attemptsByIp.get(ip) ?? []).filter((t) => Date.now() - t < RATE_WINDOW_MS);
-	attemptsByIp.set(ip, attempts);
-	if (attempts.length >= ATTEMPT_LIMIT) return true;
-	attempts.push(Date.now());
-	return false;
-}
+//
+// `hit` — every ATTEMPT is charged, unlike the feedback form, which charges
+// only accepted submissions. Here the attempt is the cost: a rejected upload
+// has already been read off the wire and peeked at in a worker.
+const uploads = rateLimiter({ limit: 1000, windowMs: 60 * 60 * 1000 });
 
 /** Pre-upload dedupe check: GET /api/replays?sha256=<hex> -> { exists }. */
 export const GET: RequestHandler = async ({ url }) => {
@@ -65,7 +61,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
 export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 	if (!dbConfigured()) error(503, 'Uploads are not configured on this deployment.');
-	if (rateLimited(getClientAddress())) error(429, 'Too many uploads — try again later.');
+	if (!uploads.hit(getClientAddress())) error(429, 'Too many uploads — try again later.');
 
 	const contentLength = Number(request.headers.get('content-length') ?? 0);
 	if (contentLength > MAX_SIZE + 4096) error(413, 'Replay too large.');
@@ -141,6 +137,9 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 		const doc = {
 			_id: name,
 			playedAt: parsed.playedAt,
+			// playedAt is when the recording stopped, so the start is derived
+			// rather than read — see lib/gameEnd.ts
+			startedAt: startedAtOf(parsed.playedAt, parsed.durationLoops),
 			title: parsed.title,
 			baseBuild: parsed.baseBuild,
 			size: data.length,
@@ -148,6 +147,8 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 			sha256,
 			lobbyId: parsed.lobbyId,
 			durationLoops: parsed.durationLoops,
+			// equal to durationLoops unless this client idled in the finished map
+			gameLoops: parsed.gameLoops,
 			// only when the recording saw the game end; games it cannot answer
 			// are settled later from the players' save-file win counters
 			...(parsed.outcome ? { outcome: parsed.outcome } : {}),

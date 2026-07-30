@@ -137,6 +137,10 @@ export interface ReplayMeta {
 	size: number;
 	/** Recording length in game loops (16 per game-second). */
 	durationLoops: number;
+	/** How long the game itself lasted, in the same loops — the one to show
+	 * as a duration. Shorter than the recording when the uploader's client
+	 * idled in a finished map; see lib/gameEnd.ts. */
+	gameLoops: number;
 	/** Absent until one source or the other can settle it — see lib/outcome.ts. */
 	outcome?: Outcome;
 	/** Game mode 1..12, indexing `modeNames` from 1. Absent when neither the
@@ -169,13 +173,18 @@ export interface ReplayPlayer {
 /** Full detail of one ingested replay (server-loaded at /replays/[id]). */
 export interface ReplayDetail {
 	file: string;
+	/** When the recording stopped, UTC — see ReplayDoc.playedAt. */
 	playedAt: string;
+	/** When the game began, UTC. */
+	startedAt: string;
 	/** Map title recorded in the replay. */
 	title: string;
 	baseBuild: number;
 	size: number;
 	/** Recording length in game loops (16 per game-second). */
 	durationLoops: number;
+	/** How long the game itself lasted, in the same loops — see lib/gameEnd.ts. */
+	gameLoops: number;
 	/** Null while neither source can settle it — see lib/outcome.ts. */
 	outcome: Outcome | null;
 	/** Game mode 1..12, indexing `modeNames` from 1; null while neither the

@@ -8,10 +8,12 @@ import { activityTimeline } from '../src/lib/activity.ts';
 const NOW = new Date('2026-07-26T12:00:00Z');
 const LOOPS_PER_MINUTE = 16 * 60;
 
-const game = (playedAt: string, players: number, minutes?: number) => ({
-	playedAt,
+// `startedAt`, not a doc's `playedAt`: the chart is fed the time a game began,
+// which the caller derives — see gameEnd.startedAtOf
+const game = (startedAt: string, players: number, minutes?: number) => ({
+	startedAt,
 	players,
-	durationLoops: minutes === undefined ? undefined : minutes * LOOPS_PER_MINUTE
+	gameLoops: minutes === undefined ? undefined : minutes * LOOPS_PER_MINUTE
 });
 
 const slotOf = (iso: string, start: number) => (Date.parse(iso) - start) / (30 * 60 * 1000);
@@ -66,7 +68,7 @@ test('missing duration falls back to 30 minutes', () => {
 test('skips unparseable dates, caps runaway durations at a day', () => {
 	const { values } = activityTimeline(
 		[
-			{ playedAt: 'not a date', players: 8, durationLoops: 30 * LOOPS_PER_MINUTE },
+			{ startedAt: 'not a date', players: 8, gameLoops: 30 * LOOPS_PER_MINUTE },
 			game('2026-07-20T00:00:00Z', 1, 7 * 24 * 60) // a week of loops → capped at 24h
 		],
 		NOW

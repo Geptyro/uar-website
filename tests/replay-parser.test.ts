@@ -170,6 +170,7 @@ function fakeReplay(file: string, playedAt: string, sightings: ReplaySighting[])
 			protocolExact: true,
 			lobbyId: 42,
 			durationLoops: 1000,
+			gameLoops: 1000,
 			outcome: null,
 			mode: null,
 			modifiers: [],

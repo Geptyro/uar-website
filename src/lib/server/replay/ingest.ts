@@ -6,6 +6,12 @@
  * game). A longer recording of a known game replaces the stored one; equal
  * or shorter is a duplicate. New games get a game-time file name, with a
  * lobby-id suffix if a different game already took that minute.
+ *
+ * "Longer" is the recording's length, not the game's (see lib/gameEnd.ts): a
+ * longer recording is a superset of a shorter one, which is the whole point of
+ * replacing it, and the decision is made from the header alone — the game's
+ * length is not known until the event streams have been read, which is work
+ * this deliberately avoids doing for a duplicate.
  */
 
 export interface PeekedIdentity {

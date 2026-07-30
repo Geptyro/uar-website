@@ -12,6 +12,8 @@
  * chart component can import the constants without pulling in server code.
  */
 
+import { LOOPS_PER_SECOND } from './gameEnd.ts';
+
 export const SLOT_MINUTES = 30;
 
 export interface ActivityTimeline {
@@ -21,11 +23,23 @@ export interface ActivityTimeline {
 	values: number[];
 }
 
+/** One game, as the chart needs it. */
+export interface ActivityGame {
+	/**
+	 * When the game began, UTC. Not a replay doc's `playedAt`, which is when
+	 * the recording *stopped* — see gameEnd.startedAtOf, which is what the
+	 * caller resolves this from. Feeding the end in as a start put every game
+	 * on the chart a full game-length late.
+	 */
+	startedAt: string;
+	players: number;
+	/** The game's own length in loops (16 per game-second, see gameEnd.ts). */
+	gameLoops?: number;
+}
+
 const SLOT_MS = SLOT_MINUTES * 60 * 1000;
 const DAY_MS = 24 * 3600 * 1000;
-/** Loops are 16 per game-second (see playtime.ts). */
-const LOOPS_PER_SECOND = 16;
-/** Credited when a doc carries no recording length. */
+/** Credited when a doc carries no length at all. */
 const DEFAULT_DURATION_MS = 30 * 60 * 1000;
 
 /**
@@ -35,7 +49,7 @@ const DEFAULT_DURATION_MS = 30 * 60 * 1000;
  * at a day so corrupt loop counts can't dominate the chart.
  */
 export function activityTimeline(
-	replays: { playedAt: string; players: number; durationLoops?: number }[],
+	replays: ActivityGame[],
 	now: Date,
 	days = 7
 ): ActivityTimeline {
@@ -45,10 +59,10 @@ export function activityTimeline(
 	const windowEnd = endSlot * SLOT_MS;
 	const playerMs = new Array<number>(slots).fill(0);
 	for (const r of replays) {
-		const started = Date.parse(r.playedAt);
+		const started = Date.parse(r.startedAt);
 		if (Number.isNaN(started)) continue;
-		const durationMs = r.durationLoops
-			? Math.min(DAY_MS, (r.durationLoops / LOOPS_PER_SECOND) * 1000)
+		const durationMs = r.gameLoops
+			? Math.min(DAY_MS, (r.gameLoops / LOOPS_PER_SECOND) * 1000)
 			: DEFAULT_DURATION_MS;
 		const end = Math.min(started + durationMs, windowEnd);
 		for (let t = Math.max(started, windowStart); t < end; ) {

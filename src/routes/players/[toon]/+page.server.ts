@@ -6,10 +6,10 @@ import {
 	getPlayerHistoryPage,
 	getPlayerSummary,
 	getReplayFacts,
-	getTeammates
+	getTeammates,
+	type ReplayFacts
 } from '$lib/server/db';
 import type { PlayerProfile, Sighting } from '$lib/players';
-import type { Outcome } from '$lib/outcome';
 import type { PageServerLoad } from './$types';
 
 export const prerender = false;
@@ -54,10 +54,7 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 		historyTotal: profile.historyCount ?? 0,
 		latestFile: profile.latestFile ?? null,
 		classGames: profile.classGames ?? {},
-		replayFacts: replayFacts as Record<
-			string,
-			{ durationLoops: number; outcome?: Outcome; mode?: number; modifiers?: number[] }
-		>,
+		replayFacts: replayFacts as Record<string, ReplayFacts>,
 		// battletag of the Battle.net account that claimed this toon via /account
 		verified: account
 			? { battletag: account.battletag, isOwner: locals.session?.sub === account._id }

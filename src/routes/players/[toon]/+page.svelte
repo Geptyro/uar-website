@@ -608,7 +608,7 @@
 										iconOnly
 									/>{:else}<span class="none">·</span>{/each}
 							</td>
-							<td class="num mono">{facts ? fmtDuration(facts.durationLoops) : ''}</td>
+							<td class="num mono">{facts ? fmtDuration(facts.gameLoops) : ''}</td>
 							<td class="histclass" style="--figs: {h.mos.length}">
 								<span class="histfigs">
 									{#each h.mos as id (id)}

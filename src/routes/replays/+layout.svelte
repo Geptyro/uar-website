@@ -38,8 +38,8 @@
 								>{#if r.mode}<ModeMark mode={r.mode} />{/if}{#each orderModifiers(
 									r.modifiers ?? []
 								) as id (id)}<ModifierMark {id} iconOnly focusable={false} />{/each}</span
-							> · {/if}{r.players} profile{r.players === 1 ? '' : 's'}{#if r.durationLoops}
-								· <span class="rdur">{fmtDuration(r.durationLoops)}</span>{/if} ·
+							> · {/if}{r.players} profile{r.players === 1 ? '' : 's'}{#if r.gameLoops}
+								· <span class="rdur">{fmtDuration(r.gameLoops)}</span>{/if} ·
 							<span class:struck={r.blobPruned}>{fmtSize(r.size)}</span
 							>{#if r.blobPruned}<span
 									class="notstored"

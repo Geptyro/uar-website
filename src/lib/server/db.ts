@@ -28,6 +28,8 @@ import { prunableReplays } from '../replayRetention.ts';
 import { withLock } from '../mutex.ts';
 import { topPlayersByMos } from './playtime.ts';
 import { topTeammates } from './teammates.ts';
+import { startedAtOf } from '../gameEnd.ts';
+import type { ActivityGame } from '../activity.ts';
 import { WINDOW_MS, weeklyBoards } from './weekly.ts';
 import type {
 	MosTopPlayer,
@@ -39,7 +41,21 @@ import type {
 
 export interface ReplayDoc {
 	_id: string; // file name, YYYYMMDD-HHMM.SC2Replay
+	/**
+	 * The replay's `m_timeUTC`, which SC2 stamps when it writes the file — so
+	 * the moment the *recording stopped*, not the moment the game began. The
+	 * name predates knowing that, and the document id is built from it, so it
+	 * stays as it is; anything that wants a start time derives one with
+	 * `startedAtOf` (or reads `startedAt` below).
+	 */
 	playedAt: string;
+	/**
+	 * When the game began, UTC — `playedAt` less the recording's length.
+	 * Stored rather than derived on read so the activity window can range on
+	 * it. Absent on docs written before it existed; the read paths fall back
+	 * to deriving it.
+	 */
+	startedAt?: string;
 	title: string;
 	baseBuild: number;
 	size: number;
@@ -51,6 +67,15 @@ export interface ReplayDoc {
 	/** Recording length in game loops; a longer recording of the same lobby
 	 * replaces a shorter one. */
 	durationLoops?: number;
+	/**
+	 * How long the game itself lasted, in the same loops — see lib/gameEnd.ts.
+	 * Shorter than `durationLoops` when the uploader's client sat in the map
+	 * after the game was over; equal for every ordinary recording. This is
+	 * what pages show and what the playtime aggregations credit, while
+	 * `durationLoops` remains the recording's own length for the dedupe.
+	 * Absent on docs written before it existed.
+	 */
+	gameLoops?: number;
 	/**
 	 * What the parser read out of the replay file itself. Absent on games
 	 * ingested before outcomes were read, and on recordings that stopped
@@ -614,6 +639,7 @@ const LIST_PROJECTION = {
 	players: 1,
 	size: 1,
 	durationLoops: 1,
+	gameLoops: 1,
 	blobPrunedAt: 1,
 	outcome: 1,
 	settledOutcome: 1,
@@ -641,6 +667,16 @@ function replayModeOf(r: Pick<ReplayDoc, 'settledMode' | 'mode'>): number | unde
 	return r.settledMode ?? r.mode;
 }
 
+/**
+ * The game's own length, falling back to the recording's on the docs written
+ * before the two were told apart (see lib/gameEnd.ts). Those are equal for
+ * every recording that did not idle past the end, which is nearly all of
+ * them — and `scripts/backfill-gameend.ts` settles the rest from the blobs.
+ */
+function gameLoopsOf(r: Pick<ReplayDoc, 'gameLoops' | 'durationLoops'>): number {
+	return r.gameLoops ?? r.durationLoops ?? 0;
+}
+
 function toRow(r: ReplayDoc): ReplayMeta {
 	const outcome = replayOutcomeOf(r);
 	const mode = replayModeOf(r);
@@ -650,6 +686,7 @@ function toRow(r: ReplayDoc): ReplayMeta {
 		players: r.players,
 		size: r.size,
 		durationLoops: r.durationLoops ?? 0,
+		gameLoops: gameLoopsOf(r),
 		blobPruned: Boolean(r.blobPrunedAt),
 		...(outcome ? { outcome } : {}),
 		...(mode ? { mode } : {}),
@@ -705,27 +742,43 @@ export async function getRecentReplays(n: number): Promise<ReplayMeta[]> {
 }
 
 /**
- * Games overlapping the activity chart's trailing window. Reaches a day
- * further back than the window itself because a game that started before it
- * still credits the slots it runs into — `activityTimeline` clips such games
- * to the window rather than dropping them, and caps any one game at a day.
+ * Games overlapping the activity chart's trailing window, each with the time
+ * it actually started (`playedAt` is when its recording stopped, so the raw
+ * field would place a game a full game-length late — see gameEnd.ts).
+ *
+ * Still ranged on `playedAt`: it is the indexed field, and the day of slack it
+ * already carries — there for games that began before the window and credit
+ * the slots they run into — is far more than the couple of hours the two
+ * timestamps differ by. `activityTimeline` clips such games to the window
+ * rather than dropping them, and caps any one game at a day.
  */
-export async function getActivityReplays(
-	days: number
-): Promise<{ playedAt: string; players: number; durationLoops?: number }[]> {
+export async function getActivityReplays(days: number): Promise<ActivityGame[]> {
 	return cached(`replays:activity:${days}`, async () => {
 		const d = await db();
 		const since = new Date(Date.now() - (days + 1) * 24 * 3600 * 1000)
 			.toISOString()
 			.slice(0, 19) + 'Z'; // same fixed-width shape the ingest writes
-		return d
+		const docs = await d
 			.collection<ReplayDoc>('replays')
 			.find(
 				{ playedAt: { $gte: since } },
-				{ projection: { playedAt: 1, players: 1, durationLoops: 1 } }
+				{
+					projection: {
+						playedAt: 1,
+						startedAt: 1,
+						players: 1,
+						durationLoops: 1,
+						gameLoops: 1
+					}
+				}
 			)
 			.sort({ playedAt: 1 })
-			.toArray() as Promise<{ playedAt: string; players: number; durationLoops?: number }[]>;
+			.toArray();
+		return docs.map((r) => ({
+			startedAt: r.startedAt ?? startedAtOf(r.playedAt, r.durationLoops),
+			players: r.players,
+			gameLoops: gameLoopsOf(r)
+		}));
 	});
 }
 
@@ -742,8 +795,19 @@ export async function getReplayStats(): Promise<{ count: number; latest: string 
 	});
 }
 
+/** What a page needs about a game it lists but does not load in full. */
+export interface ReplayFacts {
+	/** The recording's length — what the "recorded" tile reports. */
+	durationLoops: number;
+	/** The game's own length — what a duration column should show. */
+	gameLoops: number;
+	outcome?: Outcome;
+	mode?: number;
+	modifiers?: number[];
+}
+
 /**
- * file -> outcome and recording length, for pages that show individual games:
+ * file -> outcome and length, for pages that show individual games:
  * a profile's replay history, one replay's page. Takes the files the caller
  * already knows it will render, so the read scales with the page and not with
  * the archive.
@@ -751,19 +815,11 @@ export async function getReplayStats(): Promise<{ count: number; latest: string 
 export async function getReplayFacts(
 	cacheKey: string,
 	files: string[]
-): Promise<
-	Record<
-		string,
-		{ durationLoops: number; outcome?: Outcome; mode?: number; modifiers?: number[] }
-	>
-> {
+): Promise<Record<string, ReplayFacts>> {
 	if (!files.length) return {};
 	// keyed by which page of whose history it is, so a revisit does not re-read
 	return cached(`replayFacts:${cacheKey}`, async () => {
-		const map: Record<
-			string,
-			{ durationLoops: number; outcome?: Outcome; mode?: number; modifiers?: number[] }
-		> = {};
+		const map: Record<string, ReplayFacts> = {};
 		const d = await db();
 		const docs = await d
 			.collection<ReplayDoc>('replays')
@@ -772,6 +828,7 @@ export async function getReplayFacts(
 				{
 					projection: {
 						durationLoops: 1,
+						gameLoops: 1,
 						outcome: 1,
 						settledOutcome: 1,
 						mode: 1,
@@ -786,6 +843,7 @@ export async function getReplayFacts(
 			const mode = replayModeOf(r);
 			map[r._id] = {
 				durationLoops: r.durationLoops ?? 0,
+				gameLoops: gameLoopsOf(r),
 				...(outcome ? { outcome } : {}),
 				...(mode ? { mode } : {}),
 				...(r.modifiers?.length ? { modifiers: r.modifiers } : {})
@@ -803,10 +861,12 @@ export async function getReplayFacts(
  */
 const REPLAY_DETAIL_PROJECTION = {
 	playedAt: 1,
+	startedAt: 1,
 	title: 1,
 	baseBuild: 1,
 	size: 1,
 	durationLoops: 1,
+	gameLoops: 1,
 	outcome: 1,
 	settledOutcome: 1,
 	mode: 1,
@@ -838,10 +898,12 @@ async function readReplay(file: string): Promise<ReplayDetail | null> {
 	return {
 		file: doc._id,
 		playedAt: doc.playedAt,
+		startedAt: doc.startedAt ?? startedAtOf(doc.playedAt, doc.durationLoops),
 		title: doc.title,
 		baseBuild: doc.baseBuild,
 		size: doc.size,
 		durationLoops: doc.durationLoops ?? 0,
+		gameLoops: gameLoopsOf(doc),
 		// the settled result rides on the doc itself now, so one game's page
 		// no longer re-derives it from the whole archive
 		outcome: replayOutcomeOf(doc) ?? null,
@@ -1324,6 +1386,7 @@ export async function persistSettledModes(
 const DERIVED_PROJECTION = {
 	playedAt: 1,
 	durationLoops: 1,
+	gameLoops: 1,
 	outcome: 1,
 	settledOutcome: 1,
 	mode: 1,
@@ -1341,6 +1404,7 @@ type DerivedDoc = Pick<
 	| '_id'
 	| 'playedAt'
 	| 'durationLoops'
+	| 'gameLoops'
 	| 'outcome'
 	| 'settledOutcome'
 	| 'mode'
@@ -1354,6 +1418,7 @@ async function persistMosBoards(docs: DerivedDoc[]): Promise<number> {
 		docs.map((r) => ({
 			playedAt: r.playedAt,
 			durationLoops: r.durationLoops,
+			gameLoops: r.gameLoops,
 			sightings: r.sightings ?? []
 		}))
 	);
@@ -1491,6 +1556,7 @@ export async function rebuildPlayersFor(toons: string[]): Promise<number> {
 						baseBuild: 1,
 						lobbyId: 1,
 						durationLoops: 1,
+						gameLoops: 1,
 						outcome: 1,
 						size: 1,
 						sightings: { $elemMatch: { toon } }
@@ -1509,6 +1575,7 @@ export async function rebuildPlayersFor(toons: string[]): Promise<number> {
 					protocolExact: true,
 					lobbyId: r.lobbyId ?? 0,
 					durationLoops: r.durationLoops ?? 0,
+					gameLoops: gameLoopsOf(r),
 					outcome: r.outcome ?? null,
 					mode: r.mode ?? null,
 					modifiers: r.modifiers ?? [],
@@ -1556,6 +1623,7 @@ export async function rebuildPlayers(): Promise<number> {
 				protocolExact: true,
 				lobbyId: r.lobbyId ?? 0,
 				durationLoops: r.durationLoops ?? 0,
+				gameLoops: gameLoopsOf(r),
 				outcome: r.outcome ?? null,
 				mode: r.mode ?? null,
 				modifiers: r.modifiers ?? [],

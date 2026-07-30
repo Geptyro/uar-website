@@ -86,3 +86,17 @@ test('applies the limit and counts games with no recorded duration', () => {
 	// a player with no shared games has an empty board
 	assert.deepEqual(topTeammates(replays, 'nobody'), []);
 });
+
+test('credits the game, not a recording left running after it ended', () => {
+	const replays: TeammateReplay[] = [
+		{
+			playedAt: '2026-07-30T04:43:07Z',
+			durationLoops: 16 * 32768,
+			gameLoops: 16 * 4726,
+			sightings: [sighting('t1', 'Alice'), sighting('t2', 'Bob')]
+		}
+	];
+	assert.deepEqual(topTeammates(replays, 't1'), [
+		{ name: 'Bob', clan: '', toon: 't2', games: 1, seconds: 4726 }
+	]);
+});

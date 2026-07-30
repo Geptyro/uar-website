@@ -30,7 +30,7 @@
 			when: timeAgo(g.playedAt, now) ?? fmtWhen.format(new Date(g.playedAt)),
 			exact: fmtWhen.format(new Date(g.playedAt)),
 			players: g.players,
-			duration: g.durationLoops ? fmtDuration(g.durationLoops) : '',
+			duration: g.gameLoops ? fmtDuration(g.gameLoops) : '',
 			outcome: g.outcome,
 			mode: g.mode,
 			mods: orderModifiers(g.modifiers ?? [])

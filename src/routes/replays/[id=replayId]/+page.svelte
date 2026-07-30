@@ -11,7 +11,11 @@
 	let { data } = $props();
 	const r = $derived(data.replay);
 
-	const when = $derived(r.playedAt.slice(0, 16).replace('T', ' '));
+	// the game's own start: r.playedAt is when the recording stopped
+	const when = $derived(r.startedAt.slice(0, 16).replace('T', ' '));
+	// a recording that outlasted the game means the uploader stayed in the
+	// finished map — worth saying, since the two tiles then disagree
+	const idled = $derived(r.durationLoops > r.gameLoops);
 
 	function fmtSize(bytes: number): string {
 		return bytes >= 1e6 ? `${(bytes / 1e6).toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`;
@@ -31,7 +35,7 @@
 />
 
 <div class="tiles">
-	<div class="tile"><b>{when}</b><span>game date · UTC</span></div>
+	<div class="tile"><b>{when}</b><span>game start · UTC</span></div>
 	<div class="tile">
 		<b class="mode">{#if r.mode}<ModeMark mode={r.mode} />{:else}—{/if}</b>
 		<span>game mode</span>
@@ -43,7 +47,10 @@
 		<span>modifiers</span>
 	</div>
 	<div class="tile"><b>{r.players.length}</b><span>profiles</span></div>
-	<div class="tile"><b>{fmtDuration(r.durationLoops)}</b><span>recorded</span></div>
+	<div class="tile">
+		<b>{fmtDuration(r.gameLoops)}</b>
+		<span>{idled ? `game length · ${fmtDuration(r.durationLoops)} recorded` : 'game length'}</span>
+	</div>
 	<div class="tile">
 		<b class="outcome">
 			<OutcomeMark outcome={r.outcome} size="lg" />
@@ -55,9 +62,14 @@
 </div>
 
 <p class="note meta">
-	<span class="mono">{r.title}</span> · base build <span class="mono">{r.baseBuild}</span> ·
-	recording length is the uploader's client recording — a leaver's replay is shorter than the
-	full game.
+	<span class="mono">{r.title}</span> · base build <span class="mono">{r.baseBuild}</span> · the
+	length is this uploader's client recording, cut off at the end of the game — a leaver's replay
+	is shorter than the full game.
+	{#if idled}
+		This recording kept rolling for {fmtDuration(r.durationLoops - r.gameLoops)} after the game
+		was over: the map leaves you in it until you click through the end screen, and SC2 counts
+		that time. Only the game itself is counted here and in the playtime boards.
+	{/if}
 	{#if !r.outcome}
 		The result is unknown for now: this recording stopped before the game ended, and none of its
 		players has uploaded a later game yet.

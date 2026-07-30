@@ -83,3 +83,18 @@ test('missing durationLoops counts the game with zero time', () => {
 		{ name: 'Alice', clan: '', toon: 't1', games: 1, seconds: 0 }
 	]);
 });
+
+test('credits the game, not a recording left running after it ended', () => {
+	// the archive's idled recording: 9:06:08 recorded, 1:18:46 of game
+	const replays: PlaytimeReplay[] = [
+		{
+			playedAt: '2026-07-30T04:43:07Z',
+			durationLoops: 16 * 32768,
+			gameLoops: 16 * 4726,
+			sightings: [sighting('t1', 'Alice', ['Medic'])]
+		}
+	];
+	assert.deepEqual(topPlayersByMos(replays)['Medic'], [
+		{ name: 'Alice', clan: '', toon: 't1', games: 1, seconds: 4726 }
+	]);
+});

@@ -13,6 +13,7 @@ import { createHash } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseReplay } from '../src/lib/server/replay/extract.ts';
+import { startedAtOf } from '../src/lib/gameEnd.ts';
 import { putObject, objectExists, bucketConfigured } from '../src/lib/server/replay/s3.ts';
 import { db, dbConfigured, rebuildPlayers, replayExists, insertReplayDoc } from '../src/lib/server/db.ts';
 
@@ -59,6 +60,7 @@ for (const file of files) {
 		await insertReplayDoc({
 			_id: name,
 			playedAt: parsed.playedAt,
+			startedAt: startedAtOf(parsed.playedAt, parsed.durationLoops),
 			title: parsed.title,
 			baseBuild: parsed.baseBuild,
 			size: statSync(path).size,
@@ -66,6 +68,7 @@ for (const file of files) {
 			sha256: createHash('sha256').update(data).digest('hex'),
 			lobbyId: parsed.lobbyId,
 			durationLoops: parsed.durationLoops,
+			gameLoops: parsed.gameLoops,
 			...(parsed.outcome ? { outcome: parsed.outcome } : {}),
 			...(parsed.mode ? { mode: parsed.mode } : {}),
 			...(parsed.modifiersRead ? { modifiers: parsed.modifiers } : {}),

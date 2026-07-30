@@ -6,6 +6,7 @@
 	"protocolExact": true,
 	"lobbyId": 722682972,
 	"durationLoops": 496,
+	"gameLoops": 496,
 	"outcome": "loss",
 	"mode": null,
 	"modifiers": [],
