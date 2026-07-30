@@ -27,3 +27,12 @@ https only).
   at most one or two per release); `minor` = players wouldn't notice unless
   told — kept off the overview widget and the new-version dot, listed as a
   compact "Also:" line on /changelog. Omit for everything in between.
+
+A title may be quoted or not — `title: 'Fixed: the thing'` and
+`title: Fixed: the thing` both read as the same headline. Quote it if it
+contains a `"`, and use single quotes when you do.
+
+`npm run changelog:check` lints every entry (`npm test` runs it too). Worth
+running after writing one: the parser deliberately never fails a build over an
+entry, so an off-schema `type`/`area` would otherwise file the change under the
+wrong heading without a word.
