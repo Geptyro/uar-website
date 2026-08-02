@@ -127,6 +127,24 @@ test('mosDescription carries the MOS code when it differs from the name', () => 
 	assert.ok(!mosDescription({ ...mos, mos: 'Automatic Rifleman' }).includes('(MOS'));
 });
 
+test('mosDescription calls a piloted vehicle a vehicle, not a class', () => {
+	const predator = {
+		id: 'Goliath2',
+		name: 'Predator',
+		mos: '',
+		role: '',
+		life: 550,
+		armor: null,
+		weapons: [{}],
+		skills: [],
+		tooltip: 'Light mecha with powerful abilities.'
+	};
+	const d = mosDescription(predator, 'Assault Engineer');
+	assert.ok(d.startsWith('Predator — walker piloted by the Assault Engineer in'), d);
+	// no pilot given = the normal class wording
+	assert.ok(mosDescription(predator).startsWith('Predator — player class in'));
+});
+
 test('playerDescription counts games and mentions a clan only when there is one', () => {
 	const p = { name: 'Znimu', clan: 'UAR', gamesPlayed: 1200, prestige: 2, wins: 340 };
 	const d = playerDescription(p);

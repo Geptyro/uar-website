@@ -9,7 +9,9 @@
 # (simulated by rewriting the stored doc's sha256/durationLoops — the only
 # way to emulate a second, longer recording of the same lobby without one),
 # and blob retention: a pruned replay still 410s, still answers the upload
-# pre-check, and is still recognised as already processed on re-upload.
+# pre-check, and is still recognised as already processed on re-upload — plus
+# the ingest-time half, where a game everyone has already played past is
+# recorded without its bytes ever reaching the bucket.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
@@ -48,6 +50,9 @@ curl -sf -X PUT -u itkey:itsecret123 --aws-sigv4 "aws:amz:auto:s3" \
 export MONGODB_URI="mongodb://localhost:$MPORT" MONGODB_DB=uar-it
 export AWS_ACCESS_KEY_ID=itkey AWS_SECRET_ACCESS_KEY=itsecret123
 export AWS_ENDPOINT_URL_S3="http://localhost:$SPORT" BUCKET_NAME=uar-it
+# on, or the ingest-time half of the retention rule is never reached — and the
+# deployment this rig stands in for runs with it on
+export REPLAY_PRUNE=1
 export PORT=$APPPORT ORIGIN="http://localhost:$APPPORT" BODY_SIZE_LIMIT=16M
 node build &
 SERVER_PID=$!
@@ -131,6 +136,36 @@ R=$(curl -s "http://localhost:$APPPORT/api/replays?sha256=$SHA")
 check "pruned replay still known to the upload pre-check" '"exists":true' "$R"
 R=$(upload tests/fixtures/20260723-1808.SC2Replay)
 check "re-upload of a pruned replay -> already processed" 'already processed' "$R"
+
+# --- retention at ingest: a game that arrives already superseded ------------
+# The other half of the rule: the sweep can only release a blob on a later
+# pass, so an old game found by a companion's backfill would otherwise be
+# uploaded, stored, and deleted again for nothing. Stage it by giving the
+# fixture's players a game a day newer than the fixture and forgetting the
+# fixture itself, then offering the fixture as a brand-new upload.
+# A copy, not a hand-written doc: the players rebuild reads these sightings.
+node -e "
+const {MongoClient}=require('mongodb');
+(async()=>{const c=new MongoClient(process.env.MONGODB_URI);await c.connect();
+const col=c.db(process.env.MONGODB_DB).collection('replays');
+const doc=await col.findOne({_id:'20260723-1808.SC2Replay'});
+delete doc.blobPrunedAt;
+await col.insertOne({...doc,_id:'20260724-1808.SC2Replay',
+  playedAt:new Date(Date.parse(doc.playedAt)+86400000).toISOString(),
+  // distinct lobby and hash, or the upload below resolves to this doc as a
+  // duplicate and never reaches the retention question
+  sha256:'1'.repeat(64),lobbyId:(doc.lobbyId||0)+1});
+await col.deleteOne({_id:'20260723-1808.SC2Replay'});
+await c.close();})()"
+# its bytes went with the sweep simulation above, so the bucket is already clear
+R=$(upload tests/fixtures/20260723-1808.SC2Replay)
+check "superseded replay accepted" '"ok":true' "$R"
+check "superseded replay not stored" '"stored":false' "$R"
+R=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:$APPPORT/replays/20260723-1808.SC2Replay")
+check "unstored replay download -> 410, not 404" "410" "$R"
+# the game is on record even though the file never was
+R=$(curl -s "http://localhost:$APPPORT/replays/20260723-1808")
+check "unstored replay keeps its page" 'KanaxStratz' "$R"
 
 echo
 if [ "$FAILS" -gt 0 ]; then echo "FAILED: $FAILS check(s)"; exit 1; fi

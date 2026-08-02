@@ -69,3 +69,21 @@ export function prunableReplays(replays: RetentionReplay[], keepPerPlayer = 1): 
 		.map((r) => r.file)
 		.sort();
 }
+
+/**
+ * Whether a replay arriving now has to keep its bytes at all.
+ *
+ * The same rule as `pinnedReplays`, asked from the other end: rather than rank
+ * the archive newest-first and hand out `keepPerPlayer` pins per player, take
+ * one replay and how many newer replays each of its participants already has.
+ * A single participant short of their quota pins it — a player whose latest
+ * game this still is has to be able to recover their bank from it.
+ *
+ * `newerPerToon` is one count per distinct participant, and each may be capped
+ * at `keepPerPlayer` since nothing above that changes the answer. An empty list
+ * is the no-sightings replay, kept for the reason `prunableReplays` gives.
+ */
+export function pinnedOnArrival(newerPerToon: number[], keepPerPlayer = 1): boolean {
+	if (keepPerPlayer < 1) throw new RangeError('keepPerPlayer must be at least 1');
+	return newerPerToon.length === 0 || newerPerToon.some((n) => n < keepPerPlayer);
+}

@@ -61,6 +61,15 @@ export interface Mos {
 	inventory: { abil: string | null; slots: number; classes: string[] };
 	/** Absent for classes outside the selection dialog (Sushi transformations). */
 	unlock?: MosUnlock;
+	/**
+	 * false = not a hero-selection slot: a vehicle another class enters in play. It gets
+	 * a class page and counts for item usability, but stays out of the roster and pickers.
+	 */
+	selectable?: boolean;
+	/** Vehicle only: the class that pilots it. */
+	pilotedBy?: string;
+	/** Pilot only: the vehicle it brings, which has its own page. */
+	vehicle?: string;
 }
 
 export type ItemType = 'weapon' | 'armor' | 'equipment' | 'consumable' | 'supply';
@@ -147,8 +156,15 @@ export function rankRewardsFor(mosId: string): MosRankReward[] {
 	return rankRewardsForMos(rankTracks, mosId);
 }
 
-/** Classes shown in the sidebar / index — the selectable roster. */
+/** Everything with a class page — the sidebar, the index and the comparisons. */
 export const mosList = allMos.filter((m) => m.id !== 'TemplateMOS');
+
+/**
+ * …of which these are the ones a player picks in the hero dialog. Only for counting the
+ * roster and for "can everybody use this item": a piloted vehicle is neither a slot in
+ * the lobby nor a carrier that a class-restriction chip is measured against.
+ */
+export const pickableMos = mosList.filter((m) => m.selectable !== false);
 
 export const mosById = new Map(allMos.map((m) => [m.id, m]));
 
@@ -211,6 +227,9 @@ const MECH_IDS = [
 export function allowedLabel(item: Item): string | null {
 	if (item.allowed === null) return null;
 	const set = new Set(item.allowed);
+	// every class you can actually pick — a piloted vehicle being left out (the Predator is
+	// not Heroic, so Heroic-filtered items skip it) is not a restriction worth a chip
+	if (pickableMos.every((m) => set.has(m.id))) return null;
 	if (BIO_IDS.length && BIO_IDS.every((id) => set.has(id)) && !MECH_IDS.some((id) => set.has(id)))
 		return 'Biological classes';
 	if (MECH_IDS.some((id) => set.has(id)) && !BIO_IDS.some((id) => set.has(id)))

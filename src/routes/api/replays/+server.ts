@@ -4,7 +4,8 @@
  * Accepts an .SC2Replay (multipart form, field "replay"), parses and
  * validates it in a worker thread (UAR map title, player save data
  * present) so uploads never block page requests, then:
- * - stores the replay blob in the Tigris bucket (replays/<name>)
+ * - stores the replay blob in the Tigris bucket (replays/<name>), unless the
+ *   retention rule says nobody needs it as a bank backup any more
  * - inserts a replay doc (with parsed sightings) into MongoDB
  * - rebuilds the players collection from all stored sightings
  *
@@ -18,11 +19,13 @@ import { rateLimiter } from 'sveltekit-commons/rate-limit';
 import { parseReplayOffThread, peekReplayOffThread } from '$lib/server/replay/offthread';
 import { decideIngest, canonicalName } from '$lib/server/replay/ingest';
 import { startedAtOf } from '$lib/gameEnd';
-import { putObject } from '$lib/server/replay/s3';
+import { deleteObject, putObject } from '$lib/server/replay/s3';
 import {
 	dbConfigured,
+	pruneEnabled,
 	replayExists,
 	replayExistsBySha,
+	replayPinnedOnArrival,
 	findReplayBySha,
 	getReplayByLobby,
 	insertReplayDoc,
@@ -31,12 +34,14 @@ import {
 } from '$lib/server/db';
 import { withLock } from '$lib/mutex';
 import rawMos from '$lib/data/mos.json';
+// Shared with every client that decides what to send, rather than spelled out
+// again here: the companion filters on MAP_TITLE before a replay leaves a
+// player's machine, and so does the browser sync. A copy that drifts either
+// uploads replays the client promised not to, or silently stops uploading.
+import { MAP_TITLE, MAX_UPLOAD_SIZE as MAX_SIZE } from 'uar-shared/replay';
 import type { RequestHandler } from './$types';
 
 export const prerender = false;
-
-const MAP_TITLE = 'Undead Assault reborn';
-const MAX_SIZE = 16 * 1024 * 1024;
 
 const mosIds = new Set((rawMos as { id: string }[]).map((m) => m.id));
 
@@ -104,7 +109,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 	// lobby id. Decide and write under a lock, or both would look new and
 	// collide on the document id; the second now sees the first's result
 	// and answers duplicate/replace like any later upload.
-	const { name, parsed, existed, playerCount } = await withLock('replay-ingest', async () => {
+	const { name, parsed, stored, existed, playerCount } = await withLock('replay-ingest', async () => {
 		const existing = await getReplayByLobby(peeked.lobbyId);
 		const decision = decideIngest(
 			peeked,
@@ -132,8 +137,28 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 			error(400, 'No player save data in this replay (empty or corrupted bank preload).');
 		}
 
-		// blob first — an orphaned blob is harmless, a doc without its blob is not
-		await putObject(`replays/${name}`, data, 'application/octet-stream');
+		// Would the sweep drop this file the moment it landed? A backfilled game
+		// whose players have all moved on would be stored and deleted again for
+		// nothing, and a companion's first run is hundreds of those. Asked with
+		// the same rule the sweep uses, so the two can never disagree about a
+		// file — and only while pruning is on, or this would prune by omission
+		// while REPLAY_PRUNE says not to.
+		const keepBlob =
+			!pruneEnabled() ||
+			(await replayPinnedOnArrival(
+				parsed.sightings.map((s) => s.toon),
+				parsed.playedAt
+			));
+
+		if (keepBlob) {
+			// blob first — an orphaned blob is harmless, a doc without its blob is not
+			await putObject(`replays/${name}`, data, 'application/octet-stream');
+		} else if (decision.kind === 'replace') {
+			// The doc below describes *this* file (sha256, size), so the shorter
+			// recording still sitting under that key would be bytes that no longer
+			// match their own record. Drop it rather than serve the mismatch.
+			await deleteObject(`replays/${name}`);
+		}
 		const doc = {
 			_id: name,
 			playedAt: parsed.playedAt,
@@ -155,16 +180,21 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 			// likewise the mode: only when the recording lasted past the vote
 			...(parsed.mode ? { mode: parsed.mode } : {}),
 			...(parsed.modifiersRead ? { modifiers: parsed.modifiers } : {}),
+			// the sweep would take it on its next pass anyway; recording it now
+			// keeps the page, the download and the dedupe message honest from the
+			// first moment instead of for the next hour
+			...(keepBlob ? {} : { blobPrunedAt: new Date().toISOString() }),
 			sightings: parsed.sightings
 		};
-		// replaceReplayDoc writes the doc whole, so a longer recording of a
-		// game whose blob was pruned drops blobPrunedAt along with it — the
-		// putObject above has already restored the bytes it refers to.
+		// replaceReplayDoc writes the doc whole, so blobPrunedAt is whatever was
+		// decided just above: cleared when a longer recording restored the bytes
+		// of a pruned game, set again when this recording was not worth keeping.
 		if (decision.kind === 'replace') await replaceReplayDoc(doc);
 		else await insertReplayDoc(doc);
 		return {
 			name,
 			parsed,
+			stored: keepBlob,
 			existed: Boolean(existing),
 			// only the players in this game can have changed, so the rebuild is
 			// told who rather than re-deriving the whole collection
@@ -173,7 +203,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 	});
 	const existing = existed;
 	console.log(
-		`upload ${existing ? 'replaced' : 'accepted'}: ${name} (${parsed.sightings.length} profiles, ${playerCount === null ? 'rebuild queued' : playerCount + ' profiles rebuilt'})`
+		`upload ${existing ? 'replaced' : 'accepted'}: ${name} (${parsed.sightings.length} profiles, ${stored ? 'blob kept' : 'blob not kept'}, ${playerCount === null ? 'rebuild queued' : playerCount + ' profiles rebuilt'})`
 	);
 
 	return json({
@@ -186,8 +216,12 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 		profiles: parsed.sightings.length,
 		protocolExact: parsed.protocolExact,
 		replaced: Boolean(existing),
-		message: existing
-			? 'Longer recording of a known game — replaced the stored replay.'
-			: 'Replay accepted — profiles are live now.'
+		/** Whether the file itself was kept, as opposed to only the game's record. */
+		stored,
+		message: !stored
+			? 'Game recorded — every player in it already has a more recent replay, so the file itself was not kept.'
+			: existing
+				? 'Longer recording of a known game — replaced the stored replay.'
+				: 'Replay accepted — profiles are live now.'
 	});
 };

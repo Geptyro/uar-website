@@ -1,6 +1,14 @@
 import type { Handle } from '@sveltejs/kit';
+import { dev } from '$app/environment';
 import { readSession } from '$lib/server/session';
-import { cacheStats, ensureIndexes, warmCache } from '$lib/server/db';
+import {
+	cacheStats,
+	dbConfigured,
+	ensureIndexes,
+	pruneEnabled,
+	sweepReplayBlobs,
+	warmCache
+} from '$lib/server/db';
 import { warmReplayWorker } from '$lib/server/replay/offthread';
 
 // one parsing worker for the lifetime of the server, started before the
@@ -29,6 +37,27 @@ const STATS_EVERY_MS = 15 * 60_000;
 setInterval(() => {
 	for (const line of cacheStats()) console.log(`cache ${line}`);
 }, STATS_EVERY_MS).unref();
+
+// Replay blob retention (see lib/replayRetention.ts). A file stops being
+// someone's bank backup the moment a *different* player uploads a later game,
+// which is not an event any one upload can notice — so the sweep is a clock,
+// not a hook. It reads one narrow projection of the replays collection, about
+// what a page of the replay list costs, and deletes nothing on the vast
+// majority of passes.
+//
+// Never in dev: the local .env points at the live cluster and bucket, and a dev
+// server left running would quietly delete production blobs. Deleting from a
+// developer's machine is scripts/prune-blobs.ts, which asks first.
+const SWEEP_EVERY_MS = 60 * 60_000;
+const SWEEP_AFTER_BOOT_MS = 60_000;
+if (!dev && dbConfigured() && pruneEnabled()) {
+	const sweep = () =>
+		void sweepReplayBlobs().catch((e) => console.error('replay blob sweep failed:', e));
+	// a deploy is also the moment an archive has had the longest to drift, but
+	// let the machine finish coming up first
+	setTimeout(sweep, SWEEP_AFTER_BOOT_MS).unref();
+	setInterval(sweep, SWEEP_EVERY_MS).unref();
+}
 
 export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.session = readSession(event.cookies);

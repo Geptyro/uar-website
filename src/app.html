@@ -6,6 +6,10 @@
 		<meta name="text-scale" content="scale" />
 		<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 		<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+		<!-- installable on purpose: Chrome only keeps a File System Access grant
+		     across sessions for an installed app, so /companion's browser replay
+		     sync stops re-prompting for the folder once the site is installed -->
+		<link rel="manifest" href="/manifest.webmanifest" />
 		%sveltekit.head%
 		<script>
 			// The theme picked on /account, applied before the first paint —

@@ -136,9 +136,12 @@ export interface SeoMos {
 	tooltip: string;
 }
 
-export function mosDescription(m: SeoMos): string {
+/** `pilotName` is passed only for a piloted vehicle — it is not a class of its own. */
+export function mosDescription(m: SeoMos, pilotName?: string | null): string {
 	const code = m.mos && m.mos !== m.name ? ` (MOS ${m.mos})` : '';
-	const lead = `${m.name}${code} — player class in ${GAME}.`;
+	const lead = pilotName
+		? `${m.name} — walker piloted by the ${pilotName} in ${GAME}.`
+		: `${m.name}${code} — player class in ${GAME}.`;
 	const prose = tooltipProse(m.tooltip);
 	const facts = [unitFacts(m), m.skills.length ? `${m.skills.length} skills` : '']
 		.filter(Boolean)

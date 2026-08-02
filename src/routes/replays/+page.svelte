@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import Seo from '$lib/components/Seo.svelte';
+	import BrowserSync from '$lib/components/BrowserSync.svelte';
 
 	let uploading = $state(false);
 	let result = $state<{ ok: boolean; text: string } | null>(null);
@@ -81,6 +82,8 @@
 		<p class="result" class:err={!result.ok}>{result.text}</p>
 	{/if}
 </form>
+
+<BrowserSync />
 
 <h2 class="section">Or let UAR Companion upload for you</h2>
 <div class="card tray">

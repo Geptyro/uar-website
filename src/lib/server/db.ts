@@ -24,7 +24,7 @@ import { cacheKeyMatches, cacheState } from 'sveltekit-commons/cache';
 import { escapeRegex } from 'sveltekit-commons/text';
 import { careerXp, totalWins } from '../xp.ts';
 import { bucketConfigured, deleteObject } from './replay/s3.ts';
-import { prunableReplays } from '../replayRetention.ts';
+import { pinnedOnArrival, prunableReplays } from '../replayRetention.ts';
 import { withLock } from '../mutex.ts';
 import { topPlayersByMos } from './playtime.ts';
 import { topTeammates } from './teammates.ts';
@@ -1771,6 +1771,13 @@ export async function rebuildPlayers(): Promise<number> {
  * every doc. Gated on REPLAY_PRUNE so the code can ship before the archive is
  * settled enough to start deleting.
  *
+ * Runs on a clock (see hooks.server.ts), not off an upload, because that is
+ * the shape of the rule: a file stops being someone's backup when a *different*
+ * player uploads a later game, so no single upload can be told "and now that
+ * one is droppable" without re-deciding the archive. The upload path narrows
+ * the same question to the file in front of it (`replayPinnedOnArrival`); this
+ * is what catches everything the passage of time releases afterwards.
+ *
  * Each file is deleted under the ingest lock, one at a time, because the sweep
  * runs concurrently with uploads. Without it the `replace` path races us: an
  * upload stores a longer recording of a known game just as we delete that
@@ -1787,25 +1794,58 @@ export function pruneEnabled(): boolean {
 	return process.env.REPLAY_PRUNE === '1';
 }
 
-export async function sweepReplayBlobs(docs: ReplayDoc[]): Promise<number> {
+export function keepPerPlayer(): number {
+	return Number(process.env.REPLAY_KEEP_PER_PLAYER ?? 1);
+}
+
+/**
+ * All the retention rule actually reads: the id, the ordering key, the race
+ * guard, and who played. A fraction of a full doc — a few hundred bytes a game
+ * against the megabytes a whole archive of sightings would be — which is what
+ * lets the sweep read the collection itself instead of waiting for a caller
+ * that happens to be holding it.
+ */
+type RetentionDoc = Pick<ReplayDoc, '_id' | 'playedAt' | 'sha256' | 'blobPrunedAt'> & {
+	sightings?: { toon: string }[];
+};
+
+async function retentionDocs(): Promise<RetentionDoc[]> {
+	const d = await db();
+	return (await d
+		.collection<ReplayDoc>('replays')
+		.find(
+			{},
+			{ projection: { _id: 1, playedAt: 1, sha256: 1, blobPrunedAt: 1, 'sightings.toon': 1 } }
+		)
+		.toArray()) as unknown as RetentionDoc[];
+}
+
+/**
+ * @param docs the archive to decide over, when the caller already holds it.
+ * Omitted, the sweep reads its own narrow projection — the case for a run on a
+ * clock, which is the only one that can catch a blob released by *another*
+ * player's upload.
+ */
+export async function sweepReplayBlobs(docs?: RetentionDoc[]): Promise<number> {
 	if (!pruneEnabled() || !bucketConfigured() || sweepRunning) return 0;
 	sweepRunning = true;
 	try {
+		const all = docs ?? (await retentionDocs());
 		const files = prunableReplays(
-			docs.map((r) => ({
+			all.map((r) => ({
 				file: r._id,
 				playedAt: r.playedAt,
-				toons: r.sightings.map((s) => s.toon).filter(Boolean),
+				toons: (r.sightings ?? []).map((s) => s.toon).filter(Boolean),
 				blobPruned: Boolean(r.blobPrunedAt)
 			})),
-			Number(process.env.REPLAY_KEEP_PER_PLAYER ?? 1)
+			keepPerPlayer()
 		);
 		if (!files.length) return 0;
 
 		// sha at decision time — if it changed, an upload replaced this game
 		// with a longer recording and the blob we meant to drop is not the
 		// blob that is there now
-		const shaAtDecision = new Map(docs.map((r) => [r._id, r.sha256]));
+		const shaAtDecision = new Map(all.map((r) => [r._id, r.sha256]));
 
 		const d = await db();
 		const col = d.collection<ReplayDoc>('replays');
@@ -1842,4 +1882,43 @@ export async function sweepReplayBlobs(docs: ReplayDoc[]): Promise<number> {
 	} finally {
 		sweepRunning = false;
 	}
+}
+
+/**
+ * Whether an arriving replay has to be stored at all — the ingest-side half of
+ * the retention rule (see lib/replayRetention.ts).
+ *
+ * One counted lookup per participant, capped at `keep` so it stops there
+ * instead of counting a regular's whole history, and returning on the first
+ * participant who is short. The ordinary upload is a game that has just
+ * finished, so nobody has anything newer and the first lookup answers it; the
+ * full set of lookups is only reached for a backfilled game, where it saves a
+ * pointless multi-megabyte round trip to the bucket.
+ *
+ * Strictly newer only: `pinnedReplays` breaks `playedAt` ties by file name and
+ * a count cannot see that. Two recordings stopping in the same millisecond is
+ * not a thing that happens, and if it did this would keep the replay rather
+ * than drop it — the harmless direction.
+ */
+export async function replayPinnedOnArrival(
+	toons: string[],
+	playedAt: string,
+	keep = keepPerPlayer()
+): Promise<boolean> {
+	const d = await db();
+	const col = d.collection<ReplayDoc>('replays');
+	const counts: number[] = [];
+	for (const toon of new Set(toons.filter(Boolean))) {
+		counts.push(
+			await col.countDocuments(
+				{ 'sightings.toon': toon, playedAt: { $gt: playedAt } },
+				{ limit: keep }
+			)
+		);
+		if (pinnedOnArrival(counts, keep)) return true;
+	}
+	// only reached with a count for every participant, none of them short —
+	// or, for a replay with no participants at all, with the empty list the
+	// rule answers `true` to
+	return pinnedOnArrival(counts, keep);
 }

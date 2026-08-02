@@ -350,7 +350,12 @@ export const gearGroups: {
 				desc: 'Move speed +0.01, energy max +20, life +20.',
 				req: 'Win Insane'
 			},
-			{ name: 'Shield regeneration', rank: 5, desc: null, req: 'Win Nightmare' },
+			{
+				name: 'Shield regeneration',
+				rank: 5,
+				desc: 'Auxiliary shield generator — shield regeneration +2 per second.',
+				req: 'Win Nightmare'
+			},
 			{
 				name: 'MK IV',
 				rank: 6,

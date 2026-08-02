@@ -152,6 +152,7 @@ export interface CardMos {
 	skills: unknown[];
 	icon: string | null;
 	tooltip: string;
+	selectable?: boolean;
 }
 
 export function mosCard(m: CardMos, prose: string): Card {
@@ -161,7 +162,11 @@ export function mosCard(m: CardMos, prose: string): Card {
 	if (m.armor !== null) chips.push(`${m.armor} armor`);
 	if (m.skills.length) chips.push(`${m.skills.length} skills`);
 	return {
-		eyebrow: m.mos ? `MOS ${m.mos}`.toUpperCase() : 'PLAYER CLASS',
+		eyebrow: m.mos
+			? `MOS ${m.mos}`.toUpperCase()
+			: m.selectable === false
+				? 'PILOTED VEHICLE'
+				: 'PLAYER CLASS',
 		name: displayName(m.name || m.id),
 		prose: firstSentence(prose),
 		chips,

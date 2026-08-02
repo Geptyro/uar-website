@@ -35,6 +35,8 @@ const units: CardUnit[] = JSON.parse(
 );
 /** Every class with a page — `mos/[id]/+page.ts` generates one per entry. */
 const allMos: CardMos[] = JSON.parse(await readFile(join(ROOT, 'src/lib/data/mos.json'), 'utf8'));
+/** …of which the roster is the pickable ones; piloted vehicles have a page but no slot. */
+const selectableMos = allMos.filter((m) => m.selectable !== false);
 const OUT = join(ROOT, 'static/og');
 const FONTS = join(ROOT, 'scripts/fonts');
 
@@ -193,7 +195,12 @@ function siteCard(): Card {
 		eyebrow: 'STARCRAFT II ARCADE',
 		name: 'Undead Assault Reborn',
 		prose: 'Unit database, player stats and replays for the arcade map.',
-		chips: [`${units.length} entities`, `${allMos.length} classes`, 'player stats', 'replays'],
+		chips: [
+			`${units.length} entities`,
+			`${selectableMos.length} classes`,
+			'player stats',
+			'replays'
+		],
 		icon: null
 	};
 }

@@ -18,6 +18,7 @@
 	import { changelogIcon, navItems } from '$lib/nav';
 	import CommandPalette from '$lib/components/CommandPalette.svelte';
 	import ReadyToPlay from '$lib/components/ReadyToPlay.svelte';
+	import SyncChip from '$lib/components/SyncChip.svelte';
 	import { SearchChip } from 'sveltekit-commons';
 	import { isSearchShortcut } from 'sveltekit-commons/palette';
 	import { AppShell, NavItem, NavProgress, NavSection } from 'sveltekit-commons/app';
@@ -178,6 +179,10 @@
 		     signed in, and waiting on /api/me would leave the bar's one visible
 		     search affordance missing for the first moment of every visit -->
 		<SearchChip onopen={() => palette?.open()} compact={compactChips} />
+		<!-- also outside the gate: a replay sync does not wait on /api/me, and
+		     hiding its progress until that lands would drop the chip for the
+		     first moment of every page -->
+		<SyncChip compact={compactChips} />
 		{#if me !== undefined}
 			<ReadyToPlay signedIn={me.battletag != null} compact={compactChips} />
 			<div class="acct-group">

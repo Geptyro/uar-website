@@ -21,7 +21,7 @@
 	 * Numbers come from $lib/mechanics and positions from $lib/map — both the
 	 * map's own script — so a re-extraction that moves them moves the page.
 	 */
-	import { mosById, mosList, mosName } from '$lib/mos';
+	import { mosById, mosList, mosName, pickableMos } from '$lib/mos';
 	import { rules, pityCap } from '$lib/mechanics';
 	import { mapRegions, mapSize, regionCenter } from '$lib/map';
 	import { modeNames } from '$lib/players';
@@ -145,7 +145,9 @@
 					{/each}
 				</span>
 			{/if}
-			<span class="n-d">You start with these. {mosList.length} in all — rank unlocks the rest.</span>
+			<span class="n-d">
+				You start with these. {pickableMos.length} in all — rank unlocks the rest.
+			</span>
 		</div>
 
 		<!-- the bracket only means anything while the branches sit side by side;

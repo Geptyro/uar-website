@@ -1,0 +1,31 @@
+{
+	"name": "Undead Assault Reborn",
+	"short_name": "UAR",
+	"description": "Unit database, player stats and replay sync for the StarCraft II arcade map Undead Assault Reborn.",
+	"id": "/",
+	"start_url": "/",
+	"scope": "/",
+	"display": "standalone",
+	"background_color": "#0f1115",
+	"theme_color": "#0f1115",
+	"categories": ["games", "utilities"],
+	"icons": [
+		{ "src": "/favicon-32.png", "sizes": "32x32", "type": "image/png" },
+		{ "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+		{ "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+		{ "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+		{
+			"src": "/icon-maskable-512.png",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "maskable"
+		}
+	],
+	"shortcuts": [
+		{
+			"name": "Sync my replays",
+			"url": "/companion",
+			"description": "Upload the Undead Assault Reborn replays in your StarCraft II folder"
+		}
+	]
+}

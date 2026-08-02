@@ -1,6 +1,7 @@
 <script lang="ts">
 	import {
 		allowedLabel,
+		mosById,
 		itemTypeLabels,
 		itemTypeOrder,
 		modsFor,
@@ -100,10 +101,19 @@
 	});
 
 	// account-progression gear (vehicle upgrades / medical visor) owned by this class,
-	// shown in pilot-rank order rather than bank-flag order
+	// shown in pilot-rank order rather than bank-flag order. A piloted vehicle shares its
+	// pilot's ladder — the gear is bolted onto the vehicle, but earned by playing the class.
 	const progressionGear = $derived.by(() => {
-		const g = accountGear.find((g) => g.mosId === mos.id);
+		const owner = mos.pilotedBy ?? mos.id;
+		const g = accountGear.find((g) => g.mosId === owner);
 		return g ? { ...g, items: [...g.items].sort((a, b) => a.rank - b.rank) } : null;
+	});
+
+	// the other half of a pilot/vehicle pair, so each page can point at the other
+	const counterpart = $derived.by(() => {
+		const id = mos.vehicle ?? mos.pilotedBy;
+		const other = id ? mosById.get(id) : null;
+		return other ? { mos: other, role: mos.vehicle ? 'vehicle' : 'pilot' } : null;
 	});
 
 	const unlock = $derived(mos.unlock ?? null);
@@ -159,7 +169,11 @@
 	}
 </script>
 
-<Seo title="{mos.name} — MOS" description={mosDescription(mos)} image={mosCardUrl(mos.id)} />
+<Seo
+	title="{mos.name} — MOS"
+	description={mosDescription(mos, counterpart?.role === 'pilot' ? counterpart.mos.name : null)}
+	image={mosCardUrl(mos.id)}
+/>
 
 <!-- an item's card is its entity page; the handful that have no entity of
      their own (mission props) are named but not linked -->
@@ -380,6 +394,23 @@
 			{facts}
 			link={{ href: `/entities/${mos.id}`, label: 'Unit data →' }}
 		/>
+		{#if counterpart}
+			<DescCard label={counterpart.role === 'vehicle' ? 'Vehicle' : 'Pilot'}>
+				<a class="pair" href="/mos/{counterpart.mos.id}">
+					{#if counterpart.mos.icon}
+						<img class="pair-icon" src={counterpart.mos.icon} alt="" loading="lazy" />
+					{/if}
+					<span class="pair-text">
+						<b>{counterpart.mos.name}</b>
+						<span class="pair-sub">
+							{counterpart.role === 'vehicle'
+								? `Brought along by the ${mos.name} — its own stats, weapons and ability card.`
+								: `Piloted by the ${counterpart.mos.name}, who enters and leaves it in play.`}
+						</span>
+					</span>
+				</a>
+			</DescCard>
+		{/if}
 		{#if mos.common.length}
 			<DescCard label="Standard abilities · {mos.common.length}">
 				<ul class="abil-grid">
@@ -702,6 +733,37 @@
 		object-fit: cover;
 		border-radius: var(--radius-2);
 		flex-shrink: 0;
+	}
+	.pair {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		margin-top: 4px;
+		text-decoration: none;
+		color: inherit;
+	}
+	.pair-icon {
+		width: 38px;
+		height: 38px;
+		object-fit: cover;
+		border-radius: var(--radius-2);
+		flex-shrink: 0;
+	}
+	.pair-text b {
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--accent);
+	}
+	.pair:hover .pair-text b {
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+	.pair-sub {
+		display: block;
+		margin-top: 2px;
+		font-size: 11.5px;
+		line-height: 1.5;
+		color: var(--text-dim);
 	}
 	.si-desc {
 		margin: 4px 0 0;
