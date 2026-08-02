@@ -44,6 +44,7 @@
 		"@google/model-viewer": "^4.3.1",
 		"aws4fetch": "^1.0.20",
 		"cedricdessalles-commons": "git+https://github.com/Geptyro/cedricdessalles-commons.git#semver:^0.1.0",
+		"fflate": "^0.8.3",
 		"grid-router": "git+https://github.com/Geptyro/grid-router.git",
 		"mongodb": "^7.5.0",
 		"seek-bzip": "^2.0.0",

@@ -10,7 +10,7 @@
  * produce byte-identical players.json.
  */
 
-import { MPQArchive } from './mpq.ts';
+import { MPQArchive } from './mpq-node.ts';
 import {
 	getProtocol,
 	hasProtocol,

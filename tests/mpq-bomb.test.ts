@@ -10,7 +10,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { deflateSync } from 'node:zlib';
-import { decompressChunk, MAX_FILE_BYTES } from '../src/lib/server/replay/mpq.ts';
+import { decompressChunk, MAX_FILE_BYTES } from '../src/lib/server/replay/mpq-node.ts';
 
 /** `2` is the zlib compression byte MPQ sectors are framed with. */
 function deflateChunk(bytes: number): Uint8Array {

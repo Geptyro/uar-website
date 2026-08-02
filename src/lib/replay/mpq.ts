@@ -2,10 +2,15 @@
  * Minimal MPQ (MoPaQ) archive reader — a TS port of the parts of mpyq
  * (Aku Kotkavuo, MIT) that SC2 replays need: user-data header, encrypted
  * hash/block tables, and file reads with zlib/bzip2 sector decompression.
+ *
+ * Deliberately platform-free: every byte of this file runs unchanged in Node
+ * and in a browser. The two decompressors are the only thing that differs
+ * between them, so they are injected rather than imported — see `mpq-node.ts`
+ * (native zlib, for the upload endpoint) and `mpq-browser.ts` (fflate, for
+ * the PWA that reads a player's replay folder locally). That is also why it
+ * sits in `$lib/` and not `$lib/server/`: SvelteKit refuses to bundle
+ * server-only modules into client code.
  */
-
-import { inflateSync } from 'node:zlib';
-import Bunzip from 'seek-bzip';
 
 const MPQ_FILE_COMPRESS = 0x00000200;
 const MPQ_FILE_ENCRYPTED = 0x00010000;
@@ -15,6 +20,19 @@ const MPQ_FILE_EXISTS = 0x80000000;
 
 const HASH_TYPES = { TABLE_OFFSET: 0, HASH_A: 1, HASH_B: 2, TABLE: 3 } as const;
 type HashType = keyof typeof HASH_TYPES;
+
+/**
+ * The platform's decompressors. Both are handed the exact number of bytes
+ * the chunk must produce and are required to refuse to exceed it — that
+ * bound is the decompression-bomb defence, so an implementation that
+ * ignores it silently removes the protection.
+ */
+export interface Codecs {
+	/** zlib (MPQ compression type 2). */
+	inflate(payload: Uint8Array, expected: number): Uint8Array;
+	/** bzip2 (MPQ compression type 16). May throw if unsupported. */
+	bunzip(payload: Uint8Array, expected: number): Uint8Array;
+}
 
 const encryptionTable: Uint32Array = (() => {
 	const table = new Uint32Array(0x500);
@@ -78,17 +96,21 @@ export const MAX_FILE_BYTES = 64 * 1024 * 1024;
  * writes into a buffer of exactly that size and reports a mismatch.
  * @internal exported for the decompression-bomb tests
  */
-export function decompressChunk(data: Uint8Array, expected: number): Uint8Array {
+export function decompressChunk(
+	data: Uint8Array,
+	expected: number,
+	codecs: Codecs
+): Uint8Array {
 	const compressionType = data[0];
 	if (compressionType === 0) return data;
 	if (!Number.isFinite(expected) || expected <= 0 || expected > MAX_FILE_BYTES) {
 		throw new Error(`refusing to decompress ${expected} bytes from ${data.length}`);
 	}
 	const payload = data.subarray(1);
-	if (compressionType === 2) return inflateSync(payload, { maxOutputLength: expected });
-	// given a size, seek-bzip decodes into a fixed buffer and refuses to grow
-	// it, so an overlong stream throws instead of eating the machine's memory
-	if (compressionType === 16) return Bunzip.decode(Buffer.from(payload), expected);
+	if (compressionType === 2) return codecs.inflate(payload, expected);
+	// given a size, the bzip2 decoder writes into a fixed buffer and refuses
+	// to grow it, so an overlong stream throws instead of eating memory
+	if (compressionType === 16) return codecs.bunzip(payload, expected);
 	throw new Error(`unsupported MPQ compression type ${compressionType}`);
 }
 
@@ -108,6 +130,7 @@ interface HashEntry {
 export class MPQArchive {
 	private data: Uint8Array;
 	private view: DataView;
+	private codecs: Codecs;
 	private archiveOffset: number;
 	private sectorSizeShift: number;
 	private hashTable: HashEntry[];
@@ -115,8 +138,9 @@ export class MPQArchive {
 	/** MPQ user-data content — for SC2 replays, the replay header blob. */
 	userDataContent: Uint8Array;
 
-	constructor(data: Uint8Array) {
+	constructor(data: Uint8Array, codecs: Codecs) {
 		this.data = data;
+		this.codecs = codecs;
 		this.view = new DataView(data.buffer, data.byteOffset, data.byteLength);
 
 		if (this.view.getUint32(0, true) !== 0x1b51504d) {
@@ -200,7 +224,7 @@ export class MPQArchive {
 
 		if (block.flags & MPQ_FILE_SINGLE_UNIT) {
 			if (block.flags & MPQ_FILE_COMPRESS && block.size > block.archivedSize) {
-				return decompressChunk(fileData, block.size);
+				return decompressChunk(fileData, block.size, this.codecs);
 			}
 			return fileData;
 		}
@@ -224,7 +248,7 @@ export class MPQArchive {
 		for (let i = 0; i < count; i++) {
 			let sector = fileData.subarray(positions[i], positions[i + 1]);
 			if (block.flags & MPQ_FILE_COMPRESS && bytesLeft > sector.length) {
-				sector = decompressChunk(sector, Math.min(sectorSize, bytesLeft));
+				sector = decompressChunk(sector, Math.min(sectorSize, bytesLeft), this.codecs);
 			}
 			bytesLeft -= sector.length;
 			parts.push(sector);

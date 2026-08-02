@@ -16,7 +16,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { MPQArchive } from '../src/lib/server/replay/mpq.ts';
+import { MPQArchive } from '../src/lib/server/replay/mpq-node.ts';
 import {
 	getProtocol,
 	decodeReplayHeader,
