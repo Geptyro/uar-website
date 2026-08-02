@@ -16,6 +16,7 @@
  * chain (see the `$lib/xp.ts` rule in CLAUDE.md).
  */
 import type { PaletteRow } from 'sveltekit-commons/palette';
+import { playerHref } from './playerTabs.ts';
 
 export type PaletteKind = 'page' | 'mos' | 'si' | 'entity' | 'player';
 
@@ -141,14 +142,23 @@ export function pageRows(
  * Not passed through `rankRows`: the database already ordered them, by career
  * XP among equal matches, and re-ranking a top-N slice against the static
  * index would only shuffle six rows the server already chose.
+ *
+ * `tab` is the profile tab the reader is searching *from*, and every row keeps
+ * it: comparing two players' collections means the palette should land on the
+ * next player's Collection, not send you back to their overview to click
+ * through again. Empty — anywhere else on the site — carries nothing. Unlike
+ * STALZONE's entities, which offer different tabs depending on what an item
+ * can do, every player has all four, so there is no tab here that the next
+ * profile might not have.
  */
 export function playerRows(
-	list: { toon: string; name: string; clan?: string; avatarUrl?: string | null }[]
+	list: { toon: string; name: string; clan?: string; avatarUrl?: string | null }[],
+	tab = ''
 ): PaletteRow[] {
 	return list.map((p) => ({
 		kind: 'player',
 		id: p.toon,
-		href: `/players/${encodeURIComponent(p.toon)}`,
+		href: playerHref(p.toon, tab),
 		label: p.name || p.toon,
 		note: p.clan ? `<${p.clan}>` : 'player',
 		icon: p.avatarUrl ?? null,

@@ -211,3 +211,50 @@ test('buildPlayersData: newest sighting wins, history ordered, career sort', () 
 	);
 	assert.equal(history[0].wins, 3); // winsByMode summed
 });
+
+/* The committed golden set cannot cover this: all four of its replays give
+   every player exactly one sighting, so there is never a pair to difference
+   and "no awards anywhere" is its correct output. These two say what happens
+   when a player does appear twice. */
+
+test('buildPlayersData: a game carries what the next bank reveals it gave', () => {
+	const unlocks = decodeUnlocks({});
+	const older = fakeSighting({
+		gamesPlayed: 10,
+		playedAt: '2026-01-01T00:00:00Z',
+		file: 'a.SC2Replay'
+	});
+	const newer = fakeSighting({
+		gamesPlayed: 11,
+		playedAt: '2026-02-01T00:00:00Z',
+		file: 'b.SC2Replay',
+		unlocks: { ...unlocks, medals: [...unlocks.medals, 3] }
+	});
+	const data = buildPlayersData([
+		fakeReplay('a.SC2Replay', '2026-01-01T00:00:00Z', [older]),
+		fakeReplay('b.SC2Replay', '2026-02-01T00:00:00Z', [newer])
+	]);
+
+	const history = (data.players[0] as Record<string, unknown>).history as {
+		file: string;
+		awards?: { type: string; id: number }[];
+	}[];
+	// credited to the game that was played, not to the one that revealed it
+	assert.deepEqual(history[0].awards, [{ type: 'medal', id: 3 }]);
+	// and the newest game has no follow-up yet, so it claims nothing
+	assert.equal(history[1].awards, undefined);
+});
+
+test('buildPlayersData: a game that gave nothing carries no awards key at all', () => {
+	// the field is absent rather than empty: history is the one unbounded array
+	// on a player, and an empty array on every row of it is paid for on every read
+	const older = fakeSighting({ gamesPlayed: 10, playedAt: '2026-01-01T00:00:00Z', file: 'a.SC2Replay' });
+	const newer = fakeSighting({ gamesPlayed: 11, playedAt: '2026-02-01T00:00:00Z', file: 'b.SC2Replay' });
+	const data = buildPlayersData([
+		fakeReplay('a.SC2Replay', '2026-01-01T00:00:00Z', [older]),
+		fakeReplay('b.SC2Replay', '2026-02-01T00:00:00Z', [newer])
+	]);
+
+	const history = (data.players[0] as Record<string, unknown>).history as Record<string, unknown>[];
+	assert.ok(!('awards' in history[0]), 'expected no awards key on a game that gave nothing');
+});

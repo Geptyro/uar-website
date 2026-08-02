@@ -22,6 +22,15 @@ import {
 	decodeReplayTrackerEvents
 } from './protocol.ts';
 import { hx1, hxList, decodeUnlocks, XP_CAP, type Unlocks } from './bank.ts';
+// dependency-free by design, so the CLIs and node:test can load this file
+import { awardsBetween, isCreditable, type Award, type AwardRankTrack } from '../../awards.ts';
+// the rank ladders, straight from the extractor's own output — imported the
+// way protocol.ts already imports its tables, which is the form that survives
+// all three of Vite, the worker bundle and bare node
+import rankData from '../../data/ranks.json' with { type: 'json' };
+
+/** Rank ladders in the shape awards.ts wants; `ranks` is ascending by XP. */
+const RANK_TRACKS = rankData as AwardRankTrack[];
 import { decodeAttributes, lobbyVotedMode } from './attributes.ts';
 import { tallyModeVotes, type ModeVoter } from '../../mode.ts';
 import { tallyModifiers, type ModifierEvent } from './modifiers.ts';
@@ -547,6 +556,17 @@ interface HistoryEntry {
 	avgGameTime: number;
 	mos: string[];
 	wins: number;
+	/**
+	 * What this game gave, from the difference to the next bank — see
+	 * lib/awards.ts.
+	 *
+	 * Left off entirely when a game gave nothing, which is most of them: a
+	 * profile's history is the one array here that grows without bound, and
+	 * every key on it is paid for on every read. Its absence is also what makes
+	 * the feed cheap to fetch — the read asks the database for the entries that
+	 * have this field rather than for the history and a filter afterwards.
+	 */
+	awards?: Award[];
 }
 
 export interface PlayersData {
@@ -590,19 +610,26 @@ export function buildPlayersData(parsed: { replay: ParsedReplay; size: number }[
 			if (has) decalSet.add(num);
 		}
 		cur.unlocks.decals = [...decalSet].sort((a, b) => a - b);
-		const history: HistoryEntry[] = sightings.map((s) => ({
-			playedAt: s.playedAt,
-			file: s.file,
-			xpEn: s.xpEn,
-			xpWo: s.xpWo,
-			xpCo: s.xpCo,
-			prestige: s.prestige,
-			gamesPlayed: s.gamesPlayed,
-			revives: s.revives,
-			avgGameTime: s.avgGameTime,
-			mos: s.mos,
-			wins: s.winsByMode.reduce((a, b) => a + b, 0)
-		}));
+		const history: HistoryEntry[] = sightings.map((s, i) => {
+			// what this game gave is the difference to the bank the player
+			// carried into their next one, so the newest sighting never has any
+			const next = sightings[i + 1];
+			const awards = isCreditable(s, next) ? awardsBetween(s, next, RANK_TRACKS) : [];
+			return {
+				playedAt: s.playedAt,
+				file: s.file,
+				xpEn: s.xpEn,
+				xpWo: s.xpWo,
+				xpCo: s.xpCo,
+				prestige: s.prestige,
+				gamesPlayed: s.gamesPlayed,
+				revives: s.revives,
+				avgGameTime: s.avgGameTime,
+				mos: s.mos,
+				wins: s.winsByMode.reduce((a, b) => a + b, 0),
+				...(awards.length ? { awards } : {})
+			};
+		});
 		players.push({
 			name: cur.name,
 			clan: cur.clan,

@@ -346,6 +346,11 @@
 		/* the brand mark's width, which AppShell subtracts when it lines the
 		   page heading up with the content column below it */
 		--brand-w: 32px;
+		/* A rule down the rail's inner edge. The rail and the content share a
+		   surface here, so without it the nav has no edge and the icons read as
+		   floating in the same field as the page. AppShell leaves this off by
+		   default — see its .sidebar rule. */
+		--rail-border: var(--border-width) solid var(--border);
 		/* inner padding of cards and panels — one place, so narrow screens
 		   can claw back the width every card was spending twice over */
 		--card-pad-x: 14px;

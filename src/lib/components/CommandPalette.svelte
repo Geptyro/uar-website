@@ -17,7 +17,9 @@
 	import { rankRows, type PaletteRow, type RowGroup } from 'sveltekit-commons/palette';
 
 	import { mosList, skillIdentifiers } from '$lib/mos';
+	import { page } from '$app/state';
 	import { extraDestinations, navItems } from '$lib/nav';
+	import { tabSegment } from '$lib/playerTabs';
 	import {
 		browseRows,
 		entityRows,
@@ -99,7 +101,9 @@
 				const res = await fetch(`/api/search/players?q=${encodeURIComponent(term)}`);
 				if (!res.ok) return;
 				const body = (await res.json()) as { players: Parameters<typeof playerRows>[0] };
-				if (mine === seq) players = playerRows(body.players);
+				// keep the profile tab the reader searched from, so comparing two
+				// players' collections does not land on the second one's overview
+				if (mine === seq) players = playerRows(body.players, tabSegment(page.route.id) ?? '');
 			} catch {
 				// transient — the static half of the palette still answers
 			} finally {

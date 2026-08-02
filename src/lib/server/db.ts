@@ -596,6 +596,75 @@ export async function getPlayerSummary(toon: string): Promise<Record<string, unk
 }
 
 /**
+ * The games in a player's history that gave them something, newest first.
+ *
+ * `$filter` runs in the database, so what comes back is the handful of games
+ * that produced an award rather than the whole history for this process to
+ * sift — which for the most active player is 377 entries and 78 KB, on a
+ * cluster whose only lever is bytes returned. That is the entire reason ranks
+ * and prestige are written down beside the unlocks: if half an award were
+ * worked out here, nothing could be filtered there.
+ *
+ * `gamesPlayed` rides along because the feed needs the run between each pair —
+ * the games nobody uploaded, which is what makes an award approximate.
+ */
+export async function getPlayerAwards(
+	toon: string,
+	limit = 60
+): Promise<Record<string, unknown>[]> {
+	return cached(`playerAwards:${toon}:${limit}`, async () => {
+		const d = await db();
+		const rows = await d
+			.collection('players')
+			.aggregate([
+				{ $match: { _id: toon } },
+				{
+					$project: {
+						_id: 0,
+						history: {
+							$filter: {
+								input: '$history',
+								as: 'h',
+								cond: { $gt: [{ $size: { $ifNull: ['$$h.awards', []] } }, 0] }
+							}
+						},
+						// every entry's game counter, so a run can be measured across
+						// the games that gave nothing and were therefore filtered out
+						counters: {
+							$map: { input: '$history', as: 'h', in: '$$h.gamesPlayed' }
+						}
+					}
+				}
+			])
+			.toArray();
+		const doc = rows[0] as
+			| { history?: Record<string, unknown>[]; counters?: number[] }
+			| undefined;
+		if (!doc?.history?.length) return [];
+		// oldest first out of the database; the feed reads the other way
+		const counters = doc.counters ?? [];
+		return doc.history
+			.map((h) => {
+				/* The run this game opens: from its own counter to the next game
+				   that was actually uploaded.
+
+				   Found as the first counter strictly greater than this one,
+				   rather than by looking this counter up and stepping forward.
+				   Two stored games can share a counter — the same game recorded
+				   by two players, or a save restored — and an index lookup would
+				   then step on from the wrong one and measure a run that never
+				   happened. */
+				const here = h.gamesPlayed as number;
+				const next = counters.find((c) => c > here);
+				const span = next === undefined ? 1 : Math.max(1, next - here);
+				return { ...h, span };
+			})
+			.reverse()
+			.slice(0, limit);
+	});
+}
+
+/**
  * One page of a player's replay history, newest first.
  *
  * History is stored oldest first — that ordering is what makes the per-row
