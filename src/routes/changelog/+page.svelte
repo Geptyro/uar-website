@@ -1,48 +1,50 @@
 <script lang="ts">
-	import { ChangeChip } from 'sveltekit-commons';
+	import { ChangeChip, Page } from 'sveltekit-commons';
 	import Seo from '$lib/components/Seo.svelte';
 
 	let { data } = $props();
 </script>
 
-<Seo
-	title="Changelog"
-	description="What changed on the UAR Unit Database, release by release: new pages, freshly extracted map data, and fixes."
-/>
+<Page>
+	<Seo
+		title="Changelog"
+		description="What changed on the UAR Unit Database, release by release: new pages, freshly extracted map data, and fixes."
+	/>
 
-<p class="note">What changed on this site, release by release.</p>
+	<p class="note">What changed on this site, release by release.</p>
 
-{#each data.releases as rel (rel.version)}
-	<section class="release">
-		<header class="rel-head">
-			<h2>{rel.version}</h2>
-			{#if rel.date}<time datetime={rel.date}>{rel.date}</time>{/if}
-		</header>
-		<div class="entries">
-			{#each rel.entries.filter((e) => e.impact !== 'minor') as e (e.title)}
-				<article class="card entry" class:major={e.impact === 'major'}>
-					<header>
-						<ChangeChip type={e.type} />
-						<h3>{e.title}</h3>
-						<span class="area">{e.area}</span>
-					</header>
-					<div class="body">
-						<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized subset from our own files -->
-						{@html e.html}
-					</div>
-				</article>
-			{/each}
-			{#if rel.entries.some((e) => e.impact === 'minor')}
-				<p class="also">
-					Also: {rel.entries
-						.filter((e) => e.impact === 'minor')
-						.map((e) => e.title)
-						.join(' · ')}
-				</p>
-			{/if}
-		</div>
-	</section>
-{/each}
+	{#each data.releases as rel (rel.version)}
+		<section class="release">
+			<header class="rel-head">
+				<h2>{rel.version}</h2>
+				{#if rel.date}<time datetime={rel.date}>{rel.date}</time>{/if}
+			</header>
+			<div class="entries">
+				{#each rel.entries.filter((e) => e.impact !== 'minor') as e (e.title)}
+					<article class="card entry" class:major={e.impact === 'major'}>
+						<header>
+							<ChangeChip type={e.type} />
+							<h3>{e.title}</h3>
+							<span class="area">{e.area}</span>
+						</header>
+						<div class="body">
+							<!-- eslint-disable-next-line svelte/no-at-html-tags -- sanitized subset from our own files -->
+							{@html e.html}
+						</div>
+					</article>
+				{/each}
+				{#if rel.entries.some((e) => e.impact === 'minor')}
+					<p class="also">
+						Also: {rel.entries
+							.filter((e) => e.impact === 'minor')
+							.map((e) => e.title)
+							.join(' · ')}
+					</p>
+				{/if}
+			</div>
+		</section>
+	{/each}
+</Page>
 
 <style>
 	.release {

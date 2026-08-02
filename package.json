@@ -20,7 +20,7 @@
 		"link:shared": "npm i ../shared --no-save --install-links",
 		"unlink:shared": "npm i",
 		"og": "node scripts/build-og.ts",
-		"link:commons": "npm i ../../sveltekit-commons --no-save --install-links",
+		"link:commons": "npm i ../../sveltekit-commons --no-save",
 		"unlink:commons": "npm i",
 		"link:brand": "npm i ../../cedricdessalles/cedricdessalles-commons --no-save",
 		"unlink:brand": "npm i"
@@ -48,7 +48,7 @@
 		"grid-router": "git+https://github.com/Geptyro/grid-router.git",
 		"mongodb": "^7.5.0",
 		"seek-bzip": "^2.0.0",
-		"sveltekit-commons": "git+https://github.com/Geptyro/sveltekit-commons.git#semver:^0.11.0",
+		"sveltekit-commons": "git+https://github.com/Geptyro/sveltekit-commons.git#semver:^0.12.0",
 		"uar-shared": "git+https://github.com/Geptyro/uar-shared.git#semver:^0.8.0"
 	}
 }

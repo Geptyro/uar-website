@@ -2,6 +2,7 @@
 	import { mosList } from '$lib/mos';
 	import { jamRangeFor, mechanicsFor, shotsPerJam } from '$lib/mechanics';
 	import Seo from '$lib/components/Seo.svelte';
+	import { Page } from 'sveltekit-commons';
 
 	type Row = {
 		id: string;
@@ -86,82 +87,84 @@
 	const pct = (v: number | null, m: number) => (v && m ? (100 * v) / m : 0);
 </script>
 
-<Seo
-	title="Classes compared — MOS"
-	description="Weapon handling across every player class in Undead Assault Reborn: magazine size, reload, worst-case jam risk per shot and panel count, from the map script."
-/>
+<Page>
+	<Seo
+		title="Classes compared — MOS"
+		description="Weapon handling across every player class in Undead Assault Reborn: magazine size, reload, worst-case jam risk per shot and panel count, from the map script."
+	/>
 
-<h2 class="section">Classes compared</h2>
-<p class="note">
-	Weapon handling across all {rows.length} classes, from the map's trigger script. Jam risk is the worst-case
-	chance that any single shot jams — it is set by the magazine size the class spawns with, so small-magazine
-	classes jam far more often per shot. Click a column to sort.
-</p>
+	<h2 class="section">Classes compared</h2>
+	<p class="note">
+		Weapon handling across all {rows.length} classes, from the map's trigger script. Jam risk is the worst-case
+		chance that any single shot jams — it is set by the magazine size the class spawns with, so small-magazine
+		classes jam far more often per shot. Click a column to sort.
+	</p>
 
-<div class="tablewrap">
-	<table class="data" style="min-width: 720px">
-		<thead>
-			<tr>
-				{#each columns as col (col.key)}
-					<th class:num={col.num} class="sortable" onclick={() => setSort(col.key)}>
-						{col.label}
-						<span class="dir">{sortKey === col.key ? (sortDir > 0 ? '↑' : '↓') : ''}</span>
-					</th>
-				{/each}
-			</tr>
-		</thead>
-		<tbody>
-			{#each sorted as r (r.id)}
+	<div class="tablewrap">
+		<table class="data" style="min-width: 720px">
+			<thead>
 				<tr>
-					<td class="namecell">
-						{#if r.icon}<img class="row-icon" src={r.icon} alt="" loading="lazy" />{/if}
-						<a href="/mos/{r.id}">{r.name}</a>
-						{#if !sameAsName(r.role, r.name)}<span class="role">{r.role}</span>{/if}
-					</td>
-
-					<td class="num barcell">
-						{#if r.mag}
-							<span class="v">{r.mag}</span>
-							<span class="bar"><span class="fill" style="width: {pct(r.mag, max.mag)}%"></span></span>
-						{:else}
-							<span class="v none" title="Burns fuel instead of magazines">fuel</span>
-						{/if}
-					</td>
-
-					<td class="num barcell">
-						{#if r.reload}
-							<span class="v">{+r.reload.toFixed(2)}</span>
-							<span class="bar"
-								><span class="fill" style="width: {pct(r.reload, max.reload)}%"></span></span
-							>
-						{:else}
-							<span class="v none">—</span>
-						{/if}
-					</td>
-
-					<td class="num barcell">
-						{#if r.jam}
-							<span class="v">1 in {n(shotsPerJam(r.jam))}</span>
-							<span class="bar"
-								><span class="fill risk" style="width: {pct(r.jam, max.jam)}%"></span></span
-							>
-						{:else}
-							<span class="v none" title="This class can never jam">never</span>
-						{/if}
-					</td>
-
-					<td class="num">{r.panel || ''}</td>
+					{#each columns as col (col.key)}
+						<th class:num={col.num} class="sortable" onclick={() => setSort(col.key)}>
+							{col.label}
+							<span class="dir">{sortKey === col.key ? (sortDir > 0 ? '↑' : '↓') : ''}</span>
+						</th>
+					{/each}
 				</tr>
-			{/each}
-		</tbody>
-	</table>
-</div>
+			</thead>
+			<tbody>
+				{#each sorted as r (r.id)}
+					<tr>
+						<td class="namecell">
+							{#if r.icon}<img class="row-icon" src={r.icon} alt="" loading="lazy" />{/if}
+							<a href="/mos/{r.id}">{r.name}</a>
+							{#if !sameAsName(r.role, r.name)}<span class="role">{r.role}</span>{/if}
+						</td>
 
-<p class="note foot">
-	A longer bar means a higher chance per shot, so jams arrive after fewer shots. Because the roll
-	scales with magazine size, every class averages roughly one jam per six magazines — a small
-	magazine just reaches that point sooner. Reload time dominates actual downtime either way.
-</p>
+						<td class="num barcell">
+							{#if r.mag}
+								<span class="v">{r.mag}</span>
+								<span class="bar"><span class="fill" style="width: {pct(r.mag, max.mag)}%"></span></span>
+							{:else}
+								<span class="v none" title="Burns fuel instead of magazines">fuel</span>
+							{/if}
+						</td>
+
+						<td class="num barcell">
+							{#if r.reload}
+								<span class="v">{+r.reload.toFixed(2)}</span>
+								<span class="bar"
+									><span class="fill" style="width: {pct(r.reload, max.reload)}%"></span></span
+								>
+							{:else}
+								<span class="v none">—</span>
+							{/if}
+						</td>
+
+						<td class="num barcell">
+							{#if r.jam}
+								<span class="v">1 in {n(shotsPerJam(r.jam))}</span>
+								<span class="bar"
+									><span class="fill risk" style="width: {pct(r.jam, max.jam)}%"></span></span
+								>
+							{:else}
+								<span class="v none" title="This class can never jam">never</span>
+							{/if}
+						</td>
+
+						<td class="num">{r.panel || ''}</td>
+					</tr>
+				{/each}
+			</tbody>
+		</table>
+	</div>
+
+	<p class="note foot">
+		A longer bar means a higher chance per shot, so jams arrive after fewer shots. Because the roll
+		scales with magazine size, every class averages roughly one jam per six magazines — a small
+		magazine just reaches that point sooner. Reload time dominates actual downtime either way.
+	</p>
+</Page>
 
 <style>
 	th.sortable {

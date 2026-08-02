@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { ClanSummary } from '$lib/clans';
 	import Seo from '$lib/components/Seo.svelte';
+	import { Page } from 'sveltekit-commons';
 
 	let { data } = $props();
 	const clans = $derived(data.clans);
@@ -49,55 +50,57 @@
 	});
 </script>
 
-<Seo
-	title="Clans"
-	description="Clans seen in ingested Undead Assault Reborn replays, with their combined career XP, games, wins and top player."
-/>
+<Page>
+	<Seo
+		title="Clans"
+		description="Clans seen in ingested Undead Assault Reborn replays, with their combined career XP, games, wins and top player."
+	/>
 
-<p class="note">
-	Clans seen in ingested replays, grouped by the clan tag each player carried in their newest
-	sighting. {inClans} of {data.playerCount} known <a href="/players">players</a> wear a clan tag.
-</p>
+	<p class="note">
+		Clans seen in ingested replays, grouped by the clan tag each player carried in their newest
+		sighting. {inClans} of {data.playerCount} known <a href="/players">players</a> wear a clan tag.
+	</p>
 
-<div class="tablewrap">
-	<table class="data" style="min-width: 720px">
-		<thead>
-			<tr>
-				<th class="num">#</th>
-				{#each columns as col (col.key)}
-					<th class:num={col.num} class="sortable" onclick={() => setSort(col.key)}>
-						{col.label}
-						<span class="dir">{sortKey === col.key ? (sortDir > 0 ? '↑' : '↓') : ''}</span>
-					</th>
-				{/each}
-			</tr>
-		</thead>
-		<tbody>
-			{#each sorted as c, i (c.tag)}
+	<div class="tablewrap">
+		<table class="data" style="min-width: 720px">
+			<thead>
 				<tr>
-					<td class="num rank-pos">{i + 1}</td>
-					<td>
-						<a class="cname" href="/clans/{encodeURIComponent(c.tag)}">&lt;{c.tag}&gt;</a>
-					</td>
-					<td class="num">{c.members}</td>
-					<td class="num career">{c.careerXp.toLocaleString('en')}</td>
-					<td class="num">{c.games.toLocaleString('en')}</td>
-					<td class="num">{c.wins.toLocaleString('en')}</td>
-					<td class="num">{c.revives.toLocaleString('en')}</td>
-					<td class="topcell">
-						<a href="/players/{c.top.toon}">{c.top.name}</a>
-					</td>
-					<td class="mono">{c.lastSeen.slice(0, 10)}</td>
+					<th class="num">#</th>
+					{#each columns as col (col.key)}
+						<th class:num={col.num} class="sortable" onclick={() => setSort(col.key)}>
+							{col.label}
+							<span class="dir">{sortKey === col.key ? (sortDir > 0 ? '↑' : '↓') : ''}</span>
+						</th>
+					{/each}
 				</tr>
-			{/each}
-		</tbody>
-	</table>
-</div>
+			</thead>
+			<tbody>
+				{#each sorted as c, i (c.tag)}
+					<tr>
+						<td class="num rank-pos">{i + 1}</td>
+						<td>
+							<a class="cname" href="/clans/{encodeURIComponent(c.tag)}">&lt;{c.tag}&gt;</a>
+						</td>
+						<td class="num">{c.members}</td>
+						<td class="num career">{c.careerXp.toLocaleString('en')}</td>
+						<td class="num">{c.games.toLocaleString('en')}</td>
+						<td class="num">{c.wins.toLocaleString('en')}</td>
+						<td class="num">{c.revives.toLocaleString('en')}</td>
+						<td class="topcell">
+							<a href="/players/{c.top.toon}">{c.top.name}</a>
+						</td>
+						<td class="mono">{c.lastSeen.slice(0, 10)}</td>
+					</tr>
+				{/each}
+			</tbody>
+		</table>
+	</div>
 
-<p class="note">
-	Clan membership is whatever the game lobby reported when the replay was recorded — a player who
-	left or switched clans counts toward their most recently seen tag only.
-</p>
+	<p class="note">
+		Clan membership is whatever the game lobby reported when the replay was recorded — a player who
+		left or switched clans counts toward their most recently seen tag only.
+	</p>
+</Page>
 
 <style>
 	th.sortable {

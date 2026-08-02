@@ -11,6 +11,7 @@
 	import { awardTimeline, type AwardGame } from '$lib/awards';
 	import AwardTimeline from '$lib/components/AwardTimeline.svelte';
 	import Seo from '$lib/components/Seo.svelte';
+	import { Page } from 'sveltekit-commons';
 
 	let { data } = $props();
 
@@ -35,33 +36,35 @@
 	const total = $derived(games.reduce((n, g) => n + g.awards.length, 0));
 </script>
 
-<Seo
-	title="{p.name} — Activity"
-	description="Medals, camouflages, decals, Skill Identifiers, gear and ranks {p.name} has earned in Undead Assault Reborn, game by game."
-/>
+<Page>
+	<Seo
+		title="{p.name} — Activity"
+		description="Medals, camouflages, decals, Skill Identifiers, gear and ranks {p.name} has earned in Undead Assault Reborn, game by game."
+	/>
 
-<!-- No heading: the tab bar directly above already says Activity, and the
-     shell's crumb says whose it is. A third label would only push the first
-     game down the page. -->
-{#if rows.length}
-	{#if total}
-		<p class="counthint">{total} earned across {games.length} games</p>
-	{/if}
-	<AwardTimeline {rows} facts={data.replayFacts} />
-	<p class="note">
-		{#if data.truncated}
-			Showing the {games.length} most recent games that earned something — older ones are in the
-			<a href="replays">replay history</a>.
+	<!-- No heading: the tab bar directly above already says Activity, and the
+	     shell's crumb says whose it is. A third label would only push the first
+	     game down the page. -->
+	{#if rows.length}
+		{#if total}
+			<p class="counthint">{total} earned across {games.length} games</p>
 		{/if}
-		A game's rewards are read from the save file the player carried into their <em>next</em> game,
-		so the most recent game never shows any until another is uploaded.
-	</p>
-{:else}
-	<p class="empty">
-		Nothing recorded yet. Rewards show up here once {p.name} has uploaded two games — the second is
-		what reveals what the first one gave.
-	</p>
-{/if}
+		<AwardTimeline {rows} facts={data.replayFacts} />
+		<p class="note">
+			{#if data.truncated}
+				Showing the {games.length} most recent games that earned something — older ones are in the
+				<a href="replays">replay history</a>.
+			{/if}
+			A game's rewards are read from the save file the player carried into their <em>next</em> game,
+			so the most recent game never shows any until another is uploaded.
+		</p>
+	{:else}
+		<p class="empty">
+			Nothing recorded yet. Rewards show up here once {p.name} has uploaded two games — the second is
+			what reveals what the first one gave.
+		</p>
+	{/if}
+</Page>
 
 <style>
 	/* The tab has no heading, so this is what opens it — a count, set in the

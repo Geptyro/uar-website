@@ -3,7 +3,7 @@
 	import StatIcon from '$lib/components/StatIcon.svelte';
 	// the widget itself drops `minor` entries — "a player would not notice
 	// unless told" is what that field means, not a call each site re-makes
-	import { WhatsNew } from 'sveltekit-commons';
+	import { Page, WhatsNew } from 'sveltekit-commons';
 	import { latestRelease } from '$lib/changelog-data';
 	import DescCard from '$lib/components/DescCard.svelte';
 	import ActivityChart from '$lib/components/ActivityChart.svelte';
@@ -31,306 +31,308 @@
 		.sort((a, b) => (b.life ?? 0) - (a.life ?? 0));
 </script>
 
-<!-- the one page whose title is the brand rather than its subject -->
-<Seo
-	description="Undead Assault Reborn, the StarCraft II arcade map: every player class, undead, item and weapon, plus player profiles, clans, replays and a companion app."
-/>
+<Page>
+	<!-- the one page whose title is the brand rather than its subject -->
+	<Seo
+		description="Undead Assault Reborn, the StarCraft II arcade map: every player class, undead, item and weapon, plus player profiles, clans, replays and a companion app."
+	/>
 
-<div class="layout">
-<div class="main">
-{#if data.weekly.xp.length || data.weekly.classPicks.length}
-	<h2 class="section">This week · last 7 days</h2>
-	<div class="boards">
-		{#if data.weekly.xp.length}
-			<div class="tablewrap">
-				<table class="data board">
-					<thead>
-						<tr>
-							<th class="pos">#</th>
-							<th>Player</th>
-							<th class="num">XP gained</th>
-							<th class="barcell"></th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each data.weekly.xp as p, i (p.toon || p.name)}
+	<div class="layout">
+	<div class="main">
+	{#if data.weekly.xp.length || data.weekly.classPicks.length}
+		<h2 class="section">This week · last 7 days</h2>
+		<div class="boards">
+			{#if data.weekly.xp.length}
+				<div class="tablewrap">
+					<table class="data board">
+						<thead>
 							<tr>
-								<td class="pos">{i + 1}</td>
-								<td class="figcell">
-									<img
-										class="figimg"
-										src={(p.toon && data.avatars[p.toon]) || anonPortrait}
-										alt=""
-										loading="lazy"
-									/>
-									{#if p.clan}<span class="pclan">&lt;{p.clan}&gt;</span>{/if}
-									{#if p.toon}
-										<a class="pname" href="/players/{p.toon}">{p.name}</a>
-									{:else}
-										<span class="pname">{p.name}</span>
-									{/if}
-								</td>
-								<td class="num" title="{p.games} game{p.games === 1 ? '' : 's'} this week">
-									+{p.xpGained.toLocaleString('en')}
-								</td>
-								<td class="barcell">
-									<div
-										class="boardbar"
-										style="width: {(100 * p.xpGained) / data.weekly.xp[0].xpGained}%"
-									></div>
-								</td>
+								<th class="pos">#</th>
+								<th>Player</th>
+								<th class="num">XP gained</th>
+								<th class="barcell"></th>
 							</tr>
-						{/each}
-					</tbody>
-				</table>
-			</div>
-		{/if}
-		{#if data.weekly.classPicks.length}
-			<div class="tablewrap">
-				<table class="data board">
-					<thead>
-						<tr>
-							<th class="pos">#</th>
-							<th>Class</th>
-							<th class="num">Picks</th>
-							<th class="barcell"></th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each data.weekly.classPicks as c, i (c.mos)}
-							{@const u = unitById.get(c.mos)}
-							<tr>
-								<td class="pos">{i + 1}</td>
-								<td class="figcell">
-									{#if u?.icon}
-										<img class="figimg" src={u.icon} alt="" loading="lazy" />
-									{:else}
-										<span class="figimg placeholder"></span>
-									{/if}
-									<a class="pname" href="/mos/{c.mos}">{u?.name || c.mos}</a>
-								</td>
-								<td class="num" title="times picked in ingested games this week">{c.picks}</td>
-								<td class="barcell">
-									<div
-										class="boardbar"
-										style="width: {(100 * c.picks) / data.weekly.classPicks[0].picks}%"
-									></div>
-								</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
-			</div>
-		{/if}
-	</div>
-{/if}
-
-{#if data.activity.values.some((v) => v > 0)}
-	<h2 class="section">Activity · last 7 days</h2>
-	<DescCard label="Players in game">
-		<ActivityChart timeline={data.activity} />
-	</DescCard>
-	<p class="top-note">
-		Average players in game per half hour, from ingested replays · times shown in your local
-		timezone.
-	</p>
-{/if}
-
-<h2 class="section">MOS · Player classes</h2>
-<div class="cards">
-	{#each mosUnits as u (u.id)}
-		<a class="card mos-card" href="/mos/{u.id}">
-			{#if u.icon}
-				<img class="card-icon" src={u.icon} alt="" loading="lazy" />
-			{:else}
-				<span class="card-icon placeholder"></span>
-			{/if}
-			<div class="card-body">
-				<h3>{u.name || u.id}</h3>
-				<div class="code">{u.mos ? `MOS ${u.mos}` : u.id}{u.role ? ` · ${u.role}` : ''}</div>
-				<div class="kv">
-					<span><StatIcon name="life" size={12} /><b>{u.life ?? '–'}</b></span>
-					<span><StatIcon name="armor" size={12} /><b>{u.armor ?? '–'}</b></span>
-					<span><StatIcon name="speed" size={12} /><b>{u.speed ?? '–'}</b></span>
+						</thead>
+						<tbody>
+							{#each data.weekly.xp as p, i (p.toon || p.name)}
+								<tr>
+									<td class="pos">{i + 1}</td>
+									<td class="figcell">
+										<img
+											class="figimg"
+											src={(p.toon && data.avatars[p.toon]) || anonPortrait}
+											alt=""
+											loading="lazy"
+										/>
+										{#if p.clan}<span class="pclan">&lt;{p.clan}&gt;</span>{/if}
+										{#if p.toon}
+											<a class="pname" href="/players/{p.toon}">{p.name}</a>
+										{:else}
+											<span class="pname">{p.name}</span>
+										{/if}
+									</td>
+									<td class="num" title="{p.games} game{p.games === 1 ? '' : 's'} this week">
+										+{p.xpGained.toLocaleString('en')}
+									</td>
+									<td class="barcell">
+										<div
+											class="boardbar"
+											style="width: {(100 * p.xpGained) / data.weekly.xp[0].xpGained}%"
+										></div>
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
 				</div>
-			</div>
-		</a>
-	{/each}
-</div>
-
-<h2 class="section">Heavy hostiles · 10,000+ HP</h2>
-<div class="tablewrap">
-	<table class="data" style="min-width: 640px">
-		<thead>
-			<tr>
-				<th>Name</th>
-				<th class="num">Life</th>
-				<th class="num">Armor</th>
-				<th class="num">Speed</th>
-				<th>Weapons</th>
-			</tr>
-		</thead>
-		<tbody>
-			{#each bosses as u (u.id)}
-				<tr>
-					<td><a href="/entities/{u.id}">{u.name || u.id}</a></td>
-					<td class="num">{u.life?.toLocaleString('en')}</td>
-					<td class="num">{u.armor ?? ''}</td>
-					<td class="num">{u.speed ?? ''}</td>
-					<td class="mono">{u.weapons.map(weaponLabel).join('; ')}</td>
-				</tr>
-			{/each}
-		</tbody>
-	</table>
-</div>
-</div>
-
-<aside class="infobox">
-	<!-- Signed out, the boards above are a list of other people: your own row is
-	     in them somewhere and nothing says so. That is the first thing to fix,
-	     so this heads the column and the companion card follows it — blue, the
-	     tone the account chip already owns in the top bar, so the two asks read
-	     as two different things rather than one shouted twice. -->
-	{#if data.showConnect}
-		<div class="promo connect">
-			<a class="promo-main" href="/auth/bnet">
-				<span class="promo-label">
-					<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-						<path
-							d="M18.94 8.296C15.9 6.892 11.534 6 7.426 6.332c.206-1.36.714-2.308 1.548-2.508 1.148-.275 2.4.48 3.594 1.854.782.102 1.71.28 2.355.429C12.747 2.013 9.828-.282 7.607.565c-1.688.644-2.553 2.97-2.448 6.094-2.2.468-3.915 1.3-5.013 2.495-.056.065-.181.227-.137.305.034.058.146-.008.194-.04 1.274-.89 2.904-1.373 5.027-1.676.303 3.333 1.713 7.56 4.055 10.952-1.28.502-2.356.536-2.946-.087-.812-.856-.784-2.318-.19-4.04a26.764 26.764 0 0 1-.807-2.254c-2.459 3.934-2.986 7.61-1.143 9.11 1.402 1.14 3.847.725 6.502-.926 1.505 1.672 3.083 2.74 4.667 3.094.084.015.287.043.332-.034.034-.06-.08-.124-.131-.149-1.408-.657-2.64-1.828-3.964-3.515 2.735-1.929 5.691-5.263 7.457-8.988 1.076.86 1.64 1.773 1.398 2.595-.336 1.131-1.615 1.84-3.403 2.185a27.697 27.697 0 0 1-1.548 1.826c4.634.16 8.08-1.22 8.458-3.565.286-1.786-1.295-3.696-4.053-5.17.696-2.139.832-4.04.346-5.588-.029-.08-.106-.27-.196-.27-.068 0-.067.13-.063.187.135 1.547-.263 3.2-1.062 5.19zm-8.533 9.869c-1.96-3.145-3.09-6.849-3.082-10.594 3.702-.124 7.474.748 10.714 2.627-1.743 3.269-4.385 6.1-7.633 7.966h.001z"
-						/>
-					</svg>
-					Your profile
-				</span>
-				<!-- the boards on this page already count them, so the ask is to claim
-				     a page that exists rather than to make an account. "Your stats are
-				     here" would be the louder line and a lie to anyone who has not
-				     played yet — this one is true either way. -->
-				<strong class="promo-title">Claim your player page.</strong>
-				<span class="promo-text">
-					Signing in with <b>Battle.net</b>:
-				</span>
-				<!-- same rule as the card below: one line each, verb first, near
-				     enough the same length -->
-				<ul class="promo-list">
-					<li>links your StarCraft&nbsp;II profile</li>
-					<li>keeps your page one click away</li>
-					<li>flags you ready for the next game</li>
-				</ul>
-				<span class="promo-cta">Connect with Battle.net →</span>
-			</a>
-			<!-- the doubt about a login is what it hands over, so the answer sits
-			     under the button — and it goes to /account, which spells the whole
-			     of it out rather than asking for that much trust in one line -->
-			<a class="promo-foot" href="/account">
-				<svg viewBox="0 0 24 24" aria-hidden="true">
-					<path
-						fill-rule="evenodd"
-						d="M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5Zm3 8H9V6a3 3 0 1 1 6 0v3Z"
-					/>
-				</svg>
-				Battletag only — no password
-			</a>
+			{/if}
+			{#if data.weekly.classPicks.length}
+				<div class="tablewrap">
+					<table class="data board">
+						<thead>
+							<tr>
+								<th class="pos">#</th>
+								<th>Class</th>
+								<th class="num">Picks</th>
+								<th class="barcell"></th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each data.weekly.classPicks as c, i (c.mos)}
+								{@const u = unitById.get(c.mos)}
+								<tr>
+									<td class="pos">{i + 1}</td>
+									<td class="figcell">
+										{#if u?.icon}
+											<img class="figimg" src={u.icon} alt="" loading="lazy" />
+										{:else}
+											<span class="figimg placeholder"></span>
+										{/if}
+										<a class="pname" href="/mos/{c.mos}">{u?.name || c.mos}</a>
+									</td>
+									<td class="num" title="times picked in ingested games this week">{c.picks}</td>
+									<td class="barcell">
+										<div
+											class="boardbar"
+											style="width: {(100 * c.picks) / data.weekly.classPicks[0].picks}%"
+										></div>
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			{/if}
 		</div>
 	{/if}
 
-	<!-- Every board on this page is only as good as the replays we get, so the
-	     one thing a visitor can *do* about that heads the column — green and
-	     filled, the only call to action on the page. -->
-	<div class="promo">
-		<a class="promo-main" href="/companion">
-			<span class="promo-label">
-				<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
-					stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-					<rect x="2" y="3" width="20" height="14" rx="2" />
-					<line x1="8" y1="21" x2="16" y2="21" />
-					<line x1="12" y1="17" x2="12" y2="21" />
-				</svg>
-				Help the stats
-			</span>
-			<!-- short enough to hold one line in a 290px column: at 13.5px the box
-			     fits ~36 characters, and a headline that wraps to a two-word second
-			     line is the loudest ragged edge on the card -->
-			<strong class="promo-title">Every game counts — once uploaded.</strong>
-			<span class="promo-text">
-				<b>UAR Companion</b> is a tray app that:
-			</span>
-			<!-- one line each, verb first, near enough the same length: in a 290px
-			     column a bullet that wraps leaves a short second line, and three of
-			     those read as six ragged lines rather than three points -->
-			<ul class="promo-list">
-				<li>pings you when a lobby opens</li>
-				<li>uploads your replays for you</li>
-				<li>flags you ready in one click</li>
-			</ul>
-			<span class="promo-cta">Get the app — Windows, Linux, macOS →</span>
-		</a>
-		<!-- the app asks to run on their machine and watch their replay folder, so
-		     the reassurance sits under the button where the doubt lands — and it
-		     goes straight to the repo, so it can be checked rather than believed.
-		     A real link, hence its own <a> beside (not inside) the card link. -->
-		<a class="promo-foot" href={COMPANION_REPO} target="_blank" rel="noopener">
-			<svg viewBox="0 0 16 16" aria-hidden="true">
-				<path
-					fill-rule="evenodd"
-					d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
-				/>
-			</svg>
-			Free &amp; open source on GitHub ↗
-		</a>
-	</div>
-
-	<!-- Prestige is the rarest thing a player does, so it heads the boards,
-	     then the games those boards were aggregated from, and what shipped
-	     under them. Same 7-day window as the weekly boards. -->
-	{#if data.weekly.prestiged.length}
-		<section class="prestige">
-			<div class="pr-label">
-				<span class="pr-star" aria-hidden="true">★</span> Prestiged
-				<span class="pr-when">· last 7 days</span>
-			</div>
-			<ul class="pr-list">
-				{#each data.weekly.prestiged as p (p.toon || p.name)}
-					<li class="pr-item">
-						<img
-							class="pr-portrait"
-							src={(p.toon && data.avatars[p.toon]) || anonPortrait}
-							alt=""
-							loading="lazy"
-						/>
-						<span class="pr-who">
-							{#if p.clan}<span class="pclan">&lt;{p.clan}&gt;</span>{/if}
-							{#if p.toon}
-								<a class="pname" href="/players/{p.toon}">{p.name}</a>
-							{:else}
-								<span class="pname">{p.name}</span>
-							{/if}
-						</span>
-						<span class="pr-jump">P{p.from} <span class="pr-arrow">→</span></span>
-						<b class="pr-level">P{p.to}</b>
-					</li>
-				{/each}
-			</ul>
-		</section>
+	{#if data.activity.values.some((v) => v > 0)}
+		<h2 class="section">Activity · last 7 days</h2>
+		<DescCard label="Players in game">
+			<ActivityChart timeline={data.activity} />
+		</DescCard>
+		<p class="top-note">
+			Average players in game per half hour, from ingested replays · times shown in your local
+			timezone.
+		</p>
 	{/if}
 
-	{#if data.recent.length}
-		<RecentGames games={data.recent} />
-	{/if}
-
-	<WhatsNew release={latestRelease} />
-
-	<!-- the roster by category: a way in to /entities, not a headline -->
-	<div class="tiles">
-		{#each categories as cat (cat)}
-			<a class="tile" href="/entities?cat={encodeURIComponent(cat)}">
-				<b>{categoryCount(cat)}</b>
-				<span>{cat}</span>
+	<h2 class="section">MOS · Player classes</h2>
+	<div class="cards">
+		{#each mosUnits as u (u.id)}
+			<a class="card mos-card" href="/mos/{u.id}">
+				{#if u.icon}
+					<img class="card-icon" src={u.icon} alt="" loading="lazy" />
+				{:else}
+					<span class="card-icon placeholder"></span>
+				{/if}
+				<div class="card-body">
+					<h3>{u.name || u.id}</h3>
+					<div class="code">{u.mos ? `MOS ${u.mos}` : u.id}{u.role ? ` · ${u.role}` : ''}</div>
+					<div class="kv">
+						<span><StatIcon name="life" size={12} /><b>{u.life ?? '–'}</b></span>
+						<span><StatIcon name="armor" size={12} /><b>{u.armor ?? '–'}</b></span>
+						<span><StatIcon name="speed" size={12} /><b>{u.speed ?? '–'}</b></span>
+					</div>
+				</div>
 			</a>
 		{/each}
 	</div>
-</aside>
-</div>
+
+	<h2 class="section">Heavy hostiles · 10,000+ HP</h2>
+	<div class="tablewrap">
+		<table class="data" style="min-width: 640px">
+			<thead>
+				<tr>
+					<th>Name</th>
+					<th class="num">Life</th>
+					<th class="num">Armor</th>
+					<th class="num">Speed</th>
+					<th>Weapons</th>
+				</tr>
+			</thead>
+			<tbody>
+				{#each bosses as u (u.id)}
+					<tr>
+						<td><a href="/entities/{u.id}">{u.name || u.id}</a></td>
+						<td class="num">{u.life?.toLocaleString('en')}</td>
+						<td class="num">{u.armor ?? ''}</td>
+						<td class="num">{u.speed ?? ''}</td>
+						<td class="mono">{u.weapons.map(weaponLabel).join('; ')}</td>
+					</tr>
+				{/each}
+			</tbody>
+		</table>
+	</div>
+	</div>
+
+	<aside class="infobox">
+		<!-- Signed out, the boards above are a list of other people: your own row is
+		     in them somewhere and nothing says so. That is the first thing to fix,
+		     so this heads the column and the companion card follows it — blue, the
+		     tone the account chip already owns in the top bar, so the two asks read
+		     as two different things rather than one shouted twice. -->
+		{#if data.showConnect}
+			<div class="promo connect">
+				<a class="promo-main" href="/auth/bnet">
+					<span class="promo-label">
+						<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+							<path
+								d="M18.94 8.296C15.9 6.892 11.534 6 7.426 6.332c.206-1.36.714-2.308 1.548-2.508 1.148-.275 2.4.48 3.594 1.854.782.102 1.71.28 2.355.429C12.747 2.013 9.828-.282 7.607.565c-1.688.644-2.553 2.97-2.448 6.094-2.2.468-3.915 1.3-5.013 2.495-.056.065-.181.227-.137.305.034.058.146-.008.194-.04 1.274-.89 2.904-1.373 5.027-1.676.303 3.333 1.713 7.56 4.055 10.952-1.28.502-2.356.536-2.946-.087-.812-.856-.784-2.318-.19-4.04a26.764 26.764 0 0 1-.807-2.254c-2.459 3.934-2.986 7.61-1.143 9.11 1.402 1.14 3.847.725 6.502-.926 1.505 1.672 3.083 2.74 4.667 3.094.084.015.287.043.332-.034.034-.06-.08-.124-.131-.149-1.408-.657-2.64-1.828-3.964-3.515 2.735-1.929 5.691-5.263 7.457-8.988 1.076.86 1.64 1.773 1.398 2.595-.336 1.131-1.615 1.84-3.403 2.185a27.697 27.697 0 0 1-1.548 1.826c4.634.16 8.08-1.22 8.458-3.565.286-1.786-1.295-3.696-4.053-5.17.696-2.139.832-4.04.346-5.588-.029-.08-.106-.27-.196-.27-.068 0-.067.13-.063.187.135 1.547-.263 3.2-1.062 5.19zm-8.533 9.869c-1.96-3.145-3.09-6.849-3.082-10.594 3.702-.124 7.474.748 10.714 2.627-1.743 3.269-4.385 6.1-7.633 7.966h.001z"
+							/>
+						</svg>
+						Your profile
+					</span>
+					<!-- the boards on this page already count them, so the ask is to claim
+					     a page that exists rather than to make an account. "Your stats are
+					     here" would be the louder line and a lie to anyone who has not
+					     played yet — this one is true either way. -->
+					<strong class="promo-title">Claim your player page.</strong>
+					<span class="promo-text">
+						Signing in with <b>Battle.net</b>:
+					</span>
+					<!-- same rule as the card below: one line each, verb first, near
+					     enough the same length -->
+					<ul class="promo-list">
+						<li>links your StarCraft&nbsp;II profile</li>
+						<li>keeps your page one click away</li>
+						<li>flags you ready for the next game</li>
+					</ul>
+					<span class="promo-cta">Connect with Battle.net →</span>
+				</a>
+				<!-- the doubt about a login is what it hands over, so the answer sits
+				     under the button — and it goes to /account, which spells the whole
+				     of it out rather than asking for that much trust in one line -->
+				<a class="promo-foot" href="/account">
+					<svg viewBox="0 0 24 24" aria-hidden="true">
+						<path
+							fill-rule="evenodd"
+							d="M12 1a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5Zm3 8H9V6a3 3 0 1 1 6 0v3Z"
+						/>
+					</svg>
+					Battletag only — no password
+				</a>
+			</div>
+		{/if}
+
+		<!-- Every board on this page is only as good as the replays we get, so the
+		     one thing a visitor can *do* about that heads the column — green and
+		     filled, the only call to action on the page. -->
+		<div class="promo">
+			<a class="promo-main" href="/companion">
+				<span class="promo-label">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+						stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<rect x="2" y="3" width="20" height="14" rx="2" />
+						<line x1="8" y1="21" x2="16" y2="21" />
+						<line x1="12" y1="17" x2="12" y2="21" />
+					</svg>
+					Help the stats
+				</span>
+				<!-- short enough to hold one line in a 290px column: at 13.5px the box
+				     fits ~36 characters, and a headline that wraps to a two-word second
+				     line is the loudest ragged edge on the card -->
+				<strong class="promo-title">Every game counts — once uploaded.</strong>
+				<span class="promo-text">
+					<b>UAR Companion</b> is a tray app that:
+				</span>
+				<!-- one line each, verb first, near enough the same length: in a 290px
+				     column a bullet that wraps leaves a short second line, and three of
+				     those read as six ragged lines rather than three points -->
+				<ul class="promo-list">
+					<li>pings you when a lobby opens</li>
+					<li>uploads your replays for you</li>
+					<li>flags you ready in one click</li>
+				</ul>
+				<span class="promo-cta">Get the app — Windows, Linux, macOS →</span>
+			</a>
+			<!-- the app asks to run on their machine and watch their replay folder, so
+			     the reassurance sits under the button where the doubt lands — and it
+			     goes straight to the repo, so it can be checked rather than believed.
+			     A real link, hence its own <a> beside (not inside) the card link. -->
+			<a class="promo-foot" href={COMPANION_REPO} target="_blank" rel="noopener">
+				<svg viewBox="0 0 16 16" aria-hidden="true">
+					<path
+						fill-rule="evenodd"
+						d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
+					/>
+				</svg>
+				Free &amp; open source on GitHub ↗
+			</a>
+		</div>
+
+		<!-- Prestige is the rarest thing a player does, so it heads the boards,
+		     then the games those boards were aggregated from, and what shipped
+		     under them. Same 7-day window as the weekly boards. -->
+		{#if data.weekly.prestiged.length}
+			<section class="prestige">
+				<div class="pr-label">
+					<span class="pr-star" aria-hidden="true">★</span> Prestiged
+					<span class="pr-when">· last 7 days</span>
+				</div>
+				<ul class="pr-list">
+					{#each data.weekly.prestiged as p (p.toon || p.name)}
+						<li class="pr-item">
+							<img
+								class="pr-portrait"
+								src={(p.toon && data.avatars[p.toon]) || anonPortrait}
+								alt=""
+								loading="lazy"
+							/>
+							<span class="pr-who">
+								{#if p.clan}<span class="pclan">&lt;{p.clan}&gt;</span>{/if}
+								{#if p.toon}
+									<a class="pname" href="/players/{p.toon}">{p.name}</a>
+								{:else}
+									<span class="pname">{p.name}</span>
+								{/if}
+							</span>
+							<span class="pr-jump">P{p.from} <span class="pr-arrow">→</span></span>
+							<b class="pr-level">P{p.to}</b>
+						</li>
+					{/each}
+				</ul>
+			</section>
+		{/if}
+
+		{#if data.recent.length}
+			<RecentGames games={data.recent} />
+		{/if}
+
+		<WhatsNew release={latestRelease} />
+
+		<!-- the roster by category: a way in to /entities, not a headline -->
+		<div class="tiles">
+			{#each categories as cat (cat)}
+				<a class="tile" href="/entities?cat={encodeURIComponent(cat)}">
+					<b>{categoryCount(cat)}</b>
+					<span>{cat}</span>
+				</a>
+			{/each}
+		</div>
+	</aside>
+	</div>
+</Page>
 
 <style>
 	/* the right column, the shape /mos and a player profile already use: a

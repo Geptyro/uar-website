@@ -1,78 +1,81 @@
 <script lang="ts">
 	import { medals, decals, clanDecals, type Medal } from '$lib/unlocks';
 	import Seo from '$lib/components/Seo.svelte';
+	import { Page } from 'sveltekit-commons';
 
 	function xpLabel(m: Medal): string {
 		return m.xp.map((v) => `+${v.toLocaleString('en')} XP`).join(' / ');
 	}
 </script>
 
-<Seo
-	title="Medals & decals"
-	description="Every medal and decal in Undead Assault Reborn: what each achievement asks for, the XP it awards, and the hero insignia it unlocks."
-/>
+<Page>
+	<Seo
+		title="Medals & decals"
+		description="Every medal and decal in Undead Assault Reborn: what each achievement asks for, the XP it awards, and the hero insignia it unlocks."
+	/>
 
-<p class="note">
-	Medals are permanent account achievements, awarded in-game when their conditions are met — most
-	also grant a one-time XP bonus. Decals are cosmetic insignia painted on your hero, unlocked by
-	specific feats and picked from the Unlocks dialog.
-</p>
+	<p class="note">
+		Medals are permanent account achievements, awarded in-game when their conditions are met — most
+		also grant a one-time XP bonus. Decals are cosmetic insignia painted on your hero, unlocked by
+		specific feats and picked from the Unlocks dialog.
+	</p>
 
-<h2 class="section">Medals</h2>
-<div class="grid">
-	{#each medals as m (m.num)}
-		<article class="card medal">
-			{#if m.icon}
-				<img class="medal-icon" src={m.icon} alt="" loading="lazy" />
-			{:else}
-				<span class="medal-icon placeholder"></span>
-			{/if}
-			<div class="body">
-				<header>
-					<h3>{m.name}</h3>
-					{#if m.xp.length}
-						<span class="xp">{xpLabel(m)}</span>
-					{/if}
-				</header>
-				{#if m.desc}<p class="desc">{m.desc}</p>{/if}
-			</div>
-		</article>
-	{/each}
-</div>
+	<h2 class="section">Medals</h2>
+	<div class="grid">
+		{#each medals as m (m.num)}
+			<article class="card medal">
+				{#if m.icon}
+					<img class="medal-icon" src={m.icon} alt="" loading="lazy" />
+				{:else}
+					<span class="medal-icon placeholder"></span>
+				{/if}
+				<div class="body">
+					<header>
+						<h3>{m.name}</h3>
+						{#if m.xp.length}
+							<span class="xp">{xpLabel(m)}</span>
+						{/if}
+					</header>
+					{#if m.desc}<p class="desc">{m.desc}</p>{/if}
+				</div>
+			</article>
+		{/each}
+	</div>
 
-<h2 class="section">Decals</h2>
-<div class="grid">
-	{#each decals as d (d.num)}
-		<article class="card decal">
-			{#if d.icon}
-				<img class="decal-icon" src={d.icon} alt="" loading="lazy" />
-			{:else}
-				<span class="decal-icon placeholder"></span>
-			{/if}
-			<div class="body">
-				<h3>{d.name}</h3>
-				<p class="desc">{d.req || 'Available from the start.'}</p>
-			</div>
-		</article>
-	{/each}
-</div>
+	<h2 class="section">Decals</h2>
+	<div class="grid">
+		{#each decals as d (d.num)}
+			<article class="card decal">
+				{#if d.icon}
+					<img class="decal-icon" src={d.icon} alt="" loading="lazy" />
+				{:else}
+					<span class="decal-icon placeholder"></span>
+				{/if}
+				<div class="body">
+					<h3>{d.name}</h3>
+					<p class="desc">{d.req || 'Available from the start.'}</p>
+				</div>
+			</article>
+		{/each}
+	</div>
 
-<h2 class="section">iSAR clan decals</h2>
-<div class="grid">
-	{#each clanDecals as d (d.num)}
-		<article class="card decal">
-			{#if d.icon}
-				<img class="decal-icon" src={d.icon} alt="" loading="lazy" />
-			{:else}
-				<span class="decal-icon placeholder"></span>
-			{/if}
-			<div class="body">
-				<h3>iSAR · {d.name}</h3>
-				<p class="desc">{d.req}</p>
-			</div>
-		</article>
-	{/each}
-</div>
+	<h2 class="section">iSAR clan decals</h2>
+	<div class="grid">
+		{#each clanDecals as d (d.num)}
+			<article class="card decal">
+				{#if d.icon}
+					<img class="decal-icon" src={d.icon} alt="" loading="lazy" />
+				{:else}
+					<span class="decal-icon placeholder"></span>
+				{/if}
+				<div class="body">
+					<h3>iSAR · {d.name}</h3>
+					<p class="desc">{d.req}</p>
+				</div>
+			</article>
+		{/each}
+	</div>
+</Page>
 
 <style>
 	.grid {

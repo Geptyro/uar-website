@@ -11,7 +11,7 @@ import { camoName, decalName, gearGroups } from './players';
 import type { Award } from './awards';
 
 /** Which family an award belongs to, for the colour of its mark on the rail. */
-export type AwardTone = 'medal' | 'wear' | 'si' | 'gear' | 'rank';
+export type AwardTone = 'medal' | 'wear' | 'si' | 'gear' | 'rank' | 'prestige';
 
 export interface AwardView {
 	/** What was won. */
@@ -142,7 +142,9 @@ export function awardView(a: Award): AwardView {
 					'Requires 250,000 XP on each of the three tracks.'
 				),
 				linkText: 'All rank sets',
-				tone: 'rank'
+				// its own tone, not 'rank': prestige is the one place the site goes
+				// gold, and the home page's roll of honour already draws it that way
+				tone: 'prestige'
 			};
 	}
 }

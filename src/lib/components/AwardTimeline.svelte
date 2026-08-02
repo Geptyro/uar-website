@@ -393,6 +393,29 @@
 	.award.t-rank {
 		border-left-color: var(--hostile, var(--accent));
 	}
+	/* Prestige is the exception to the leading-edge rule: the whole card goes
+	   gold, sheen and all, because that is how the home page's roll of honour
+	   draws it and a player who has seen it there should recognise it here. The
+	   site goes gold for this and nothing else — see palette.css. */
+	.award.t-prestige {
+		border-color: var(--gold-line);
+		border-left-color: var(--gold);
+		background:
+			linear-gradient(150deg, color-mix(in srgb, var(--gold) 10%, transparent), transparent 60%),
+			var(--gold-soft);
+	}
+	.award.t-prestige:hover {
+		border-color: var(--gold);
+	}
+	/* No picture exists for a prestige, so the star the home page heads its
+	   list with fills the card's picture column instead of a grey placeholder. */
+	.award.t-prestige .aimg.placeholder {
+		background: color-mix(in srgb, var(--gold) 14%, transparent);
+		color: var(--gold);
+	}
+	.award.t-prestige .akind {
+		color: var(--gold);
+	}
 
 	@media (max-width: 599.98px) {
 		.tl-item,

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { camos, specialCamos } from '$lib/unlocks';
 	import Seo from '$lib/components/Seo.svelte';
+	import { Page } from 'sveltekit-commons';
 
 	const special = specialCamos.filter((c) => !c.walkerOnly);
 	const walkerOnly = specialCamos.filter((c) => c.walkerOnly);
@@ -14,18 +15,6 @@
 	};
 </script>
 
-<Seo
-	title="Camouflages"
-	description="Every armor camouflage in Undead Assault Reborn, with swatches straight from the game files: standard, walker-capable, and the special clan and event camos."
-/>
-
-<p class="note">
-	Armor camouflages are cosmetic unlocks picked from the Unlocks dialog (or the <code>-camo</code>
-	command). Swatches are the armor textures straight from the game files; camos marked
-	<span class="tag">walker</span> can also be applied to the FP500 Combat Walker. Special camos are
-	tied to clans, events or staff.
-</p>
-
 {#snippet swatchImg(swatch: string | null, name: string)}
 	{#if swatch}
 		<img class="swatch" src={swatch} alt="{name} armor texture" loading="lazy" />
@@ -34,69 +23,83 @@
 	{/if}
 {/snippet}
 
-<h2 class="section">Standard camouflages</h2>
-<div class="grid">
-	{#each camos as c (c.num)}
-		<article class="card camo">
-			{@render swatchImg(c.swatch, c.name)}
-			<div class="body">
-				<header>
-					<h3>{c.name}</h3>
-					{#if c.walker}<span class="tag">walker</span>{/if}
-					{#if c.adaptive}<span class="tag t-mos">adaptive</span>{/if}
-				</header>
-				<p class="desc">
-					{c.req || 'Available from the start.'}
-					{#if c.adaptive}
-						Blends in by cycling terrain textures instead of a fixed pattern.
-					{/if}
-				</p>
-			</div>
-		</article>
-	{/each}
-</div>
+<Page>
+	<Seo
+		title="Camouflages"
+		description="Every armor camouflage in Undead Assault Reborn, with swatches straight from the game files: standard, walker-capable, and the special clan and event camos."
+	/>
 
-<h2 class="section">Clan · event · staff</h2>
-<div class="grid">
-	{#each special as c (c.name)}
-		<article class="card camo">
-			{@render swatchImg(c.swatch, c.name)}
-			<div class="body">
-				<header>
-					<h3>{c.name}</h3>
-				</header>
-				<p class="desc">{c.req || '—'}</p>
-			</div>
-		</article>
-	{/each}
-</div>
+	<p class="note">
+		Armor camouflages are cosmetic unlocks picked from the Unlocks dialog (or the <code>-camo</code>
+		command). Swatches are the armor textures straight from the game files; camos marked
+		<span class="tag">walker</span> can also be applied to the FP500 Combat Walker. Special camos are
+		tied to clans, events or staff.
+	</p>
 
-<h2 class="section">Walker only</h2>
-<div class="grid">
-	{#each walkerOnly as c (c.name)}
-		<article class="card camo">
-			{#if c.light}
-				<span class="swatch light">
-					<span
-						class="light-dot"
-						class:off={c.light === 'no'}
-						style="background: {lightColors[c.light] ?? 'transparent'}"
-					></span>
-				</span>
-			{:else}
+	<h2 class="section">Standard camouflages</h2>
+	<div class="grid">
+		{#each camos as c (c.num)}
+			<article class="card camo">
 				{@render swatchImg(c.swatch, c.name)}
-			{/if}
-			<div class="body">
-				<header>
-					<h3>{c.name}</h3>
-				</header>
-				<p class="desc">
-					{c.req || (c.light ? 'Searchlight color for the FP500 Combat Walker.' : '—')}
-				</p>
-			</div>
-		</article>
-	{/each}
-</div>
+				<div class="body">
+					<header>
+						<h3>{c.name}</h3>
+						{#if c.walker}<span class="tag">walker</span>{/if}
+						{#if c.adaptive}<span class="tag t-mos">adaptive</span>{/if}
+					</header>
+					<p class="desc">
+						{c.req || 'Available from the start.'}
+						{#if c.adaptive}
+							Blends in by cycling terrain textures instead of a fixed pattern.
+						{/if}
+					</p>
+				</div>
+			</article>
+		{/each}
+	</div>
+
+	<h2 class="section">Clan · event · staff</h2>
+	<div class="grid">
+		{#each special as c (c.name)}
+			<article class="card camo">
+				{@render swatchImg(c.swatch, c.name)}
+				<div class="body">
+					<header>
+						<h3>{c.name}</h3>
+					</header>
+					<p class="desc">{c.req || '—'}</p>
+				</div>
+			</article>
+		{/each}
+	</div>
+
+	<h2 class="section">Walker only</h2>
+	<div class="grid">
+		{#each walkerOnly as c (c.name)}
+			<article class="card camo">
+				{#if c.light}
+					<span class="swatch light">
+						<span
+							class="light-dot"
+							class:off={c.light === 'no'}
+							style="background: {lightColors[c.light] ?? 'transparent'}"
+						></span>
+					</span>
+				{:else}
+					{@render swatchImg(c.swatch, c.name)}
+				{/if}
+				<div class="body">
+					<header>
+						<h3>{c.name}</h3>
+					</header>
+					<p class="desc">
+						{c.req || (c.light ? 'Searchlight color for the FP500 Combat Walker.' : '—')}
+					</p>
+				</div>
+			</article>
+		{/each}
+	</div>
+</Page>
 
 <style>
 	.grid {

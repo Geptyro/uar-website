@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { skillIdentifiers, mosById, mosName, siXpLabel, type Si } from '$lib/mos';
 	import Seo from '$lib/components/Seo.svelte';
+	import { Page } from 'sveltekit-commons';
 
 	let filter = $state<'all' | 'universal' | 'class'>('all');
 
@@ -15,31 +16,6 @@
 	const special = $derived(skillIdentifiers.filter((s) => s.special && matches(s)));
 
 </script>
-
-<Seo
-	title="Skill Identifiers"
-	description="Every Skill Identifier in Undead Assault Reborn: the permanent hero bonuses you pick two of per game, with the rank track and account XP each one unlocks at."
-/>
-
-<p class="note">
-	SIs are small permanent bonuses applied to your hero, chosen at the start of a game (max 2 per
-	game). Most unlock at an account-XP threshold per rank track (Enlisted / Warrant Officer /
-	Commissioned Officer); the ones in the bottom section require special achievements. Shown in the
-	same order as the in-game dialog.
-</p>
-
-<div class="controls">
-	{#each [['all', 'All'], ['universal', 'Universal'], ['class', 'Class-specific']] as [key, label] (key)}
-		<button
-			class="chip"
-			aria-pressed={filter === key}
-			onclick={() => (filter = key as typeof filter)}
-		>
-			{label}
-		</button>
-	{/each}
-	<span class="count">{grid.length + special.length} / {skillIdentifiers.length}</span>
-</div>
 
 {#snippet siCard(si: Si)}
 	<!-- the anchor the command palette links to: an SI has no page of its own,
@@ -72,22 +48,49 @@
 	</article>
 {/snippet}
 
-{#if grid.length}
-	<div class="grid">
-		{#each grid as si (si.num)}
-			{@render siCard(si)}
-		{/each}
-	</div>
-{/if}
+<Page>
+	<Seo
+		title="Skill Identifiers"
+		description="Every Skill Identifier in Undead Assault Reborn: the permanent hero bonuses you pick two of per game, with the rank track and account XP each one unlocks at."
+	/>
 
-{#if special.length}
-	<h2 class="section">Special unlocks</h2>
-	<div class="grid">
-		{#each special as si (si.num)}
-			{@render siCard(si)}
+	<p class="note">
+		SIs are small permanent bonuses applied to your hero, chosen at the start of a game (max 2 per
+		game). Most unlock at an account-XP threshold per rank track (Enlisted / Warrant Officer /
+		Commissioned Officer); the ones in the bottom section require special achievements. Shown in the
+		same order as the in-game dialog.
+	</p>
+
+	<div class="controls">
+		{#each [['all', 'All'], ['universal', 'Universal'], ['class', 'Class-specific']] as [key, label] (key)}
+			<button
+				class="chip"
+				aria-pressed={filter === key}
+				onclick={() => (filter = key as typeof filter)}
+			>
+				{label}
+			</button>
 		{/each}
+		<span class="count">{grid.length + special.length} / {skillIdentifiers.length}</span>
 	</div>
-{/if}
+
+	{#if grid.length}
+		<div class="grid">
+			{#each grid as si (si.num)}
+				{@render siCard(si)}
+			{/each}
+		</div>
+	{/if}
+
+	{#if special.length}
+		<h2 class="section">Special unlocks</h2>
+		<div class="grid">
+			{#each special as si (si.num)}
+				{@render siCard(si)}
+			{/each}
+		</div>
+	{/if}
+</Page>
 
 <style>
 	.controls {

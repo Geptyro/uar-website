@@ -241,4 +241,21 @@
 			transform: rotate(360deg);
 		}
 	}
+	/* No phone or tablet holds .SC2Replay files — nothing on this device runs
+	   the game, so the one control here has nothing to point at. Asked by
+	   input capability rather than width: a desktop window dragged narrow still
+	   has the files, and a landscape tablet still does not. `hover`/`pointer`
+	   and not their `any-` forms, which answer for *any* attached input and so
+	   would hide this on a touchscreen laptop with a mouse.
+
+	   CSS rather than a matchMedia in script, because this bar is prerendered:
+	   a client-side check renders the chip and then yanks it at hydration,
+	   shifting the whole row. And a rule rather than a prop, because /replays
+	   keeps its own upload form either way — this hides an affordance that has
+	   nowhere to lead, never the ability to upload. */
+	@media (hover: none) and (pointer: coarse) {
+		.wrap {
+			display: none;
+		}
+	}
 </style>

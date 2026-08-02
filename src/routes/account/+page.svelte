@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import { rememberUmamiId } from '$lib/analytics';
 	import Seo from '$lib/components/Seo.svelte';
+	import { Page } from 'sveltekit-commons';
 
 	let { data } = $props();
 
@@ -53,114 +54,116 @@
 	});
 </script>
 
-<!-- yours alone: a real page, but nothing a search result could point at -->
-<Seo
-	title="Account"
-	description="Link your Battle.net StarCraft II profiles to their Undead Assault Reborn player pages, and pick the site's theme."
-	noindex
-/>
+<Page>
+	<!-- yours alone: a real page, but nothing a search result could point at -->
+	<Seo
+		title="Account"
+		description="Link your Battle.net StarCraft II profiles to their Undead Assault Reborn player pages, and pick the site's theme."
+		noindex
+	/>
 
-<p class="eyebrow">Account</p>
-<!-- h2: the page's <h1> is the heading in the top bar -->
-<h2 class="page-title">Battle.net link</h2>
-<p class="note">
-	Sign in with Battle.net to link your StarCraft&nbsp;II profiles to their UAR player pages.
-	Blizzard only shares your battletag and profile list — no email, no password, and the site
-	never sees anything else on your account.
-</p>
-
-{#if errorText}
-	<p class="quote error">{errorText}</p>
-{/if}
-
-{#if !data.enabled}
-	<p class="note">Battle.net login is not configured on this server.</p>
-{:else if !data.battletag}
-	<a class="bnet-btn" href="/auth/bnet">Connect with Battle.net</a>
-	<p class="note fineprint">
-		Linking marks your player pages as verified and shows your battletag on them.
+	<p class="eyebrow">Account</p>
+	<!-- h2: the page's <h1> is the heading in the top bar -->
+	<h2 class="page-title">Battle.net link</h2>
+	<p class="note">
+		Sign in with Battle.net to link your StarCraft&nbsp;II profiles to their UAR player pages.
+		Blizzard only shares your battletag and profile list — no email, no password, and the site
+		never sees anything else on your account.
 	</p>
-{:else}
-	<div class="card box">
-		<div class="who">
-			<img class="who-avatar" src={data.avatar ?? anonPortrait} alt="" />
-			<span class="tag t-mos">✓ signed in</span>
-			<b class="btag">{data.battletag}</b>
+
+	{#if errorText}
+		<p class="quote error">{errorText}</p>
+	{/if}
+
+	{#if !data.enabled}
+		<p class="note">Battle.net login is not configured on this server.</p>
+	{:else if !data.battletag}
+		<a class="bnet-btn" href="/auth/bnet">Connect with Battle.net</a>
+		<p class="note fineprint">
+			Linking marks your player pages as verified and shows your battletag on them.
+		</p>
+	{:else}
+		<div class="card box">
+			<div class="who">
+				<img class="who-avatar" src={data.avatar ?? anonPortrait} alt="" />
+				<span class="tag t-mos">✓ signed in</span>
+				<b class="btag">{data.battletag}</b>
+			</div>
+
+			<h2 class="section">Linked profiles</h2>
+			{#if data.linked.length === 0}
+				<p class="note">
+					No StarCraft&nbsp;II profiles were found on this Battle.net account
+					{#if data.error === 'profiles'}(the lookup failed — try a refresh){/if}.
+				</p>
+			{:else}
+				<ul class="linked">
+					{#each data.linked as l (l.toon)}
+						<li>
+							<img class="portrait" src={l.avatarUrl ?? anonPortrait} alt="" loading="lazy" />
+							{#if l.player}
+								<a href="/players/{l.toon}">
+									{#if l.player.clan}&lt;{l.player.clan}&gt;{/if}
+									{l.player.name}
+								</a>
+								<span class="mono">{l.toon}</span>
+								<span class="meta">
+									{l.player.gamesPlayed.toLocaleString('en')} games · last seen
+									{l.player.lastSeen.slice(0, 10)}
+								</span>
+							{:else}
+								<span class="noplayer">{l.bnetName || 'Unnamed profile'}</span>
+								<span class="mono">{l.toon}</span>
+								<span class="meta">
+									{regionName(l.regionId)} — not seen in any ingested replay yet
+								</span>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+			{/if}
+
+			<div class="actions">
+				<a class="chip" href="/auth/bnet">Refresh from Battle.net</a>
+				<!-- Both actions end the session and redirect, i.e. a full reload:
+				     drop the cached analytics id here or that reload's first
+				     pageview still goes out under the old battletag. -->
+				<form method="POST" action="?/logout" onsubmit={() => rememberUmamiId(null)}>
+					<button class="chip">Sign out</button>
+				</form>
+				<form method="POST" action="?/unlink" onsubmit={() => rememberUmamiId(null)}>
+					<button class="chip danger">Disconnect &amp; remove link</button>
+				</form>
+			</div>
 		</div>
+		<p class="note fineprint">
+			“Sign out” only ends this browser session. “Disconnect” also deletes the stored link, so
+			your player pages are no longer marked as verified.
+		</p>
+	{/if}
 
-		<h2 class="section">Linked profiles</h2>
-		{#if data.linked.length === 0}
-			<p class="note">
-				No StarCraft&nbsp;II profiles were found on this Battle.net account
-				{#if data.error === 'profiles'}(the lookup failed — try a refresh){/if}.
-			</p>
-		{:else}
-			<ul class="linked">
-				{#each data.linked as l (l.toon)}
-					<li>
-						<img class="portrait" src={l.avatarUrl ?? anonPortrait} alt="" loading="lazy" />
-						{#if l.player}
-							<a href="/players/{l.toon}">
-								{#if l.player.clan}&lt;{l.player.clan}&gt;{/if}
-								{l.player.name}
-							</a>
-							<span class="mono">{l.toon}</span>
-							<span class="meta">
-								{l.player.gamesPlayed.toLocaleString('en')} games · last seen
-								{l.player.lastSeen.slice(0, 10)}
-							</span>
-						{:else}
-							<span class="noplayer">{l.bnetName || 'Unnamed profile'}</span>
-							<span class="mono">{l.toon}</span>
-							<span class="meta">
-								{regionName(l.regionId)} — not seen in any ingested replay yet
-							</span>
-						{/if}
-					</li>
-				{/each}
-			</ul>
-		{/if}
-
-		<div class="actions">
-			<a class="chip" href="/auth/bnet">Refresh from Battle.net</a>
-			<!-- Both actions end the session and redirect, i.e. a full reload:
-			     drop the cached analytics id here or that reload's first
-			     pageview still goes out under the old battletag. -->
-			<form method="POST" action="?/logout" onsubmit={() => rememberUmamiId(null)}>
-				<button class="chip">Sign out</button>
-			</form>
-			<form method="POST" action="?/unlink" onsubmit={() => rememberUmamiId(null)}>
-				<button class="chip danger">Disconnect &amp; remove link</button>
-			</form>
+	<!-- outside the Battle.net branch on purpose: the theme is yours whether or
+	     not you have linked an account -->
+	<h2 class="section">Appearance</h2>
+	<div class="card box theme">
+		<div class="theme-pick">
+			{#each themes as t (t.label)}
+				<button
+					class="chip"
+					aria-pressed={theme === t.id}
+					title={t.hint}
+					onclick={() => pickTheme(t.id)}
+				>
+					{t.label}
+				</button>
+			{/each}
 		</div>
+		<p class="note fineprint">
+			Kept in this browser only — sign-in has nothing to do with it, and other devices keep their
+			own setting.
+		</p>
 	</div>
-	<p class="note fineprint">
-		“Sign out” only ends this browser session. “Disconnect” also deletes the stored link, so
-		your player pages are no longer marked as verified.
-	</p>
-{/if}
-
-<!-- outside the Battle.net branch on purpose: the theme is yours whether or
-     not you have linked an account -->
-<h2 class="section">Appearance</h2>
-<div class="card box theme">
-	<div class="theme-pick">
-		{#each themes as t (t.label)}
-			<button
-				class="chip"
-				aria-pressed={theme === t.id}
-				title={t.hint}
-				onclick={() => pickTheme(t.id)}
-			>
-				{t.label}
-			</button>
-		{/each}
-	</div>
-	<p class="note fineprint">
-		Kept in this browser only — sign-in has nothing to do with it, and other devices keep their
-		own setting.
-	</p>
-</div>
+</Page>
 
 <style>
 	.quote.error {

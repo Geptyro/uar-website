@@ -12,6 +12,7 @@
 		type FlowNode
 	} from '$lib/flow';
 	import Seo from '$lib/components/Seo.svelte';
+	import { Page } from 'sveltekit-commons';
 
 	let query = $state('');
 	let selectedId = $state<string>('gt_MayorGate');
@@ -205,160 +206,162 @@
 	});
 </script>
 
-<Seo
-	title="Mission flow"
-	description="How missions start and chain in Undead Assault Reborn: every mission trigger with its arming events, the triggers it enables or shuts down, and its XP outcomes."
-/>
+<Page>
+	<Seo
+		title="Mission flow"
+		description="How missions start and chain in Undead Assault Reborn: every mission trigger with its arming events, the triggers it enables or shuts down, and its XP outcomes."
+	/>
 
-<p class="note">
-	How missions start and chain, reconstructed from the map's trigger script: {flowNodes.length} mission-related
-	triggers with their arming events, the triggers they enable or shut down, and their XP outcomes.
-</p>
+	<p class="note">
+		How missions start and chain, reconstructed from the map's trigger script: {flowNodes.length} mission-related
+		triggers with their arming events, the triggers they enable or shut down, and their XP outcomes.
+	</p>
 
-<h2 class="section">Scheduled at fixed game time</h2>
-<div class="timeline card">
-	{#each timedStarts as t (t.node.id)}
-		<div class="tl-row">
-			<span class="tl-time">{fmtTime(t.at)}</span>
-			<button class="link" onclick={() => pick(t.node.id)}>{t.node.name}</button>
-		</div>
-	{/each}
-</div>
-
-<h2 class="section">Chain graph</h2>
-<div class="graph-controls">
-	<div class="search-wrap">
-		<input
-			type="search"
-			placeholder="Find a trigger or mission…"
-			aria-label="Find a trigger or mission"
-			bind:value={query}
-		/>
-		{#if results.length}
-			<div class="results card">
-				{#each results as r (r.id)}
-					<button class="result" onclick={() => pick(r.id)}>
-						{r.name}
-						{#if r.succeed.length}<span class="mono dim">{r.succeed[0].name}</span>{/if}
-					</button>
-				{/each}
+	<h2 class="section">Scheduled at fixed game time</h2>
+	<div class="timeline card">
+		{#each timedStarts as t (t.node.id)}
+			<div class="tl-row">
+				<span class="tl-time">{fmtTime(t.at)}</span>
+				<button class="link" onclick={() => pick(t.node.id)}>{t.node.name}</button>
 			</div>
-		{/if}
+		{/each}
 	</div>
-	<div class="legend">
-		{#if violations > 0}
-			<span class="viol">{violations} routing violations — report layout</span>
-		{/if}
-		<span><i style="background: {KIND_COLOR.enable}"></i> enables</span>
-		<span><i style="background: {KIND_COLOR.execute}"></i> runs</span>
-		<span><i style="background: {KIND_COLOR.timer}"></i> via timer</span>
-		<span><i class="dash" style="background: {KIND_COLOR.disable}"></i> shuts down</span>
-	</div>
-</div>
 
-{#if browser}
-	<div class="board card">
-		<GridDiagram
-			edges={graph.edges}
-			opts={{ res, exitCost: 6 }}
-			revision={`${selectedId}:${relief}:${res}`}
-			connStyle={(c) => ({
-				color: KIND_COLOR[String(c.data ?? 'enable')] ?? KIND_COLOR.enable,
-				dashed: c.data === 'disable',
-				class: anyHover ? (activeBuses.has(c.bus) ? 'active' : 'dim') : ''
-			})}
-			onrouted={(info) => {
-				violations = info.violations;
-				if (info.violations > 0) {
-					if (relief < RELIEF.length - 1) relief++;
-					else if (!fineRes) {
-						fineRes = true;
-						relief = 0;
-					}
-				}
-			}}
-			onconnenter={(c) => {
-				hoveredNode = undefined;
-				hoveredBus = c.bus;
-			}}
-			onconnleave={(c) => {
-				if (hoveredBus === c.bus) hoveredBus = undefined;
-			}}
-		>
-			{#snippet children(register)}
-				<div class="levels" style:--gap-scale={RELIEF[relief]}>
-					{#each graph.layers as layer (layer.depth)}
-						<div class="level">
-							{#each layer.nodes as n (n.id)}
-							<button
-								class="chip"
-								class:sel={n.id === selected.id}
-								class:has-mission={n.succeed.length > 0 || n.fail.length > 0}
-								class:lit={litNodes.has(n.id)}
-								class:faded={anyHover && !litNodes.has(n.id)}
-								use:register={n.id}
-								onclick={() => pick(n.id)}
-								onpointerenter={() => {
-									hoveredBus = undefined;
-									hoveredNode = n.id;
-								}}
-								onpointerleave={() => {
-									if (hoveredNode === n.id) hoveredNode = undefined;
-								}}
-							>
-								<b>{n.name}</b>
-								{#if n.events.length}
-									<span class="ev">{eventLabel(n.events[0])}</span>
-								{:else if !n.armed}
-									<span class="ev">chained</span>
-								{/if}
-								{#if n.succeed.length}
-									<span class="ev gain">+{n.succeed[0].xp} {n.succeed[0].name}</span>
-								{/if}
-									{#if n.fail.length}
-										<span class="ev loss">−{n.fail[0].xp} {n.fail[0].name}</span>
-									{/if}
-								</button>
-							{/each}
-						</div>
+	<h2 class="section">Chain graph</h2>
+	<div class="graph-controls">
+		<div class="search-wrap">
+			<input
+				type="search"
+				placeholder="Find a trigger or mission…"
+				aria-label="Find a trigger or mission"
+				bind:value={query}
+			/>
+			{#if results.length}
+				<div class="results card">
+					{#each results as r (r.id)}
+						<button class="result" onclick={() => pick(r.id)}>
+							{r.name}
+							{#if r.succeed.length}<span class="mono dim">{r.succeed[0].name}</span>{/if}
+						</button>
 					{/each}
 				</div>
-			{/snippet}
-		</GridDiagram>
+			{/if}
+		</div>
+		<div class="legend">
+			{#if violations > 0}
+				<span class="viol">{violations} routing violations — report layout</span>
+			{/if}
+			<span><i style="background: {KIND_COLOR.enable}"></i> enables</span>
+			<span><i style="background: {KIND_COLOR.execute}"></i> runs</span>
+			<span><i style="background: {KIND_COLOR.timer}"></i> via timer</span>
+			<span><i class="dash" style="background: {KIND_COLOR.disable}"></i> shuts down</span>
+		</div>
 	</div>
-{/if}
 
-<div class="detail card">
-	<div class="detail-head">
-		<b>{selected.name}</b>
-		<span class="tag" class:t-hostile={!selected.armed}>
-			{selected.armed ? 'armed from start' : 'needs enabling'}
-		</span>
+	{#if browser}
+		<div class="board card">
+			<GridDiagram
+				edges={graph.edges}
+				opts={{ res, exitCost: 6 }}
+				revision={`${selectedId}:${relief}:${res}`}
+				connStyle={(c) => ({
+					color: KIND_COLOR[String(c.data ?? 'enable')] ?? KIND_COLOR.enable,
+					dashed: c.data === 'disable',
+					class: anyHover ? (activeBuses.has(c.bus) ? 'active' : 'dim') : ''
+				})}
+				onrouted={(info) => {
+					violations = info.violations;
+					if (info.violations > 0) {
+						if (relief < RELIEF.length - 1) relief++;
+						else if (!fineRes) {
+							fineRes = true;
+							relief = 0;
+						}
+					}
+				}}
+				onconnenter={(c) => {
+					hoveredNode = undefined;
+					hoveredBus = c.bus;
+				}}
+				onconnleave={(c) => {
+					if (hoveredBus === c.bus) hoveredBus = undefined;
+				}}
+			>
+				{#snippet children(register)}
+					<div class="levels" style:--gap-scale={RELIEF[relief]}>
+						{#each graph.layers as layer (layer.depth)}
+							<div class="level">
+								{#each layer.nodes as n (n.id)}
+								<button
+									class="chip"
+									class:sel={n.id === selected.id}
+									class:has-mission={n.succeed.length > 0 || n.fail.length > 0}
+									class:lit={litNodes.has(n.id)}
+									class:faded={anyHover && !litNodes.has(n.id)}
+									use:register={n.id}
+									onclick={() => pick(n.id)}
+									onpointerenter={() => {
+										hoveredBus = undefined;
+										hoveredNode = n.id;
+									}}
+									onpointerleave={() => {
+										if (hoveredNode === n.id) hoveredNode = undefined;
+									}}
+								>
+									<b>{n.name}</b>
+									{#if n.events.length}
+										<span class="ev">{eventLabel(n.events[0])}</span>
+									{:else if !n.armed}
+										<span class="ev">chained</span>
+									{/if}
+									{#if n.succeed.length}
+										<span class="ev gain">+{n.succeed[0].xp} {n.succeed[0].name}</span>
+									{/if}
+										{#if n.fail.length}
+											<span class="ev loss">−{n.fail[0].xp} {n.fail[0].name}</span>
+										{/if}
+									</button>
+								{/each}
+							</div>
+						{/each}
+					</div>
+				{/snippet}
+			</GridDiagram>
+		</div>
+	{/if}
+
+	<div class="detail card">
+		<div class="detail-head">
+			<b>{selected.name}</b>
+			<span class="tag" class:t-hostile={!selected.armed}>
+				{selected.armed ? 'armed from start' : 'needs enabling'}
+			</span>
+		</div>
+		<div class="detail-grid">
+			{#if selected.events.length}
+				<div>
+					<div class="sub-label">Fires when</div>
+					{#each selected.events as e, i (i)}<div class="ev">{eventLabel(e)}</div>{/each}
+				</div>
+			{/if}
+			{#if selected.timers.length}
+				<div>
+					<div class="sub-label">Starts timers</div>
+					{#each selected.timers as t (t.var + t.dur)}
+						<div class="ev">{t.var.replace('gv_', '')} · {fmtDuration(t.dur)}</div>
+					{/each}
+				</div>
+			{/if}
+			{#if selected.succeed.length || selected.fail.length}
+				<div>
+					<div class="sub-label">Outcomes</div>
+					{#each selected.succeed as m (m.name)}<div class="ev gain">+{m.xp} · {m.name}</div>{/each}
+					{#each selected.fail as m (m.name)}<div class="ev loss">−{m.xp} · {m.name}</div>{/each}
+				</div>
+			{/if}
+		</div>
 	</div>
-	<div class="detail-grid">
-		{#if selected.events.length}
-			<div>
-				<div class="sub-label">Fires when</div>
-				{#each selected.events as e, i (i)}<div class="ev">{eventLabel(e)}</div>{/each}
-			</div>
-		{/if}
-		{#if selected.timers.length}
-			<div>
-				<div class="sub-label">Starts timers</div>
-				{#each selected.timers as t (t.var + t.dur)}
-					<div class="ev">{t.var.replace('gv_', '')} · {fmtDuration(t.dur)}</div>
-				{/each}
-			</div>
-		{/if}
-		{#if selected.succeed.length || selected.fail.length}
-			<div>
-				<div class="sub-label">Outcomes</div>
-				{#each selected.succeed as m (m.name)}<div class="ev gain">+{m.xp} · {m.name}</div>{/each}
-				{#each selected.fail as m (m.name)}<div class="ev loss">−{m.xp} · {m.name}</div>{/each}
-			</div>
-		{/if}
-	</div>
-</div>
+</Page>
 
 <style>
 	.timeline {

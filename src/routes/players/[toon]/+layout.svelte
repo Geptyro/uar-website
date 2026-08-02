@@ -16,9 +16,9 @@
 	 * history each want the width more than a restatement of the totals wants
 	 * to follow the reader around.
 	 */
-	import { goto } from '$app/navigation';
+	import { goto, preloadData } from '$app/navigation';
 	import { page } from '$app/state';
-	import { TabBar } from 'sveltekit-commons';
+	import { Page, TabBar, TabSwipe } from 'sveltekit-commons';
 
 	import { PLAYER_TABS, playerHref, tabSegment } from '$lib/playerTabs';
 	import { careerXp, totalWins, camoName, decalName } from '$lib/players';
@@ -34,6 +34,15 @@
 	const active = $derived(tabSegment(page.route.id) ?? '');
 	const onOverview = $derived(active === '');
 
+	/* Who owns the scroller, and why it is decided here.
+	   Every tab but the overview is the whole of its column, so the tab itself
+	   is the page and brings its own — Replays wants a table that keeps its head
+	   still and scrolls only its rows, which is a different shape entirely and
+	   not one this frame should impose. The overview is the exception because
+	   the frame is composing it: the infobox below is this file's markup sitting
+	   in a grid beside the tab's, and the two have to scroll as one thing. */
+	const framesOverview = $derived(onOverview);
+
 	const barTabs = $derived(
 		PLAYER_TABS.map((t) => ({
 			href: playerHref(data.toon, t.segment),
@@ -43,34 +52,57 @@
 		}))
 	);
 
-	/* Published so a tab can size itself against what is left of the window —
-	   the replay table is the one that does, and the bar's height changes
-	   between the wide and the icons-only layout, so it is measured. */
-	let tabsH = $state(0);
-
 	function fmtDate(iso: string): string {
 		return iso.slice(0, 10);
 	}
 </script>
 
 <!--
+	The same move by hand, for the screen the shortcuts cannot reach. It takes
+	only the drags nothing else wants: the shell's rail keeps the drag that opens
+	the drawer, and the replay table keeps its own sideways scroll outright — so
+	the replays tab is the one you still change from the bar.
+-->
+<TabSwipe
+	tabs={barTabs}
+	{active}
+	onnavigate={(to) => void goto(to, { noScroll: true })}
+	preload={preloadData}
+/>
+
+<!--
 	`shortcuts` is on: this is a reference people browse with a mouse, and
 	flipping between someone's ranks, their collection and their games is the
 	repeated action here. TabBar's own guard stands down inside an input and
 	while any dialog is open, so the command palette keeps its Tab key.
+
+	`docked`, and a sibling of the page rather than the first thing inside it:
+	AppShell's `main` is a flex column that scrolls nothing, so the bar takes its
+	own height here and the page below takes the rest. That is what keeps the
+	scrollbar underneath the bar instead of running up alongside it, and the bar
+	reaching the same edge the top bar does.
 -->
 <TabBar
+	docked
 	tabs={barTabs}
 	{active}
-	bind:height={tabsH}
 	label="{p.name} sections"
 	shortcuts
 	onnavigate={(to) => void goto(to, { noScroll: true })}
 />
 
-<div class="layout" class:full={!onOverview} style="--player-chrome-h: {tabsH}px">
-	<div class="main">{@render children()}</div>
+{#if framesOverview}
+	<Page>
+		<div class="layout">
+			<div class="main">{@render children()}</div>
+			{@render infobox()}
+		</div>
+	</Page>
+{:else}
+	{@render children()}
+{/if}
 
+{#snippet infobox()}
 	{#if onOverview}
 		<aside class="infobox">
 			<div class="card box">
@@ -136,21 +168,20 @@
 			<a class="backlink" href="/players">← All players</a>
 		</aside>
 	{/if}
-</div>
+{/snippet}
 
 <style>
 	/* Main column beside its aside. Unlike the page this replaced, there is no
 	   third row spanning both: the replay table that used to need one has a tab
-	   of its own now, and that tab drops the aside entirely. */
+	   of its own now, and that tab drops the aside entirely.
+
+	   Only the overview reaches here — every other tab is the whole column and
+	   renders itself, so there is no one-column variant of this grid any more. */
 	.layout {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) 290px;
 		gap: 0 28px;
 		align-items: start;
-	}
-	/* no aside, no second column — and no gutter left where it was */
-	.layout.full {
-		grid-template-columns: minmax(0, 1fr);
 	}
 	.main {
 		min-width: 0;

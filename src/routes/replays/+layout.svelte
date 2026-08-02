@@ -6,6 +6,7 @@
 	import ModeMark from '$lib/components/ModeMark.svelte';
 	import ModifierMark from '$lib/components/ModifierMark.svelte';
 	import { orderModifiers } from '$lib/modifiers';
+	import { Page } from 'sveltekit-commons';
 
 	let { data, children } = $props();
 	const replays = $derived(data.replays); // already newest-first from the server
@@ -19,48 +20,50 @@
 	}
 </script>
 
-<div class="split">
-	<nav class="rlist" aria-label="Ingested replays">
-		<a class="rlist-head" href="/replays" class:active={!page.params.id}>
-			Ingested replays <span class="counthint">{data.total}</span>
-		</a>
-		<ol>
-			{#each replays as r (r.file)}
-				{@const id = replayId(r.file)}
-				<li>
-					<a href="/replays/{id}" class:active={page.params.id === id}>
-						<span class="rdate">
-							{r.startedAt.slice(0, 16).replace('T', ' ')}
-							<OutcomeMark outcome={r.outcome} />
-						</span>
-						<span class="rmeta">
-							{#if r.mode || r.modifiers?.length}<span class="rtags"
-								>{#if r.mode}<ModeMark mode={r.mode} />{/if}{#each orderModifiers(
-									r.modifiers ?? []
-								) as id (id)}<ModifierMark {id} iconOnly focusable={false} />{/each}</span
-							> · {/if}{r.players} profile{r.players === 1 ? '' : 's'}{#if r.gameLoops}
-								· <span class="rdur">{fmtDuration(r.gameLoops)}</span>{/if} ·
-							<span class:struck={r.blobPruned}>{fmtSize(r.size)}</span
-							>{#if r.blobPruned}<span
-									class="notstored"
-									title="File no longer stored — the game is still on record"
-								>
-									· not stored</span
-								>{/if}
-						</span>
-					</a>
-				</li>
-			{/each}
-		</ol>
-		<div class="rpager">
-			<Pager page={data.page} pages={data.pages} total={data.total} label="replays" />
-		</div>
-	</nav>
+<Page>
+	<div class="split">
+		<nav class="rlist" aria-label="Ingested replays">
+			<a class="rlist-head" href="/replays" class:active={!page.params.id}>
+				Ingested replays <span class="counthint">{data.total}</span>
+			</a>
+			<ol>
+				{#each replays as r (r.file)}
+					{@const id = replayId(r.file)}
+					<li>
+						<a href="/replays/{id}" class:active={page.params.id === id}>
+							<span class="rdate">
+								{r.startedAt.slice(0, 16).replace('T', ' ')}
+								<OutcomeMark outcome={r.outcome} />
+							</span>
+							<span class="rmeta">
+								{#if r.mode || r.modifiers?.length}<span class="rtags"
+									>{#if r.mode}<ModeMark mode={r.mode} />{/if}{#each orderModifiers(
+										r.modifiers ?? []
+									) as id (id)}<ModifierMark {id} iconOnly focusable={false} />{/each}</span
+								> · {/if}{r.players} profile{r.players === 1 ? '' : 's'}{#if r.gameLoops}
+									· <span class="rdur">{fmtDuration(r.gameLoops)}</span>{/if} ·
+								<span class:struck={r.blobPruned}>{fmtSize(r.size)}</span
+								>{#if r.blobPruned}<span
+										class="notstored"
+										title="File no longer stored — the game is still on record"
+									>
+										· not stored</span
+									>{/if}
+							</span>
+						</a>
+					</li>
+				{/each}
+			</ol>
+			<div class="rpager">
+				<Pager page={data.page} pages={data.pages} total={data.total} label="replays" />
+			</div>
+		</nav>
 
-	<div class="rmain">
-		{@render children()}
+		<div class="rmain">
+			{@render children()}
+		</div>
 	</div>
-</div>
+</Page>
 
 <style>
 	.rpager {

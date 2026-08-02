@@ -46,6 +46,7 @@
 		return page.url.pathname === href || page.url.pathname.startsWith(href + '/');
 	}
 
+
 	const pageTitle = $derived.by(() => {
 		const p = page.url.pathname;
 		if (p === '/') return { section: '', title: 'Overview' };
@@ -675,14 +676,17 @@
 	   instead of floating above it, and runs the full width of the content
 	   area. The page takes what the shell leaves; anything above the rows (a
 	   toolbar, a note) keeps its own height and the rows take the rest. */
+	/* Goes in a `<Page fill>` — a column that does not scroll — and takes what is
+	   left in it; the rows below scroll inside that. It used to work its own
+	   height out from 100dvh less the top bar less the column's padding, with a
+	   negative bottom margin to give the padding back, because the shell scrolled
+	   the page and there was no way to be told how much room was left. A page
+	   that owns its scroller is handed the room instead. */
 	:global(.datapage) {
 		display: flex;
 		flex-direction: column;
-		/* exactly what the shell leaves, and the negative margin gives back the
-		   column's bottom padding: the last row ends on the window edge, with
-		   no strip of page under it */
-		height: calc(100dvh - var(--chrome-h) - var(--content-pad-top, 26px));
-		margin-bottom: calc(-1 * var(--content-pad-bottom, 72px));
+		flex: 1;
+		min-height: 0;
 	}
 	:global(.datapage .dtools) {
 		display: flex;

@@ -2,6 +2,7 @@
 	import { page } from '$app/state';
 	import { units, categories, tagClass, weaponLabel, type Unit } from '$lib/units';
 	import Seo from '$lib/components/Seo.svelte';
+	import { Page } from 'sveltekit-commons';
 
 	let query = $state('');
 	let activeCats = $state<Set<string>>(new Set());
@@ -66,66 +67,68 @@
 	];
 </script>
 
-<Seo
-	title="All entities"
-	description="All {units.length} entities extracted from Undead Assault Reborn — player classes, undead, items, deployables, projectiles and props — with stats, weapons and lineage."
-/>
+<Page fill>
+	<Seo
+		title="All entities"
+		description="All {units.length} entities extracted from Undead Assault Reborn — player classes, undead, items, deployables, projectiles and props — with stats, weapons and lineage."
+	/>
 
-<div class="datapage">
-	<div class="dtools">
-		<input
-			type="search"
-			placeholder="Search name, id, weapon…"
-			aria-label="Search entities"
-			bind:value={query}
-		/>
-		<div class="chips">
-			{#each categories as cat (cat)}
-				<button class="chip" aria-pressed={activeCats.has(cat)} onclick={() => toggleCat(cat)}>
-					{cat}
-				</button>
-			{/each}
-		</div>
-		<span class="rowcount right">{filtered.length} / {units.length}</span>
-	</div>
-
-	<div class="tablewrap rows">
-		<table class="data" style="min-width: 980px">
-			<thead>
-				<tr>
-					<th class="num">#</th>
-					{#each columns as col (col.key)}
-						<th class:num={col.num} class="sortable">
-							<button type="button" onclick={() => setSort(col.key)}>
-								{col.label}
-								<span class="dir">{sortKey === col.key ? (sortDir > 0 ? '↑' : '↓') : ''}</span>
-							</button>
-						</th>
-					{/each}
-					<th>Weapons (dmg · range · period)</th>
-				</tr>
-			</thead>
-			<tbody>
-				{#each filtered as u, i (u.id)}
-					<tr>
-						<td class="num rownum">{i + 1}</td>
-						<td class="namecell">
-							{#if u.icon}<img class="row-icon" src={u.icon} alt="" loading="lazy" />{/if}
-							<a href="/entities/{u.id}">{u.name || '—'}</a>
-						</td>
-						<td class="mono">{u.id}</td>
-						<td><span class="tag {tagClass(u.category)}">{u.category}</span></td>
-						<td class="num">{u.life ?? ''}</td>
-						<td class="num">{u.armor ?? ''}</td>
-						<td class="num">{u.speed ?? ''}</td>
-						<td class="num">{u.energy ?? ''}</td>
-						<td class="mono wpns">{u.weapons.map(weaponLabel).join('; ')}</td>
-					</tr>
+	<div class="datapage">
+		<div class="dtools">
+			<input
+				type="search"
+				placeholder="Search name, id, weapon…"
+				aria-label="Search entities"
+				bind:value={query}
+			/>
+			<div class="chips">
+				{#each categories as cat (cat)}
+					<button class="chip" aria-pressed={activeCats.has(cat)} onclick={() => toggleCat(cat)}>
+						{cat}
+					</button>
 				{/each}
-			</tbody>
-		</table>
+			</div>
+			<span class="rowcount right">{filtered.length} / {units.length}</span>
+		</div>
+
+		<div class="tablewrap rows">
+			<table class="data" style="min-width: 980px">
+				<thead>
+					<tr>
+						<th class="num">#</th>
+						{#each columns as col (col.key)}
+							<th class:num={col.num} class="sortable">
+								<button type="button" onclick={() => setSort(col.key)}>
+									{col.label}
+									<span class="dir">{sortKey === col.key ? (sortDir > 0 ? '↑' : '↓') : ''}</span>
+								</button>
+							</th>
+						{/each}
+						<th>Weapons (dmg · range · period)</th>
+					</tr>
+				</thead>
+				<tbody>
+					{#each filtered as u, i (u.id)}
+						<tr>
+							<td class="num rownum">{i + 1}</td>
+							<td class="namecell">
+								{#if u.icon}<img class="row-icon" src={u.icon} alt="" loading="lazy" />{/if}
+								<a href="/entities/{u.id}">{u.name || '—'}</a>
+							</td>
+							<td class="mono">{u.id}</td>
+							<td><span class="tag {tagClass(u.category)}">{u.category}</span></td>
+							<td class="num">{u.life ?? ''}</td>
+							<td class="num">{u.armor ?? ''}</td>
+							<td class="num">{u.speed ?? ''}</td>
+							<td class="num">{u.energy ?? ''}</td>
+							<td class="mono wpns">{u.weapons.map(weaponLabel).join('; ')}</td>
+						</tr>
+					{/each}
+				</tbody>
+			</table>
+		</div>
 	</div>
-</div>
+</Page>
 
 <style>
 	/* the page shape — toolbar put, rows scrolling, full-bleed table — is

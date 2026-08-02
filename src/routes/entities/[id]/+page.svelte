@@ -7,6 +7,7 @@
 	import Seo from '$lib/components/Seo.svelte';
 	import { entityCardUrl, unitDescription } from '$lib/seo';
 	import { displayName } from '$lib/ogcard';
+	import { Page } from 'sveltekit-commons';
 
 	let { data } = $props();
 
@@ -42,119 +43,121 @@
 	]);
 </script>
 
-<Seo
-	title={displayName(unit.name) || unit.id}
-	description={unitDescription(unit)}
-	image={entityCardUrl(unit.id)}
-/>
+<Page>
+	<Seo
+		title={displayName(unit.name) || unit.id}
+		description={unitDescription(unit)}
+		image={entityCardUrl(unit.id)}
+	/>
 
-<nav class="crumbs">
-	<a href="/entities">← All entities</a>
-</nav>
+	<nav class="crumbs">
+		<a href="/entities">← All entities</a>
+	</nav>
 
-<div class="layout">
-	<div class="main">
-		{#if item}
-			<h2 class="section">Item effects</h2>
-			<div class="itembox">
-				<div class="itemfacts">
-					<span class="tag t-item">{item.type}</span>
-					{#if item.charges}<span class="mono dim">charges {item.charges.start ?? '?'}/{item.charges.max}</span>{/if}
-					{#if item.allowed !== null}<span class="tag t-mos">{allowedLabel(item)}</span>{/if}
-				</div>
-				{#if item.mods.length}
-					<ul class="mods">
-						{#each item.mods as m (m.text + (m.note ?? ''))}
-							<li>{m.text}{#if m.note}<span class="scope">({m.note})</span>{/if}</li>
-						{/each}
-					</ul>
-				{/if}
-				{#if item.conflicts.length}
+	<div class="layout">
+		<div class="main">
+			{#if item}
+				<h2 class="section">Item effects</h2>
+				<div class="itembox">
 					<div class="itemfacts">
-						{#each item.conflicts as c (c)}<span class="tag t-hostile">{c}</span>{/each}
+						<span class="tag t-item">{item.type}</span>
+						{#if item.charges}<span class="mono dim">charges {item.charges.start ?? '?'}/{item.charges.max}</span>{/if}
+						{#if item.allowed !== null}<span class="tag t-mos">{allowedLabel(item)}</span>{/if}
 					</div>
+					{#if item.mods.length}
+						<ul class="mods">
+							{#each item.mods as m (m.text + (m.note ?? ''))}
+								<li>{m.text}{#if m.note}<span class="scope">({m.note})</span>{/if}</li>
+							{/each}
+						</ul>
+					{/if}
+					{#if item.conflicts.length}
+						<div class="itemfacts">
+							{#each item.conflicts as c (c)}<span class="tag t-hostile">{c}</span>{/each}
+						</div>
+					{/if}
+				</div>
+			{/if}
+
+			{#if unit.weapons.length}
+				<h2 class="section">Weapons</h2>
+				<div class="tablewrap">
+					<table class="data" style="min-width: 500px">
+						<thead>
+							<tr>
+								<th>Weapon</th>
+								<th class="num">Damage</th>
+								<th class="num">Range</th>
+								<th class="num">Period (s)</th>
+								<th class="num">DPS</th>
+								<th>On hit</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each unit.weapons as w (w.id)}
+								<tr>
+									<td class="mono">{w.id}</td>
+									<td class="num">{w.dmg ?? '?'}</td>
+									<td class="num">{w.range ?? '?'}</td>
+									<td class="num">{w.period ?? '?'}</td>
+									<td class="num">{w.dmg && w.period ? Math.round(w.dmg / w.period) : '?'}</td>
+									<td class="mono applies">{(w.applies ?? []).map(applyText).join(' · ')}</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+				<p class="note footnote">
+					“?” means the weapon fires a multi-stage effect (pellets, splash chains) whose damage lives
+					deeper in the effect tree.
+				</p>
+			{/if}
+
+			<h2 class="section">Lineage</h2>
+			<div class="lineage">
+				{#if unit.parent}
+					<p>
+						Inherits from
+						{#if unitById.has(unit.parent)}
+							<a href="/entities/{unit.parent}"><code>{unit.parent}</code></a>
+						{:else}
+							<code>{unit.parent}</code> <span class="dim">(base game / dependency)</span>
+						{/if}
+					</p>
+				{:else}
+					<p>No parent — standalone definition.</p>
+				{/if}
+				{#if children.length}
+					<p>
+						Extended by:
+						{#each children as c, i (c.id)}{#if i > 0},
+							{/if}<a href="/entities/{c.id}"><code>{c.id}</code></a>{/each}
+					</p>
 				{/if}
 			</div>
-		{/if}
-
-		{#if unit.weapons.length}
-			<h2 class="section">Weapons</h2>
-			<div class="tablewrap">
-				<table class="data" style="min-width: 500px">
-					<thead>
-						<tr>
-							<th>Weapon</th>
-							<th class="num">Damage</th>
-							<th class="num">Range</th>
-							<th class="num">Period (s)</th>
-							<th class="num">DPS</th>
-							<th>On hit</th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each unit.weapons as w (w.id)}
-							<tr>
-								<td class="mono">{w.id}</td>
-								<td class="num">{w.dmg ?? '?'}</td>
-								<td class="num">{w.range ?? '?'}</td>
-								<td class="num">{w.period ?? '?'}</td>
-								<td class="num">{w.dmg && w.period ? Math.round(w.dmg / w.period) : '?'}</td>
-								<td class="mono applies">{(w.applies ?? []).map(applyText).join(' · ')}</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
-			</div>
-			<p class="note footnote">
-				“?” means the weapon fires a multi-stage effect (pellets, splash chains) whose damage lives
-				deeper in the effect tree.
-			</p>
-		{/if}
-
-		<h2 class="section">Lineage</h2>
-		<div class="lineage">
-			{#if unit.parent}
-				<p>
-					Inherits from
-					{#if unitById.has(unit.parent)}
-						<a href="/entities/{unit.parent}"><code>{unit.parent}</code></a>
-					{:else}
-						<code>{unit.parent}</code> <span class="dim">(base game / dependency)</span>
-					{/if}
-				</p>
-			{:else}
-				<p>No parent — standalone definition.</p>
-			{/if}
-			{#if children.length}
-				<p>
-					Extended by:
-					{#each children as c, i (c.id)}{#if i > 0},
-						{/if}<a href="/entities/{c.id}"><code>{c.id}</code></a>{/each}
-				</p>
-			{/if}
 		</div>
-	</div>
 
-	<aside class="infobox">
-		<FactsCard
-			portrait={unit.icon}
-			title={unit.name || unit.id}
-			chip={unit.mos ? `MOS ${unit.mos}` : unit.name && unit.name !== unit.id ? unit.id : null}
-			{facts}
-			link={mosById.has(unit.id) ? { href: `/mos/${unit.id}`, label: 'Class page →' } : null}
-		>
-			{#snippet tags()}
-				<span class="tag {tagClass(unit.category)}">{unit.category}</span>
-			{/snippet}
-		</FactsCard>
-		{#if modelUrl}
-			<ModelCard src={modelUrl} alt="3D model of {unit.name || unit.id}" />
-		{/if}
-		{#if unit.tooltip}
-			<DescCard label="In-game description" text={unit.tooltip} />
-		{/if}
-	</aside>
-</div>
+		<aside class="infobox">
+			<FactsCard
+				portrait={unit.icon}
+				title={unit.name || unit.id}
+				chip={unit.mos ? `MOS ${unit.mos}` : unit.name && unit.name !== unit.id ? unit.id : null}
+				{facts}
+				link={mosById.has(unit.id) ? { href: `/mos/${unit.id}`, label: 'Class page →' } : null}
+			>
+				{#snippet tags()}
+					<span class="tag {tagClass(unit.category)}">{unit.category}</span>
+				{/snippet}
+			</FactsCard>
+			{#if modelUrl}
+				<ModelCard src={modelUrl} alt="3D model of {unit.name || unit.id}" />
+			{/if}
+			{#if unit.tooltip}
+				<DescCard label="In-game description" text={unit.tooltip} />
+			{/if}
+		</aside>
+	</div>
+</Page>
 
 <style>
 	.layout {

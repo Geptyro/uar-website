@@ -2,6 +2,7 @@
 	import { rankTracks, rankBonusAt, mosById, mosName, mosPageId, type RankTrack } from '$lib/mos';
 	import Seo from '$lib/components/Seo.svelte';
 	import StatIcon from '$lib/components/StatIcon.svelte';
+	import { Page } from 'sveltekit-commons';
 
 	const trackNotes: Record<number, string> = {
 		1: 'The starting track — 13 ranks from Private to Sergeant Major of the Army.',
@@ -20,119 +21,121 @@
 	}
 </script>
 
-<Seo
-	title="Rank sets"
-	description="The three rank tracks of Undead Assault Reborn — Enlisted, Warrant Officer, Commissioned Officer — with every rank, its XP threshold and its insignia."
-/>
+<Page>
+	<Seo
+		title="Rank sets"
+		description="The three rank tracks of Undead Assault Reborn — Enlisted, Warrant Officer, Commissioned Officer — with every rank, its XP threshold and its insignia."
+	/>
 
-<p class="note">
-	Account XP is tracked separately in three rank sets. Ranks gate class unlocks, equipment and
-	Skill Identifiers; the insignia is shown as a decal on your hero. Thresholds below are the
-	minimum XP in that track.
-</p>
+	<p class="note">
+		Account XP is tracked separately in three rank sets. Ranks gate class unlocks, equipment and
+		Skill Identifiers; the insignia is shown as a decal on your hero. Thresholds below are the
+		minimum XP in that track.
+	</p>
 
-<div class="tracks">
-	{#each rankTracks as track (track.track)}
-		<section class="track">
-			<h2 class="section">{track.name}</h2>
-			{#if trackNotes[track.track]}<p class="note">{trackNotes[track.track]}</p>{/if}
-			{#if track.bonus}
-				<div class="bonus">
-					<b class="bonus-head">Hidden buff, one stack per rank</b>
-					<ul class="bonus-list">
-						<li><StatIcon name="speed" size={14} /><b>{plus(speed(track.bonus.speed))}</b> move speed</li>
-						<li>
-							<StatIcon name="damage" size={14} /><b>{plus(pct(track.bonus.rangedDamage))}</b> ranged
-							damage
-						</li>
-						<li><StatIcon name="life" size={14} /><b>{plus(String(track.bonus.life))}</b> max life</li>
-					</ul>
-					<p class="bonus-foot">
-						{#if startingStacks(track) > 0}
-							This track spawns already holding <b>{startingStacks(track)} stacks</b> at its first
-							rank.
-						{:else}
-							A fresh {track.ranks[0].prefix} holds none — the first stack lands on promotion.
-						{/if}
-					</p>
-				</div>
-			{/if}
-			<div class="tablewrap">
-				<table class="data">
-					<thead>
-						<tr>
-							<th></th>
-							<th>Grade</th>
-							<th>Rank</th>
-							<th class="num">XP min</th>
-							{#if track.bonus}<th title="Total rank buff carried at this rank">Rank buff</th>{/if}
-						</tr>
-					</thead>
-					<tbody>
-						{#each track.ranks as r (r.idx)}
-							<tr class:has-reward={r.rewards?.length}>
-								<td class="icon-cell">
-									{#if r.icon}<img class="insignia" src={r.icon} alt="" loading="lazy" />{/if}
-								</td>
-								<td class="mono grade">{r.prefix}</td>
-								<td>{r.name}</td>
-								<td class="num">{r.xp?.toLocaleString('en') ?? ''}</td>
-								{#if track.bonus}
-									{@const b = rankBonusAt(track, r.idx)}
-									<td class="buff">
-										{#if !b || b.stacks === 0}
-											<span class="buff-none">—</span>
-										{:else}
-											<span class="buff-line" title="Move speed">
-												<StatIcon name="speed" size={13} />{plus(speed(b.speed))}
-											</span>
-											<span class="buff-line" title="Ranged damage dealt">
-												<StatIcon name="damage" size={13} />{plus(pct(b.rangedDamage))}
-											</span>
-											<span class="buff-line" title="Max life">
-												<StatIcon name="life" size={13} />{plus(String(b.life))}
-											</span>
-										{/if}
-									</td>
-								{/if}
+	<div class="tracks">
+		{#each rankTracks as track (track.track)}
+			<section class="track">
+				<h2 class="section">{track.name}</h2>
+				{#if trackNotes[track.track]}<p class="note">{trackNotes[track.track]}</p>{/if}
+				{#if track.bonus}
+					<div class="bonus">
+						<b class="bonus-head">Hidden buff, one stack per rank</b>
+						<ul class="bonus-list">
+							<li><StatIcon name="speed" size={14} /><b>{plus(speed(track.bonus.speed))}</b> move speed</li>
+							<li>
+								<StatIcon name="damage" size={14} /><b>{plus(pct(track.bonus.rangedDamage))}</b> ranged
+								damage
+							</li>
+							<li><StatIcon name="life" size={14} /><b>{plus(String(track.bonus.life))}</b> max life</li>
+						</ul>
+						<p class="bonus-foot">
+							{#if startingStacks(track) > 0}
+								This track spawns already holding <b>{startingStacks(track)} stacks</b> at its first
+								rank.
+							{:else}
+								A fresh {track.ranks[0].prefix} holds none — the first stack lands on promotion.
+							{/if}
+						</p>
+					</div>
+				{/if}
+				<div class="tablewrap">
+					<table class="data">
+						<thead>
+							<tr>
+								<th></th>
+								<th>Grade</th>
+								<th>Rank</th>
+								<th class="num">XP min</th>
+								{#if track.bonus}<th title="Total rank buff carried at this rank">Rank buff</th>{/if}
 							</tr>
-							{#if r.rewards?.length}
-								<tr class="reward-row">
-									<td></td>
-									<td colspan={track.bonus ? 4 : 3}>
-										{#each r.rewards as rw (rw.mos + rw.id)}
-											{@const page = mosPageId(rw.mos)}
-											{@const mosIcon = mosById.get(rw.mos)?.icon ?? null}
-											<span class="reward" title={rw.tooltip}>
-												<span class="reward-icons">
-													{#if rw.icon}
-														<img class="reward-icon" src={rw.icon} alt="" loading="lazy" />
-													{/if}
-													{#if mosIcon}
-														<img class="reward-icon" src={mosIcon} alt="" loading="lazy" />
-													{/if}
+						</thead>
+						<tbody>
+							{#each track.ranks as r (r.idx)}
+								<tr class:has-reward={r.rewards?.length}>
+									<td class="icon-cell">
+										{#if r.icon}<img class="insignia" src={r.icon} alt="" loading="lazy" />{/if}
+									</td>
+									<td class="mono grade">{r.prefix}</td>
+									<td>{r.name}</td>
+									<td class="num">{r.xp?.toLocaleString('en') ?? ''}</td>
+									{#if track.bonus}
+										{@const b = rankBonusAt(track, r.idx)}
+										<td class="buff">
+											{#if !b || b.stacks === 0}
+												<span class="buff-none">—</span>
+											{:else}
+												<span class="buff-line" title="Move speed">
+													<StatIcon name="speed" size={13} />{plus(speed(b.speed))}
 												</span>
-												<span class="reward-text">
-													<b>{rw.name}</b>
-													{#if rw.kind === 'unit'}<i class="reward-kind">free at spawn</i>{/if}
-													<span class="reward-mos">
-														{#if page}<a href="/mos/{page}">{mosName(rw.mos)}</a>{:else}{mosName(
-																rw.mos
-															)}{/if}
+												<span class="buff-line" title="Ranged damage dealt">
+													<StatIcon name="damage" size={13} />{plus(pct(b.rangedDamage))}
+												</span>
+												<span class="buff-line" title="Max life">
+													<StatIcon name="life" size={13} />{plus(String(b.life))}
+												</span>
+											{/if}
+										</td>
+									{/if}
+								</tr>
+								{#if r.rewards?.length}
+									<tr class="reward-row">
+										<td></td>
+										<td colspan={track.bonus ? 4 : 3}>
+											{#each r.rewards as rw (rw.mos + rw.id)}
+												{@const page = mosPageId(rw.mos)}
+												{@const mosIcon = mosById.get(rw.mos)?.icon ?? null}
+												<span class="reward" title={rw.tooltip}>
+													<span class="reward-icons">
+														{#if rw.icon}
+															<img class="reward-icon" src={rw.icon} alt="" loading="lazy" />
+														{/if}
+														{#if mosIcon}
+															<img class="reward-icon" src={mosIcon} alt="" loading="lazy" />
+														{/if}
+													</span>
+													<span class="reward-text">
+														<b>{rw.name}</b>
+														{#if rw.kind === 'unit'}<i class="reward-kind">free at spawn</i>{/if}
+														<span class="reward-mos">
+															{#if page}<a href="/mos/{page}">{mosName(rw.mos)}</a>{:else}{mosName(
+																	rw.mos
+																)}{/if}
+														</span>
 													</span>
 												</span>
-											</span>
-										{/each}
-									</td>
-								</tr>
-							{/if}
-						{/each}
-					</tbody>
-				</table>
-			</div>
-		</section>
-	{/each}
-</div>
+											{/each}
+										</td>
+									</tr>
+								{/if}
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			</section>
+		{/each}
+	</div>
+</Page>
 
 <style>
 	.tracks {

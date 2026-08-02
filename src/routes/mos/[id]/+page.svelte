@@ -23,6 +23,7 @@
 	import models from '$lib/data/models.json';
 	import Seo from '$lib/components/Seo.svelte';
 	import { mosCardUrl, mosDescription } from '$lib/seo';
+	import { Page } from 'sveltekit-commons';
 
 	let { data } = $props();
 
@@ -169,14 +170,6 @@
 	}
 </script>
 
-<Seo
-	title="{mos.name} — MOS"
-	description={mosDescription(mos, counterpart?.role === 'pilot' ? counterpart.mos.name : null)}
-	image={mosCardUrl(mos.id)}
-/>
-
-<!-- an item's card is its entity page; the handful that have no entity of
-     their own (mission props) are named but not linked -->
 {#snippet itemName(item: Item)}
 	{#if item.unit}
 		<a href="/entities/{item.unit}">{item.name}</a>
@@ -185,63 +178,96 @@
 	{/if}
 {/snippet}
 
-<div class="layout">
-	<div class="main">
-		{#if mos.skills.length}
-			<h2 class="section">Skills · {mos.skills.length} trees</h2>
-			<div class="cards">
-				{#each mos.skills as s (s.id)}
-					<article class="card">
-						<h3>
-							{#if s.icon}
-								<img class="skill-icon" src={s.icon} alt="" loading="lazy" />
-							{:else}
-								<span class="skill-icon placeholder"></span>
-							{/if}
-							<span class="skill-name">{s.name}</span>
-							{#if s.levels}<span class="lv">{s.levels} lv</span>{/if}
-						</h3>
-						{#if s.tooltip}<p class="card-tip">{s.tooltip}</p>{/if}
-					</article>
-				{/each}
-			</div>
-		{/if}
+<Page>
+	<Seo
+		title="{mos.name} — MOS"
+		description={mosDescription(mos, counterpart?.role === 'pilot' ? counterpart.mos.name : null)}
+		image={mosCardUrl(mos.id)}
+	/>
 
-		<!-- vehicles arm themselves through panel abilities, so they have no weapon rows -->
-		{#if mos.weapons.length || weaponItems.length}
-			<h2 class="section">Armament</h2>
-			<p class="note">
-				Standard-issue weapons plus every weapon item this class can pick up and use. Buff-type
-				weapons (no separate stats) modify the equipped weapon instead.
-			</p>
-			<div class="tablewrap">
-				<table class="data items" style="min-width: 660px">
-					<thead>
-						<tr>
-							<th>Weapon</th>
-							<th>Source</th>
-							<th class="num">Damage</th>
-							<th class="num">Range</th>
-							<th class="num">Period (s)</th>
-							<th class="num">DPS</th>
-							<th>Notes</th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each mos.weapons as w (w.id)}
+	<!-- an item's card is its entity page; the handful that have no entity of
+	     their own (mission props) are named but not linked -->
+
+	<div class="layout">
+		<div class="main">
+			{#if mos.skills.length}
+				<h2 class="section">Skills · {mos.skills.length} trees</h2>
+				<div class="cards">
+					{#each mos.skills as s (s.id)}
+						<article class="card">
+							<h3>
+								{#if s.icon}
+									<img class="skill-icon" src={s.icon} alt="" loading="lazy" />
+								{:else}
+									<span class="skill-icon placeholder"></span>
+								{/if}
+								<span class="skill-name">{s.name}</span>
+								{#if s.levels}<span class="lv">{s.levels} lv</span>{/if}
+							</h3>
+							{#if s.tooltip}<p class="card-tip">{s.tooltip}</p>{/if}
+						</article>
+					{/each}
+				</div>
+			{/if}
+
+			<!-- vehicles arm themselves through panel abilities, so they have no weapon rows -->
+			{#if mos.weapons.length || weaponItems.length}
+				<h2 class="section">Armament</h2>
+				<p class="note">
+					Standard-issue weapons plus every weapon item this class can pick up and use. Buff-type
+					weapons (no separate stats) modify the equipped weapon instead.
+				</p>
+				<div class="tablewrap">
+					<table class="data items" style="min-width: 660px">
+						<thead>
 							<tr>
-								<td class="wname">{w.id}</td>
-								<td><span class="tag">standard issue</span></td>
-								<td class="num">{w.dmg ?? '?'}</td>
-								<td class="num">{w.range ?? '?'}</td>
-								<td class="num">{w.period ?? '?'}</td>
-								<td class="num">{dps(w.dmg, w.period)}</td>
-								<td class="mono notes">{(w.applies ?? []).map(applyText).join(' · ')}</td>
+								<th>Weapon</th>
+								<th>Source</th>
+								<th class="num">Damage</th>
+								<th class="num">Range</th>
+								<th class="num">Period (s)</th>
+								<th class="num">DPS</th>
+								<th>Notes</th>
 							</tr>
-						{/each}
-						{#each weaponItems as item (item.id)}
-							{#if item.grants.length}
-								{#each item.grants as g (g.id)}
+						</thead>
+						<tbody>
+							{#each mos.weapons as w (w.id)}
+								<tr>
+									<td class="wname">{w.id}</td>
+									<td><span class="tag">standard issue</span></td>
+									<td class="num">{w.dmg ?? '?'}</td>
+									<td class="num">{w.range ?? '?'}</td>
+									<td class="num">{w.period ?? '?'}</td>
+									<td class="num">{dps(w.dmg, w.period)}</td>
+									<td class="mono notes">{(w.applies ?? []).map(applyText).join(' · ')}</td>
+								</tr>
+							{/each}
+							{#each weaponItems as item (item.id)}
+								{#if item.grants.length}
+									{#each item.grants as g (g.id)}
+										<tr>
+											<td class="wname namecell">
+												{#if item.icon}<img
+														class="row-icon"
+														src={item.icon}
+														alt=""
+														loading="lazy"
+													/>{:else}<span class="row-icon placeholder"></span>{/if}
+												{@render itemName(item)}
+											</td>
+											<td><span class="tag t-item">item</span></td>
+											<td class="num">{g.dmg ?? '?'}</td>
+											<td class="num">{g.range ?? '?'}</td>
+											<td class="num">{g.period ?? '?'}</td>
+											<td class="num">{dps(g.dmg, g.period)}</td>
+											<td class="mono notes"
+												>{[itemNote(item), ...(g.applies ?? []).map(applyText)]
+													.filter(Boolean)
+													.join(' · ')}</td
+											>
+										</tr>
+									{/each}
+								{:else}
 									<tr>
 										<td class="wname namecell">
 											{#if item.icon}<img
@@ -252,21 +278,42 @@
 												/>{:else}<span class="row-icon placeholder"></span>{/if}
 											{@render itemName(item)}
 										</td>
-										<td><span class="tag t-item">item</span></td>
-										<td class="num">{g.dmg ?? '?'}</td>
-										<td class="num">{g.range ?? '?'}</td>
-										<td class="num">{g.period ?? '?'}</td>
-										<td class="num">{dps(g.dmg, g.period)}</td>
-										<td class="mono notes"
-											>{[itemNote(item), ...(g.applies ?? []).map(applyText)]
-												.filter(Boolean)
-												.join(' · ')}</td
-										>
+										<td><span class="tag t-item">weapon buff</span></td>
+										<td class="num" colspan="4"></td>
+										<td class="mono notes">{itemNote(item)}</td>
 									</tr>
-								{/each}
-							{:else}
+							{/if}
+						{/each}
+					</tbody>
+				</table>
+			</div>
+			{/if}
+
+			{#if mechanics?.panel.length}
+				<h2 class="section">Class panel · {mechanics.panel.length} buttons</h2>
+				<p class="note">
+					Extra actions on this class's mini-panel, with the hotkey that triggers each one.
+				</p>
+				<ClassPanel keys={mechanics.panel} />
+			{/if}
+
+			{#each gearGroups as group (group.type)}
+				<h2 class="section">{group.label} · {group.items.length}</h2>
+				<div class="tablewrap">
+					<table class="data items" style="min-width: 640px">
+						<thead>
+							<tr>
+								<th>Item</th>
+								<th class="num">Charges</th>
+								<th>Effect</th>
+								<th>Who can use it</th>
+								<th>Conflicts</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each group.items as item (item.id)}
 								<tr>
-									<td class="wname namecell">
+									<td class="namecell">
 										{#if item.icon}<img
 												class="row-icon"
 												src={item.icon}
@@ -275,273 +322,230 @@
 											/>{:else}<span class="row-icon placeholder"></span>{/if}
 										{@render itemName(item)}
 									</td>
-									<td><span class="tag t-item">weapon buff</span></td>
-									<td class="num" colspan="4"></td>
-									<td class="mono notes">{itemNote(item)}</td>
+									<td class="num"
+										>{item.charges ? `${item.charges.start ?? '?'}/${item.charges.max}` : ''}</td
+									>
+									<td class="mono effect">{modsFor(item, mos.id).join(', ')}</td>
+									<td>
+										{#if item.allowed !== null}
+											<span class="tag t-mos">{allowedLabel(item)}</span>
+										{:else}
+											<span class="tag">everyone</span>
+										{/if}
+									</td>
+									<td class="mono effect">{item.conflicts.join(' · ')}</td>
 								</tr>
-						{/if}
-					{/each}
-				</tbody>
-			</table>
-		</div>
-		{/if}
-
-		{#if mechanics?.panel.length}
-			<h2 class="section">Class panel · {mechanics.panel.length} buttons</h2>
-			<p class="note">
-				Extra actions on this class's mini-panel, with the hotkey that triggers each one.
-			</p>
-			<ClassPanel keys={mechanics.panel} />
-		{/if}
-
-		{#each gearGroups as group (group.type)}
-			<h2 class="section">{group.label} · {group.items.length}</h2>
-			<div class="tablewrap">
-				<table class="data items" style="min-width: 640px">
-					<thead>
-						<tr>
-							<th>Item</th>
-							<th class="num">Charges</th>
-							<th>Effect</th>
-							<th>Who can use it</th>
-							<th>Conflicts</th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each group.items as item (item.id)}
-							<tr>
-								<td class="namecell">
-									{#if item.icon}<img
-											class="row-icon"
-											src={item.icon}
-											alt=""
-											loading="lazy"
-										/>{:else}<span class="row-icon placeholder"></span>{/if}
-									{@render itemName(item)}
-								</td>
-								<td class="num"
-									>{item.charges ? `${item.charges.start ?? '?'}/${item.charges.max}` : ''}</td
-								>
-								<td class="mono effect">{modsFor(item, mos.id).join(', ')}</td>
-								<td>
-									{#if item.allowed !== null}
-										<span class="tag t-mos">{allowedLabel(item)}</span>
-									{:else}
-										<span class="tag">everyone</span>
-									{/if}
-								</td>
-								<td class="mono effect">{item.conflicts.join(' · ')}</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
-			</div>
-		{/each}
-
-		<!-- Who actually plays it, on the same board the front page and a player
-		     profile draw. It comes from the live DB on a page that is otherwise
-		     prerendered, so the section only exists once the fetch lands. -->
-		{#if topPlayers.length}
-			<h2 class="section">Top players</h2>
-			<div class="tablewrap">
-				<table class="data board toplist">
-					<thead>
-						<tr>
-							<th class="pos">#</th>
-							<th>Player</th>
-							<th class="num">Time</th>
-							<th class="barcell"></th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each topPlayers as p, i (p.toon || p.name)}
-							<tr>
-								<td class="pos">{i + 1}</td>
-								<td class="figcell">
-									<img class="figimg" src={p.avatarUrl || anonPortrait} alt="" loading="lazy" />
-									{#if p.clan}<span class="pclan">&lt;{p.clan}&gt;</span>{/if}
-									{#if p.toon}
-										<a class="pname" href="/players/{p.toon}">{p.name}</a>
-									{:else}
-										<span class="pname">{p.name}</span>
-									{/if}
-								</td>
-								<td class="num" title="{p.games} game{p.games === 1 ? '' : 's'}">
-									{fmtPlaytime(p.seconds)}
-								</td>
-								<td class="barcell">
-									{#if p.seconds > 0}
-										<div
-											class="boardbar"
-											style="width: {(100 * p.seconds) / topPlayers[0].seconds}%"
-										></div>
-									{/if}
-								</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
-			</div>
-			<a class="si-all" href="/players">All players →</a>
-		{/if}
-	</div>
-
-	<aside class="infobox">
-		<FactsCard
-			portrait={mos.icon}
-			title={mos.name}
-			chip={mos.mos ? `MOS ${mos.mos}` : null}
-			{facts}
-			link={{ href: `/entities/${mos.id}`, label: 'Unit data →' }}
-		/>
-		{#if counterpart}
-			<DescCard label={counterpart.role === 'vehicle' ? 'Vehicle' : 'Pilot'}>
-				<a class="pair" href="/mos/{counterpart.mos.id}">
-					{#if counterpart.mos.icon}
-						<img class="pair-icon" src={counterpart.mos.icon} alt="" loading="lazy" />
-					{/if}
-					<span class="pair-text">
-						<b>{counterpart.mos.name}</b>
-						<span class="pair-sub">
-							{counterpart.role === 'vehicle'
-								? `Brought along by the ${mos.name} — its own stats, weapons and ability card.`
-								: `Piloted by the ${counterpart.mos.name}, who enters and leaves it in play.`}
-						</span>
-					</span>
-				</a>
-			</DescCard>
-		{/if}
-		{#if mos.common.length}
-			<DescCard label="Standard abilities · {mos.common.length}">
-				<ul class="abil-grid">
-					{#each mos.common as a (a.id)}
-						<li>
-							<Tooltip label={a.name} text={a.tooltip} placement="left">
-								<span class="abil-tile">
-									{#if a.icon}
-										<img src={a.icon} alt={a.name} loading="lazy" />
-									{:else}
-										<span class="abil-fallback" aria-label={a.name}>{initials(a.name)}</span>
-									{/if}
-								</span>
-							</Tooltip>
-						</li>
-					{/each}
-				</ul>
-				<p class="unlock-note">
-					Commands this class has by default. Hover — or focus — an icon for what it does.
-				</p>
-			</DescCard>
-		{/if}
-		<!-- Handling reads as a rail block: its cards already carry their own
-		     frame and label, so the group only needs a heading over them. One
-		     element, because below 1080px every child of the rail becomes a
-		     cell of its own grid. -->
-		{#if mechanics}
-			<section class="handling">
-				<h2 class="section">Handling</h2>
-				<p class="note">
-					Ammunition, jamming and shared-class behaviour, read from the map's trigger script rather
-					than the unit data.
-				</p>
-				<MechanicsGrid mosId={mos.id} />
-			</section>
-		{/if}
-		{#if unlock}
-			<DescCard label="Rank tracks">
-				<div class="unlock-grid">
-					{#each unlockCells as c (c.short)}
-						<div class="unlock-cell" class:off={c.off} title={c.title}>
-							{#if c.wf}
-								<span class="unlock-wf" style="--wf: url('{c.wf}')"></span>
-							{/if}
-							<span class="unlock-tracklabel">{c.short}</span>
-							<span class="unlock-rankslot">
-								{#if c.rankIcon}
-									<img class="unlock-rank" src={c.rankIcon} alt="" loading="lazy" />
-								{/if}
-							</span>
-							<b class="unlock-main">{c.main}</b>
-							<span class="unlock-sub">{c.sub ?? ' '}</span>
-							{#each c.rewards as rw (rw.id)}
-								<span class="unlock-reward" title={rw.tooltip || rw.name}>
-									{#if rw.icon}
-										<img class="unlock-reward-icon" src={rw.icon} alt="" loading="lazy" />
-									{/if}
-									<b class="unlock-reward-name">{rw.name}</b>
-									<span class="unlock-reward-at">
-										{rw.kind === 'unit' ? 'free at' : 'at'}
-										{rw.rankPrefix}
-									</span>
-								</span>
 							{/each}
+						</tbody>
+					</table>
+				</div>
+			{/each}
+
+			<!-- Who actually plays it, on the same board the front page and a player
+			     profile draw. It comes from the live DB on a page that is otherwise
+			     prerendered, so the section only exists once the fetch lands. -->
+			{#if topPlayers.length}
+				<h2 class="section">Top players</h2>
+				<div class="tablewrap">
+					<table class="data board toplist">
+						<thead>
+							<tr>
+								<th class="pos">#</th>
+								<th>Player</th>
+								<th class="num">Time</th>
+								<th class="barcell"></th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each topPlayers as p, i (p.toon || p.name)}
+								<tr>
+									<td class="pos">{i + 1}</td>
+									<td class="figcell">
+										<img class="figimg" src={p.avatarUrl || anonPortrait} alt="" loading="lazy" />
+										{#if p.clan}<span class="pclan">&lt;{p.clan}&gt;</span>{/if}
+										{#if p.toon}
+											<a class="pname" href="/players/{p.toon}">{p.name}</a>
+										{:else}
+											<span class="pname">{p.name}</span>
+										{/if}
+									</td>
+									<td class="num" title="{p.games} game{p.games === 1 ? '' : 's'}">
+										{fmtPlaytime(p.seconds)}
+									</td>
+									<td class="barcell">
+										{#if p.seconds > 0}
+											<div
+												class="boardbar"
+												style="width: {(100 * p.seconds) / topPlayers[0].seconds}%"
+											></div>
+										{/if}
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+				<a class="si-all" href="/players">All players →</a>
+			{/if}
+		</div>
+
+		<aside class="infobox">
+			<FactsCard
+				portrait={mos.icon}
+				title={mos.name}
+				chip={mos.mos ? `MOS ${mos.mos}` : null}
+				{facts}
+				link={{ href: `/entities/${mos.id}`, label: 'Unit data →' }}
+			/>
+			{#if counterpart}
+				<DescCard label={counterpart.role === 'vehicle' ? 'Vehicle' : 'Pilot'}>
+					<a class="pair" href="/mos/{counterpart.mos.id}">
+						{#if counterpart.mos.icon}
+							<img class="pair-icon" src={counterpart.mos.icon} alt="" loading="lazy" />
+						{/if}
+						<span class="pair-text">
+							<b>{counterpart.mos.name}</b>
+							<span class="pair-sub">
+								{counterpart.role === 'vehicle'
+									? `Brought along by the ${mos.name} — its own stats, weapons and ability card.`
+									: `Piloted by the ${counterpart.mos.name}, who enters and leaves it in play.`}
+							</span>
+						</span>
+					</a>
+				</DescCard>
+			{/if}
+			{#if mos.common.length}
+				<DescCard label="Standard abilities · {mos.common.length}">
+					<ul class="abil-grid">
+						{#each mos.common as a (a.id)}
+							<li>
+								<Tooltip label={a.name} text={a.tooltip} placement="left">
+									<span class="abil-tile">
+										{#if a.icon}
+											<img src={a.icon} alt={a.name} loading="lazy" />
+										{:else}
+											<span class="abil-fallback" aria-label={a.name}>{initials(a.name)}</span>
+										{/if}
+									</span>
+								</Tooltip>
+							</li>
+						{/each}
+					</ul>
+					<p class="unlock-note">
+						Commands this class has by default. Hover — or focus — an icon for what it does.
+					</p>
+				</DescCard>
+			{/if}
+			<!-- Handling reads as a rail block: its cards already carry their own
+			     frame and label, so the group only needs a heading over them. One
+			     element, because below 1080px every child of the rail becomes a
+			     cell of its own grid. -->
+			{#if mechanics}
+				<section class="handling">
+					<h2 class="section">Handling</h2>
+					<p class="note">
+						Ammunition, jamming and shared-class behaviour, read from the map's trigger script rather
+						than the unit data.
+					</p>
+					<MechanicsGrid mosId={mos.id} />
+				</section>
+			{/if}
+			{#if unlock}
+				<DescCard label="Rank tracks">
+					<div class="unlock-grid">
+						{#each unlockCells as c (c.short)}
+							<div class="unlock-cell" class:off={c.off} title={c.title}>
+								{#if c.wf}
+									<span class="unlock-wf" style="--wf: url('{c.wf}')"></span>
+								{/if}
+								<span class="unlock-tracklabel">{c.short}</span>
+								<span class="unlock-rankslot">
+									{#if c.rankIcon}
+										<img class="unlock-rank" src={c.rankIcon} alt="" loading="lazy" />
+									{/if}
+								</span>
+								<b class="unlock-main">{c.main}</b>
+								<span class="unlock-sub">{c.sub ?? ' '}</span>
+								{#each c.rewards as rw (rw.id)}
+									<span class="unlock-reward" title={rw.tooltip || rw.name}>
+										{#if rw.icon}
+											<img class="unlock-reward-icon" src={rw.icon} alt="" loading="lazy" />
+										{/if}
+										<b class="unlock-reward-name">{rw.name}</b>
+										<span class="unlock-reward-at">
+											{rw.kind === 'unit' ? 'free at' : 'at'}
+											{rw.rankPrefix}
+										</span>
+									</span>
+								{/each}
+							</div>
+						{/each}
+					</div>
+					{#if everyTrackXp}
+						<p class="unlock-note">Needs the XP on all three rank tracks at once.</p>
+					{/if}
+					{#if unlock.medals}
+						<p class="unlock-alt">…and earn <a href="/medals">{unlock.medals} medals</a></p>
+					{/if}
+					{#if unlock.modes}
+						<p class="unlock-note">Only in {unlock.modes.join(', ')}</p>
+					{/if}
+					<p class="unlock-note">
+						Max picks per game: {unlock.charges}. Any prestige unlocks all rank requirements.
+					</p>
+					<a class="si-all" href="/ranks">All ranks and track bonuses →</a>
+				</DescCard>
+			{/if}
+			{#if progressionGear}
+				<DescCard label="{progressionGear.label} · {progressionGear.items.length} unlocks">
+					{#each progressionGear.items as item, i (item.name)}
+						<div class="pg-item">
+							<div class="pg-head">
+								{#if progressionGear.ordered}<span class="pg-rank">{i + 1}</span>{/if}
+								<b class="pg-name">{item.name}</b>
+							</div>
+							{#if item.desc}<p class="pg-desc">{item.desc}</p>{/if}
+							{#if item.req}
+								<p class="pg-req"><span class="pg-req-k">unlock</span>{item.req}</p>
+							{/if}
 						</div>
 					{/each}
-				</div>
-				{#if everyTrackXp}
-					<p class="unlock-note">Needs the XP on all three rank tracks at once.</p>
-				{/if}
-				{#if unlock.medals}
-					<p class="unlock-alt">…and earn <a href="/medals">{unlock.medals} medals</a></p>
-				{/if}
-				{#if unlock.modes}
-					<p class="unlock-note">Only in {unlock.modes.join(', ')}</p>
-				{/if}
-				<p class="unlock-note">
-					Max picks per game: {unlock.charges}. Any prestige unlocks all rank requirements.
-				</p>
-				<a class="si-all" href="/ranks">All ranks and track bonuses →</a>
-			</DescCard>
-		{/if}
-		{#if progressionGear}
-			<DescCard label="{progressionGear.label} · {progressionGear.items.length} unlocks">
-				{#each progressionGear.items as item, i (item.name)}
-					<div class="pg-item">
-						<div class="pg-head">
-							{#if progressionGear.ordered}<span class="pg-rank">{i + 1}</span>{/if}
-							<b class="pg-name">{item.name}</b>
-						</div>
-						{#if item.desc}<p class="pg-desc">{item.desc}</p>{/if}
-						{#if item.req}
-							<p class="pg-req"><span class="pg-req-k">unlock</span>{item.req}</p>
-						{/if}
-					</div>
-				{/each}
-				{#if progressionGear.ordered}
+					{#if progressionGear.ordered}
+						<p class="unlock-note">
+							Earned in order — each piece needs the previous ones plus its own challenge.
+						</p>
+					{/if}
 					<p class="unlock-note">
-						Earned in order — each piece needs the previous ones plus its own challenge.
+						Account unlocks earned by playing — each <a href="/players">player profile</a> shows which
+						ones they own.
 					</p>
-				{/if}
-				<p class="unlock-note">
-					Account unlocks earned by playing — each <a href="/players">player profile</a> shows which
-					ones they own.
-				</p>
-			</DescCard>
-		{/if}
-		{#if modelUrl}
-			<ModelCard src={modelUrl} alt="3D model of {mos.name}" />
-		{/if}
-		{#if mos.tooltip}
-			<DescCard label="In-game description" text={mos.tooltip} />
-		{/if}
-		{#if si.length}
-			<DescCard label="Skill Identifiers">
-				{#each si as s (s.num)}
-					<div class="si-row">
-						{#if s.icon}
-							<img class="si-icon" src={s.icon} alt="" loading="lazy" />
-						{:else}
-							<span class="si-code">{s.code}</span>
-						{/if}
-						<b>{s.name}</b>
-					</div>
-					{#if s.desc}<p class="si-desc">{s.desc}</p>{/if}
-				{/each}
-				<a class="si-all" href="/si">All Skill Identifiers →</a>
-			</DescCard>
-		{/if}
-	</aside>
-</div>
+				</DescCard>
+			{/if}
+			{#if modelUrl}
+				<ModelCard src={modelUrl} alt="3D model of {mos.name}" />
+			{/if}
+			{#if mos.tooltip}
+				<DescCard label="In-game description" text={mos.tooltip} />
+			{/if}
+			{#if si.length}
+				<DescCard label="Skill Identifiers">
+					{#each si as s (s.num)}
+						<div class="si-row">
+							{#if s.icon}
+								<img class="si-icon" src={s.icon} alt="" loading="lazy" />
+							{:else}
+								<span class="si-code">{s.code}</span>
+							{/if}
+							<b>{s.name}</b>
+						</div>
+						{#if s.desc}<p class="si-desc">{s.desc}</p>{/if}
+					{/each}
+					<a class="si-all" href="/si">All Skill Identifiers →</a>
+				</DescCard>
+			{/if}
+		</aside>
+	</div>
+</Page>
 
 <style>
 	.layout {

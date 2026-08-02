@@ -26,6 +26,7 @@
 	import { mapRegions, mapSize, regionCenter } from '$lib/map';
 	import { modeNames } from '$lib/players';
 	import Seo from '$lib/components/Seo.svelte';
+	import { Page } from 'sveltekit-commons';
 
 	const unjam = rules.jam.unjam;
 
@@ -113,264 +114,266 @@
 	});
 </script>
 
-<Seo
-	title="Quick guide"
-	description="Undead Assault Reborn in one diagram: where you land, what to pick, why you follow the squad, and how to clear a jammed weapon. Plus the detail underneath."
-/>
+<Page>
+	<Seo
+		title="Quick guide"
+		description="Undead Assault Reborn in one diagram: where you land, what to pick, why you follow the squad, and how to clear a jammed weapon. Plus the detail underneath."
+	/>
 
-<p class="note">Your first game, top to bottom. Two minutes.</p>
+	<p class="note">Your first game, top to bottom. Two minutes.</p>
 
-<div class="layout">
-	<div class="graph">
-		<div class="node c-lobby">
-			<span class="n-k">start</span>
-			<b>The lobby <em class="k">votes</em> a mode</b>
-			<span class="n-d">Pick <b>{modeNames[0]}</b> — the one the map recommends first.</span>
-		</div>
+	<div class="layout">
+		<div class="graph">
+			<div class="node c-lobby">
+				<span class="n-k">start</span>
+				<b>The lobby <em class="k">votes</em> a mode</b>
+				<span class="n-d">Pick <b>{modeNames[0]}</b> — the one the map recommends first.</span>
+			</div>
 
-		<svg class="conn" viewBox="0 0 100 26" preserveAspectRatio="none" aria-hidden="true">
-			<path d="M50 0 V26" />
-		</svg>
+			<svg class="conn" viewBox="0 0 100 26" preserveAspectRatio="none" aria-hidden="true">
+				<path d="M50 0 V26" />
+			</svg>
 
-		<div class="node c-mos">
-			<span class="n-k">then</span>
-			<b>Pick your <em class="k">class</em></b>
-			{#if starters.length}
-				<span class="picks">
-					{#each starters as m (m.id)}
-						<a class="pick" href="/mos/{m.id}">
-							{#if m.icon}<img src={m.icon} alt="" loading="lazy" />{/if}
-							<span>{m.name}</span>
-						</a>
+			<div class="node c-mos">
+				<span class="n-k">then</span>
+				<b>Pick your <em class="k">class</em></b>
+				{#if starters.length}
+					<span class="picks">
+						{#each starters as m (m.id)}
+							<a class="pick" href="/mos/{m.id}">
+								{#if m.icon}<img src={m.icon} alt="" loading="lazy" />{/if}
+								<span>{m.name}</span>
+							</a>
+						{/each}
+					</span>
+				{/if}
+				<span class="n-d">
+					You start with these. {pickableMos.length} in all — rank unlocks the rest.
+				</span>
+			</div>
+
+			<!-- the bracket only means anything while the branches sit side by side;
+			     stacked, the same two cards are one line apart -->
+			<svg class="conn fork" viewBox="0 0 100 26" preserveAspectRatio="none" aria-hidden="true">
+				<path d="M50 0 V13 M24 13 H76 M24 13 V26 M76 13 V26" />
+			</svg>
+			<svg class="conn stacked" viewBox="0 0 100 14" preserveAspectRatio="none" aria-hidden="true">
+				<path d="M50 0 V14" />
+			</svg>
+
+			<div class="split">
+				<div class="node branch c-item">
+					<span class="n-k">either</span>
+					<b>Head for the <em class="k">city</em></b>
+					<span class="n-d">Thalim — walls, gates, the City Guard.</span>
+				</div>
+				<span class="or" aria-hidden="true">or</span>
+				<div class="node branch hi c-ok">
+					<span class="n-k">better</span>
+					<b><em class="k">Follow</em> other players</b>
+					<span class="n-d">Nobody survives AO Thalim alone.</span>
+				</div>
+			</div>
+
+			<svg class="conn fork" viewBox="0 0 100 26" preserveAspectRatio="none" aria-hidden="true">
+				<path d="M24 0 V13 M76 0 V13 M24 13 H76 M50 13 V26" />
+			</svg>
+			<svg class="conn stacked" viewBox="0 0 100 14" preserveAspectRatio="none" aria-hidden="true">
+				<path d="M50 0 V14" />
+			</svg>
+
+			<div class="node alert c-bad">
+				<span class="n-k">sooner or later</span>
+				<b>Your weapon <em class="k">jams</em></b>
+				<span class="jam-focus">
+					{#each ARROWS as a (a.deg)}
+						<span
+							class="arr"
+							style="--a: {a.deg}deg; --near: {a.near}px; --far: {a.far}px"
+							aria-hidden="true"
+						></span>
 					{/each}
-				</span>
-			{/if}
-			<span class="n-d">
-				You start with these. {pickableMos.length} in all — rank unlocks the rest.
-			</span>
-		</div>
-
-		<!-- the bracket only means anything while the branches sit side by side;
-		     stacked, the same two cards are one line apart -->
-		<svg class="conn fork" viewBox="0 0 100 26" preserveAspectRatio="none" aria-hidden="true">
-			<path d="M50 0 V13 M24 13 H76 M24 13 V26 M76 13 V26" />
-		</svg>
-		<svg class="conn stacked" viewBox="0 0 100 14" preserveAspectRatio="none" aria-hidden="true">
-			<path d="M50 0 V14" />
-		</svg>
-
-		<div class="split">
-			<div class="node branch c-item">
-				<span class="n-k">either</span>
-				<b>Head for the <em class="k">city</em></b>
-				<span class="n-d">Thalim — walls, gates, the City Guard.</span>
-			</div>
-			<span class="or" aria-hidden="true">or</span>
-			<div class="node branch hi c-ok">
-				<span class="n-k">better</span>
-				<b><em class="k">Follow</em> other players</b>
-				<span class="n-d">Nobody survives AO Thalim alone.</span>
-			</div>
-		</div>
-
-		<svg class="conn fork" viewBox="0 0 100 26" preserveAspectRatio="none" aria-hidden="true">
-			<path d="M24 0 V13 M76 0 V13 M24 13 H76 M50 13 V26" />
-		</svg>
-		<svg class="conn stacked" viewBox="0 0 100 14" preserveAspectRatio="none" aria-hidden="true">
-			<path d="M50 0 V14" />
-		</svg>
-
-		<div class="node alert c-bad">
-			<span class="n-k">sooner or later</span>
-			<b>Your weapon <em class="k">jams</em></b>
-			<span class="jam-focus">
-				{#each ARROWS as a (a.deg)}
-					<span
-						class="arr"
-						style="--a: {a.deg}deg; --near: {a.near}px; --far: {a.far}px"
-						aria-hidden="true"
-					></span>
-				{/each}
-				<span class="btn-icon jam" title="What a jam puts on screen">
-					<img src={JAM_ICON} alt="Weapon jammed" />
-				</span>
-			</span>
-
-			<!-- the two clicks the hotkey is short for: Z opens the submenu, A is
-			     the action inside it -->
-			<span class="do">
-				<span class="step">
-					<span class="step-row">
-						<img class="btn-icon glyph" src={SUBMENU_ICON} alt="" />
-						<kbd>Z</kbd>
+					<span class="btn-icon jam" title="What a jam puts on screen">
+						<img src={JAM_ICON} alt="Weapon jammed" />
 					</span>
-					<span class="lab">Additional actions</span>
 				</span>
-				<span class="sep" aria-hidden="true">→</span>
-				<span class="step">
-					<span class="step-row">
-						<img class="btn-icon" src={UNJAM_ICON} alt="" />
-						<kbd>A</kbd>
+
+				<!-- the two clicks the hotkey is short for: Z opens the submenu, A is
+				     the action inside it -->
+				<span class="do">
+					<span class="step">
+						<span class="step-row">
+							<img class="btn-icon glyph" src={SUBMENU_ICON} alt="" />
+							<kbd>Z</kbd>
+						</span>
+						<span class="lab">Additional actions</span>
 					</span>
-					<span class="lab">Immediate/Remedial</span>
+					<span class="sep" aria-hidden="true">→</span>
+					<span class="step">
+						<span class="step-row">
+							<img class="btn-icon" src={UNJAM_ICON} alt="" />
+							<kbd>A</kbd>
+						</span>
+						<span class="lab">Immediate/Remedial</span>
+					</span>
 				</span>
-			</span>
-			<span class="do-d">the two command-card buttons, or their keys</span>
-			<span class="n-d">Nothing clears it on its own. Step behind the line, then press it.</span>
+				<span class="do-d">the two command-card buttons, or their keys</span>
+				<span class="n-d">Nothing clears it on its own. Step behind the line, then press it.</span>
+			</div>
 		</div>
+
+		<aside class="ao">
+			<h2 class="ao-h">AO Thalim</h2>
+			<svg class="ao-map" viewBox="0 0 {mapSize} {mapSize}" role="img" aria-label="Where you land, and where the city is">
+				<image href="/map/minimap.png" width={mapSize} height={mapSize} />
+				{#if city && cityAt}
+					<circle class="ao-city" cx={cityAt.x} cy={cityAt.y} r={cityRadius} />
+					<circle class="ao-pin city" cx={cityAt.x} cy={cityAt.y} r="4.5" />
+				{/if}
+				{#if lz && lzAt}
+					<circle class="ao-halo" cx={lzAt.x} cy={lzAt.y} r={(lz.r ?? 6) + 4} />
+					<circle class="ao-pin lz" cx={lzAt.x} cy={lzAt.y} r="4.5" />
+				{/if}
+
+				<!-- labels last so nothing draws over them -->
+				{#if cityAt && city}
+					<text class="ao-t city" x={cityAt.x + 8} y={cityAt.y + 3}>{city.name} · the city</text>
+				{/if}
+				{#if lzAt}
+					<text class="ao-t lz" x={lzAt.x + 12} y={lzAt.y + 3}>you land here</text>
+				{/if}
+			</svg>
+			<p class="ao-d">
+				Every game starts at {lz?.name ?? 'the landing zone'}. The city is north of it — both
+				positions are read from the map file.
+			</p>
+			<a class="glink" href="/map">The full map →</a>
+		</aside>
 	</div>
 
-	<aside class="ao">
-		<h2 class="ao-h">AO Thalim</h2>
-		<svg class="ao-map" viewBox="0 0 {mapSize} {mapSize}" role="img" aria-label="Where you land, and where the city is">
-			<image href="/map/minimap.png" width={mapSize} height={mapSize} />
-			{#if city && cityAt}
-				<circle class="ao-city" cx={cityAt.x} cy={cityAt.y} r={cityRadius} />
-				<circle class="ao-pin city" cx={cityAt.x} cy={cityAt.y} r="4.5" />
-			{/if}
-			{#if lz && lzAt}
-				<circle class="ao-halo" cx={lzAt.x} cy={lzAt.y} r={(lz.r ?? 6) + 4} />
-				<circle class="ao-pin lz" cx={lzAt.x} cy={lzAt.y} r="4.5" />
-			{/if}
+	<p class="note done">That is the game. The rest is detail.</p>
 
-			<!-- labels last so nothing draws over them -->
-			{#if cityAt && city}
-				<text class="ao-t city" x={cityAt.x + 8} y={cityAt.y + 3}>{city.name} · the city</text>
-			{/if}
-			{#if lzAt}
-				<text class="ao-t lz" x={lzAt.x + 12} y={lzAt.y + 3}>you land here</text>
-			{/if}
-		</svg>
-		<p class="ao-d">
-			Every game starts at {lz?.name ?? 'the landing zone'}. The city is north of it — both
-			positions are read from the map file.
-		</p>
-		<a class="glink" href="/map">The full map →</a>
-	</aside>
-</div>
+	<h2 class="section">The jam, in numbers</h2>
 
-<p class="note done">That is the game. The rest is detail.</p>
-
-<h2 class="section">The jam, in numbers</h2>
-
-<div class="cards">
-	<article class="card d">
-		<h3>Clearing it</h3>
-		<div class="limbs">
-			<div class="limb good">
-				<span class="limb-k">{100 - failPct}% · immediate</span>
-				<b>{span(unjam.action.min, unjam.action.max)}</b>
-				<span class="limb-d">Charging handle.</span>
+	<div class="cards">
+		<article class="card d">
+			<h3>Clearing it</h3>
+			<div class="limbs">
+				<div class="limb good">
+					<span class="limb-k">{100 - failPct}% · immediate</span>
+					<b>{span(unjam.action.min, unjam.action.max)}</b>
+					<span class="limb-d">Charging handle.</span>
+				</div>
+				<div class="limb bad">
+					<span class="limb-k">1 in {unjam.failOdds} · remedial</span>
+					<b>{span(unjam.remedial.min, unjam.remedial.max)}</b>
+					<span class="limb-d">Magazine out, fresh one in. No cancel.</span>
+				</div>
 			</div>
-			<div class="limb bad">
-				<span class="limb-k">1 in {unjam.failOdds} · remedial</span>
-				<b>{span(unjam.remedial.min, unjam.remedial.max)}</b>
-				<span class="limb-d">Magazine out, fresh one in. No cancel.</span>
-			</div>
-		</div>
-		{#if bonuses.length}
-			<p class="tags">
-				{#each bonuses as [name, value] (name)}
-					<span class="tag"><b>−{secs(value)}</b> {BONUS_LABELS[name] ?? name}</span>
-				{/each}
-			</p>
-			<p class="fine">Off every wait — and the long drill has four.</p>
-		{/if}
-	</article>
+			{#if bonuses.length}
+				<p class="tags">
+					{#each bonuses as [name, value] (name)}
+						<span class="tag"><b>−{secs(value)}</b> {BONUS_LABELS[name] ?? name}</span>
+					{/each}
+				</p>
+				<p class="fine">Off every wait — and the long drill has four.</p>
+			{/if}
+		</article>
 
-	<article class="card d">
-		<h3>Why it happened</h3>
-		<ul class="pts">
-			<li>Rolled on <b>every shot</b>, against the magazine your class spawned with.</li>
-			<li>
-				<b>{riskMult}× likelier</b> after {pityCap} s without a jam — a clean run is what ends it.
-			</li>
-			<li>A Magazine Extender buys ammo, <b>not safety</b>.</li>
-			<li class="never">
-				Never jam:
-				{#each neverJam as name, i (name)}{i ? ', ' : ''}<span class="nj">{name}</span>{/each}
-			</li>
-		</ul>
-		<a class="glink" href="/mos">Jam risk per class →</a>
-	</article>
-</div>
+		<article class="card d">
+			<h3>Why it happened</h3>
+			<ul class="pts">
+				<li>Rolled on <b>every shot</b>, against the magazine your class spawned with.</li>
+				<li>
+					<b>{riskMult}× likelier</b> after {pityCap} s without a jam — a clean run is what ends it.
+				</li>
+				<li>A Magazine Extender buys ammo, <b>not safety</b>.</li>
+				<li class="never">
+					Never jam:
+					{#each neverJam as name, i (name)}{i ? ', ' : ''}<span class="nj">{name}</span>{/each}
+				</li>
+			</ul>
+			<a class="glink" href="/mos">Jam risk per class →</a>
+		</article>
+	</div>
 
-<h2 class="section">Fire teams</h2>
+	<h2 class="section">Fire teams</h2>
 
-<div class="cards">
-	<article class="card d">
-		<h3>Joining</h3>
-		<ul class="pts">
-			<li><b class="ft">FT</b> button, bottom right of the minimap.</li>
-			<li><b>4 teams</b>, up to <b>4 soldiers</b> each. Click again to leave.</li>
-			<li>Whoever starts one is its <b>team leader</b>.</li>
-		</ul>
-	</article>
+	<div class="cards">
+		<article class="card d">
+			<h3>Joining</h3>
+			<ul class="pts">
+				<li><b class="ft">FT</b> button, bottom right of the minimap.</li>
+				<li><b>4 teams</b>, up to <b>4 soldiers</b> each. Click again to leave.</li>
+				<li>Whoever starts one is its <b>team leader</b>.</li>
+			</ul>
+		</article>
 
-	<article class="card d">
-		<h3>What it gives you</h3>
-		<ul class="pts">
-			<li><b>You see each other</b> — through fog and darkness, anywhere on the map.</li>
-			<li>
-				The TL <b>middle-clicks</b> a rally point for the team; on an enemy it tracks that target.
-			</li>
-			<li>A <b>Platoon Leader</b> can link every fire team into one.</li>
-		</ul>
-		<a class="glink" href="/mos/PlatoonLeader">Platoon Leader →</a>
-	</article>
-</div>
+		<article class="card d">
+			<h3>What it gives you</h3>
+			<ul class="pts">
+				<li><b>You see each other</b> — through fog and darkness, anywhere on the map.</li>
+				<li>
+					The TL <b>middle-clicks</b> a rally point for the team; on an enemy it tracks that target.
+				</li>
+				<li>A <b>Platoon Leader</b> can link every fire team into one.</li>
+			</ul>
+			<a class="glink" href="/mos/PlatoonLeader">Platoon Leader →</a>
+		</article>
+	</div>
 
-<h2 class="section">Between games</h2>
+	<h2 class="section">Between games</h2>
 
-<div class="cards">
-	<article class="card d">
-		<h3>XP is yours to keep</h3>
-		<ul class="pts">
-			<li>Objectives pay XP, <b>win or lose</b>.</li>
-			<li>It banks into <b>3 rank tracks</b>.</li>
-			<li>Rank unlocks classes, equipment and Skill Identifiers.</li>
-		</ul>
-		<a class="glink" href="/ranks">Rank thresholds →</a>
-	</article>
+	<div class="cards">
+		<article class="card d">
+			<h3>XP is yours to keep</h3>
+			<ul class="pts">
+				<li>Objectives pay XP, <b>win or lose</b>.</li>
+				<li>It banks into <b>3 rank tracks</b>.</li>
+				<li>Rank unlocks classes, equipment and Skill Identifiers.</li>
+			</ul>
+			<a class="glink" href="/ranks">Rank thresholds →</a>
+		</article>
 
-	<article class="card d">
-		<h3>Modes open up</h3>
-		<ul class="pts">
-			<li><b>{modeNames.length} modes</b>, {modeNames[0]} → {modeNames[modeNames.length - 1]}.</li>
-			<li>The hard ones only accept a vote from players with the career XP.</li>
-			<li>Dead? A medic revives you — with none left, you respawn at a reinforcement point.</li>
-		</ul>
-	</article>
-</div>
+		<article class="card d">
+			<h3>Modes open up</h3>
+			<ul class="pts">
+				<li><b>{modeNames.length} modes</b>, {modeNames[0]} → {modeNames[modeNames.length - 1]}.</li>
+				<li>The hard ones only accept a vote from players with the career XP.</li>
+				<li>Dead? A medic revives you — with none left, you respawn at a reinforcement point.</li>
+			</ul>
+		</article>
+	</div>
 
-<h2 class="section">Where to go next</h2>
+	<h2 class="section">Where to go next</h2>
 
-<div class="next">
-	<a class="card nx" href="/mos">
-		<span class="nx-t">Classes</span>
-		<span class="nx-d">Magazines, reloads and jam risk, side by side</span>
-	</a>
-	<a class="card nx" href="/si">
-		<span class="nx-t">Skill Identifiers</span>
-		<span class="nx-d">Career-wide perks — Quick Thinking lives here</span>
-	</a>
-	<a class="card nx" href="/map">
-		<span class="nx-t">Map &amp; missions</span>
-		<span class="nx-d">Every named region of AO Thalim</span>
-	</a>
-	<a class="card nx" href="/entities">
-		<span class="nx-t">Entities</span>
-		<span class="nx-d">What is shooting at you, and what takes it down</span>
-	</a>
-	<a class="card nx" href="/companion">
-		<span class="nx-t">Companion app</span>
-		<span class="nx-d">Uploads your replays, pings you when a lobby opens</span>
-	</a>
-	<a class="card nx" href="/players">
-		<span class="nx-t">Players</span>
-		<span class="nx-d">Where your XP shows up once the games are in</span>
-	</a>
-</div>
+	<div class="next">
+		<a class="card nx" href="/mos">
+			<span class="nx-t">Classes</span>
+			<span class="nx-d">Magazines, reloads and jam risk, side by side</span>
+		</a>
+		<a class="card nx" href="/si">
+			<span class="nx-t">Skill Identifiers</span>
+			<span class="nx-d">Career-wide perks — Quick Thinking lives here</span>
+		</a>
+		<a class="card nx" href="/map">
+			<span class="nx-t">Map &amp; missions</span>
+			<span class="nx-d">Every named region of AO Thalim</span>
+		</a>
+		<a class="card nx" href="/entities">
+			<span class="nx-t">Entities</span>
+			<span class="nx-d">What is shooting at you, and what takes it down</span>
+		</a>
+		<a class="card nx" href="/companion">
+			<span class="nx-t">Companion app</span>
+			<span class="nx-d">Uploads your replays, pings you when a lobby opens</span>
+		</a>
+		<a class="card nx" href="/players">
+			<span class="nx-t">Players</span>
+			<span class="nx-d">Where your XP shows up once the games are in</span>
+		</a>
+	</div>
+</Page>
 
 <style>
 	/* ---------- layout: the graph, and the ground it happens on ---------- */

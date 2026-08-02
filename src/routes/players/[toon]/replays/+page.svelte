@@ -17,6 +17,7 @@
 	import { orderModifiers } from '$lib/modifiers';
 	import Seo from '$lib/components/Seo.svelte';
 	import { fmtDuration } from '$lib/outcome';
+	import { Page } from 'sveltekit-commons';
 
 	let { data } = $props();
 
@@ -51,144 +52,132 @@
 	}
 </script>
 
-<Seo
-	title="{p.name} — Replays"
-	description="Every ingested Undead Assault Reborn game {p.name} appears in, with the XP, wins and revives each one earned."
-/>
+<Page fill>
+	<Seo
+		title="{p.name} — Replays"
+		description="Every ingested Undead Assault Reborn game {p.name} appears in, with the XP, wins and revives each one earned."
+	/>
 
-<div class="datapage">
-	<div class="dtools">
-		<Pager
-			page={data.historyPage}
-			pages={data.historyPages}
-			total={data.historyTotal}
-			label="replays"
-			param="h"
-		/>
-	</div>
+	<div class="datapage">
+		<div class="dtools">
+			<Pager
+				page={data.historyPage}
+				pages={data.historyPages}
+				total={data.historyTotal}
+				label="replays"
+				param="h"
+			/>
+		</div>
 
-	<div class="tablewrap rows">
-		<table class="data">
-			<thead>
-				<tr>
-					<th>Game date</th>
-					<th title="Won, lost, or not known yet">Result</th>
-					<th title="The mode the lobby voted at the start of the game">Mode</th>
-					<th title="Modifiers the lobby voted on top of the mode">Modifiers</th>
-					<th class="num">Length</th>
-					<th>Class</th>
-					<th class="num">Enlisted</th>
-					<th class="num">Warrant</th>
-					<th class="num">Commissioned</th>
-					<th class="num">Games</th>
-					<th class="num">Wins</th>
-					<th class="num">Revives</th>
-				</tr>
-			</thead>
-			<tbody>
-				{#each shownHistory as i (data.history[i].file)}
-					{@const h = data.history[i]}
-					{@const span = gamesSpanned(data.history, i)}
-					{#if span > 1}
-						<tr class="gap">
-							<td
-								class="gapinfo"
-								colspan="6"
-								title="only the game below is a recorded replay; the rest weren't"
-							>
-								⋯ over {span} games
+		<div class="tablewrap rows">
+			<table class="data">
+				<thead>
+					<tr>
+						<th>Game date</th>
+						<th title="Won, lost, or not known yet">Result</th>
+						<th title="The mode the lobby voted at the start of the game">Mode</th>
+						<th title="Modifiers the lobby voted on top of the mode">Modifiers</th>
+						<th class="num">Length</th>
+						<th>Class</th>
+						<th class="num">Enlisted</th>
+						<th class="num">Warrant</th>
+						<th class="num">Commissioned</th>
+						<th class="num">Games</th>
+						<th class="num">Wins</th>
+						<th class="num">Revives</th>
+					</tr>
+				</thead>
+				<tbody>
+					{#each shownHistory as i (data.history[i].file)}
+						{@const h = data.history[i]}
+						{@const span = gamesSpanned(data.history, i)}
+						{#if span > 1}
+							<tr class="gap">
+								<td
+									class="gapinfo"
+									colspan="6"
+									title="only the game below is a recorded replay; the rest weren't"
+								>
+									⋯ over {span} games
+								</td>
+								{#each ['xpEn', 'xpWo', 'xpCo', 'gamesPlayed', 'wins', 'revives'] as const as key (key)}
+									{@const d = delta(data.history, i, key)}
+									<td class="num">
+										{#if d}<span class="delta">+{d.toLocaleString('en')}</span>{/if}
+									</td>
+								{/each}
+							</tr>
+						{/if}
+						{@const facts = data.replayFacts[h.file]}
+						<tr>
+							<td class="mono">
+								<a href="/replays/{h.file.replace(/\.SC2Replay$/, '')}" title="View replay"
+									>{fmtDate(facts?.startedAt ?? h.playedAt)}</a
+								>
+							</td>
+							<td class="histresult">
+								{#if facts?.outcome}<OutcomeMark outcome={facts.outcome} />{:else}<span
+										class="unknown"
+										title="Not known yet — this game's recording stopped early and no later game has been uploaded"
+										>·</span
+									>{/if}
+							</td>
+							<td class="histmode">
+								{#if facts?.mode}<ModeMark mode={facts.mode} />{:else}<span
+										class="unknown"
+										title="Not known yet — this game was lost, or its recording stopped before the vote closed"
+										>·</span
+									>{/if}
+							</td>
+							<td class="histmods">
+								{#each orderModifiers(facts?.modifiers ?? []) as id (id)}<ModifierMark
+										{id}
+										iconOnly
+									/>{:else}<span class="none">·</span>{/each}
+							</td>
+							<td class="num mono">{facts ? fmtDuration(facts.gameLoops) : ''}</td>
+							<td class="histclass" style="--figs: {h.mos.length}">
+								<span class="histfigs">
+									{#each h.mos as id (id)}
+										{@const chip = mosById.get(id)}
+										{#if chip?.icon}
+											<img
+												class="histfig"
+												src={chip.icon}
+												alt={chip.name}
+												title={chip.name}
+												loading="lazy"
+											/>
+										{:else}
+											<span class="histfig placeholder" title={chip?.name ?? id}></span>
+										{/if}
+									{/each}
+								</span>
 							</td>
 							{#each ['xpEn', 'xpWo', 'xpCo', 'gamesPlayed', 'wins', 'revives'] as const as key (key)}
-								{@const d = delta(data.history, i, key)}
+								{@const d = span === 1 ? delta(data.history, i, key) : null}
 								<td class="num">
-									{#if d}<span class="delta">+{d.toLocaleString('en')}</span>{/if}
+									{(h[key] as number).toLocaleString('en')}
+									{#if d}<span class="delta" title="earned in this game"
+											>+{d.toLocaleString('en')}</span
+										>{/if}
 								</td>
 							{/each}
 						</tr>
-					{/if}
-					{@const facts = data.replayFacts[h.file]}
-					<tr>
-						<td class="mono">
-							<a href="/replays/{h.file.replace(/\.SC2Replay$/, '')}" title="View replay"
-								>{fmtDate(facts?.startedAt ?? h.playedAt)}</a
-							>
-						</td>
-						<td class="histresult">
-							{#if facts?.outcome}<OutcomeMark outcome={facts.outcome} />{:else}<span
-									class="unknown"
-									title="Not known yet — this game's recording stopped early and no later game has been uploaded"
-									>·</span
-								>{/if}
-						</td>
-						<td class="histmode">
-							{#if facts?.mode}<ModeMark mode={facts.mode} />{:else}<span
-									class="unknown"
-									title="Not known yet — this game was lost, or its recording stopped before the vote closed"
-									>·</span
-								>{/if}
-						</td>
-						<td class="histmods">
-							{#each orderModifiers(facts?.modifiers ?? []) as id (id)}<ModifierMark
-									{id}
-									iconOnly
-								/>{:else}<span class="none">·</span>{/each}
-						</td>
-						<td class="num mono">{facts ? fmtDuration(facts.gameLoops) : ''}</td>
-						<td class="histclass" style="--figs: {h.mos.length}">
-							<span class="histfigs">
-								{#each h.mos as id (id)}
-									{@const chip = mosById.get(id)}
-									{#if chip?.icon}
-										<img
-											class="histfig"
-											src={chip.icon}
-											alt={chip.name}
-											title={chip.name}
-											loading="lazy"
-										/>
-									{:else}
-										<span class="histfig placeholder" title={chip?.name ?? id}></span>
-									{/if}
-								{/each}
-							</span>
-						</td>
-						{#each ['xpEn', 'xpWo', 'xpCo', 'gamesPlayed', 'wins', 'revives'] as const as key (key)}
-							{@const d = span === 1 ? delta(data.history, i, key) : null}
-							<td class="num">
-								{(h[key] as number).toLocaleString('en')}
-								{#if d}<span class="delta" title="earned in this game"
-										>+{d.toLocaleString('en')}</span
-									>{/if}
-							</td>
-						{/each}
-					</tr>
-				{/each}
-			</tbody>
-		</table>
+					{/each}
+				</tbody>
+			</table>
+		</div>
 	</div>
-</div>
+</Page>
 
 <style>
-	/* The shell's own .datapage height stops under the top bar; here the tab
-	   bar stands between the two, so its height comes off as well — otherwise
-	   the page overflows by exactly that much and the window scrolls, which is
-	   the one thing a full-height table must not do. The bar's negative top
-	   margin cancels --content-pad-top, so that term drops out and what is left
-	   is the bar, its rule, and the gap under it.
-
-	   --border-width is not a rounding fudge. `--player-chrome-h` is bound from
-	   `clientHeight`, which counts padding but NOT the border, while the bar
-	   sets `height: 36px` under a border-box reset — so its box is 36px on the
-	   page and reports 35, and the missing pixel is its bottom rule. Left out,
-	   the window scrolls by exactly 1px: enough to show a scrollbar and undo
-	   the point of the tab, and small enough to look like a rounding error
-	   rather than the border it is. */
-	.datapage {
-		height: calc(
-			100dvh - var(--chrome-h) - var(--player-chrome-h, 0px) - var(--border-width) -
-				var(--space-4)
-		);
-	}
+	/* No height override here any more. `<Page fill>` is the box the shell left
+	   after the tab bar took its height, and `.datapage` claims what is in it —
+	   so there is nothing to work out. What stood here was that sum written by
+	   hand: the viewport, less the top bar, less the tabs, less the column's
+	   padding, plus a --border-width term for the one pixel `clientHeight` does
+	   not count. */
 
 	/* ---------- class pictures in the rows ----------
 	   The picture is drawn to the row, so it is taken out of flow — a

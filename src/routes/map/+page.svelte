@@ -12,6 +12,7 @@
 		type RegionCategory
 	} from '$lib/map';
 	import Seo from '$lib/components/Seo.svelte';
+	import { Page } from 'sveltekit-commons';
 
 	const categories = (
 		['landing zone', 'objective site', 'cache', 'defense', 'settlement', 'other'] as RegionCategory[]
@@ -85,202 +86,204 @@
 	const flip = (y: number) => mapSize - y;
 </script>
 
-<Seo
-	title="Map & missions"
-	description="AO Thalim mapped: every named trigger region in Undead Assault Reborn and the missions that run in it, with their XP rewards, extracted from the map file."
-/>
+<Page>
+	<Seo
+		title="Map & missions"
+		description="AO Thalim mapped: every named trigger region in Undead Assault Reborn and the missions that run in it, with their XP rewards, extracted from the map file."
+	/>
 
-<p class="note">
-	AO Thalim with the {mapRegions.length} named trigger regions extracted from the map file, and the
-	{missions.length} mission outcomes found in the trigger script with their XP rewards. Region
-	positions are exact; mission links are matched by name and are indicative. Click a marker to
-	filter the missions panel.
-</p>
+	<p class="note">
+		AO Thalim with the {mapRegions.length} named trigger regions extracted from the map file, and the
+		{missions.length} mission outcomes found in the trigger script with their XP rewards. Region
+		positions are exact; mission links are matched by name and are indicative. Click a marker to
+		filter the missions panel.
+	</p>
 
-<div class="layout">
-	<section class="map-panel">
-		<div class="map-controls">
-			{#each categories as cat (cat)}
-				<button class="chip" aria-pressed={active.has(cat)} onclick={() => toggle(cat)}>
-					<span class="dot" style="background: {categoryColors[cat]}"></span>
-					{cat}
-				</button>
-			{/each}
-			<input
-				type="search"
-				placeholder="Find region…"
-				aria-label="Find region"
-				bind:value={regionQuery}
-			/>
-		</div>
-
-		<div
-			class="map-frame card"
-			bind:this={mapFrame}
-			onmousemove={onMove}
-			role="presentation"
-		>
-			<svg viewBox="0 0 {mapSize} {mapSize}" role="img" aria-label="AO Thalim map">
-				<image href="/map/minimap.png" width={mapSize} height={mapSize} />
-				{#each visible as r (r.id)}
-					{@const cat = regionCategory(r)}
-					{@const color = categoryColors[cat]}
-					{#if r.type === 'rect'}
-						<rect
-							x={r.x1}
-							y={flip(r.y2 ?? 0)}
-							width={(r.x2 ?? 0) - (r.x1 ?? 0)}
-							height={(r.y2 ?? 0) - (r.y1 ?? 0)}
-							fill={color}
-							stroke={color}
-							class="shape"
-							class:hl={hovered === r.id}
-							class:sel={selected === r.id}
-							onmouseenter={() => (hovered = r.id)}
-							onmouseleave={() => (hovered = null)}
-							onclick={() => selectRegion(r.id)}
-							role="button"
-							tabindex="-1"
-							onkeydown={(e) => e.key === 'Enter' && selectRegion(r.id)}
-						/>
-					{:else if r.type === 'circle'}
-						<circle
-							cx={r.cx}
-							cy={flip(r.cy ?? 0)}
-							r={r.r}
-							fill={color}
-							stroke={color}
-							class="shape"
-							class:hl={hovered === r.id}
-							class:sel={selected === r.id}
-							onmouseenter={() => (hovered = r.id)}
-							onmouseleave={() => (hovered = null)}
-							onclick={() => selectRegion(r.id)}
-							role="button"
-							tabindex="-1"
-							onkeydown={(e) => e.key === 'Enter' && selectRegion(r.id)}
-						/>
-					{:else}
-						<polygon
-							points="{r.cx},{flip((r.cy ?? 0) + (r.h ?? 0) / 2)} {(r.cx ?? 0) +
-								(r.w ?? 0) / 2},{flip(r.cy ?? 0)} {r.cx},{flip(
-								(r.cy ?? 0) - (r.h ?? 0) / 2
-							)} {(r.cx ?? 0) - (r.w ?? 0) / 2},{flip(r.cy ?? 0)}"
-							fill={color}
-							stroke={color}
-							class="shape"
-							class:hl={hovered === r.id}
-							class:sel={selected === r.id}
-							onmouseenter={() => (hovered = r.id)}
-							onmouseleave={() => (hovered = null)}
-							onclick={() => selectRegion(r.id)}
-							role="button"
-							tabindex="-1"
-							onkeydown={(e) => e.key === 'Enter' && selectRegion(r.id)}
-						/>
-					{/if}
+	<div class="layout">
+		<section class="map-panel">
+			<div class="map-controls">
+				{#each categories as cat (cat)}
+					<button class="chip" aria-pressed={active.has(cat)} onclick={() => toggle(cat)}>
+						<span class="dot" style="background: {categoryColors[cat]}"></span>
+						{cat}
+					</button>
 				{/each}
-			</svg>
-
-			{#if hoveredRegion}
-				{@const cat = regionCategory(hoveredRegion)}
-				{@const rel = related.get(hoveredRegion.id) ?? []}
-				{@const c = regionCenter(hoveredRegion)}
-				<div
-					class="tip"
-					style="left: {tipPos.x}px; top: {tipPos.y}px; --c: {categoryColors[cat]}"
-				>
-					<div class="tip-head">
-						<b>{hoveredRegion.name}</b>
-						<span class="tip-cat">{cat}</span>
-					</div>
-					<div class="tip-meta">
-						{hoveredRegion.type} · {regionSizeLabel(hoveredRegion)} · at {Math.round(c.x)},{Math.round(
-							c.y
-						)}
-					</div>
-					{#if rel.length}
-						<div class="tip-label">Related missions</div>
-						<ul class="tip-missions">
-							{#each rel.slice(0, 4) as m (m.name)}
-								<li>
-									<span class="tip-xp">{m.xp.length ? `+${m.xp.join('/')}` : `−${m.fail.join('/')}`}</span>
-									{m.name}
-								</li>
-							{/each}
-							{#if rel.length > 4}<li class="tip-more">+{rel.length - 4} more — click to filter</li>{/if}
-						</ul>
-					{:else}
-						<div class="tip-meta dim">no mission matched by name</div>
-					{/if}
-				</div>
-			{/if}
-		</div>
-
-		<div class="region-list">
-			{#each visible as r (r.id)}
-				<button
-					class="region-pill"
-					class:hl={hovered === r.id}
-					class:sel={selected === r.id}
-					style="--c: {categoryColors[regionCategory(r)]}"
-					onmouseenter={() => (hovered = r.id)}
-					onmouseleave={() => (hovered = null)}
-					onclick={() => selectRegion(r.id)}
-				>
-					{r.name}
-				</button>
-			{/each}
-		</div>
-	</section>
-
-	<section class="missions-panel">
-		<h2 class="section">
-			Missions · {filteredMissions.length}
-		</h2>
-		{#if selectedRegion}
-			<div class="filter-banner">
-				Missions matching <b>{selectedRegion.name}</b>
-				<button class="chip" onclick={() => (selected = null)}>clear ✕</button>
+				<input
+					type="search"
+					placeholder="Find region…"
+					aria-label="Find region"
+					bind:value={regionQuery}
+				/>
 			</div>
-		{:else}
-			<input
-				class="mission-search"
-				type="search"
-				placeholder="Search missions…"
-				aria-label="Search missions"
-				bind:value={missionQuery}
-			/>
-		{/if}
-		<div class="tablewrap">
-			<table class="data">
-				<thead>
-					<tr>
-						<th>Outcome</th>
-						<th class="num">XP</th>
-						<th class="num">Fail</th>
-					</tr>
-				</thead>
-				<tbody>
-					{#each filteredMissions as m (m.name)}
-						<tr>
-							<td>
-								{m.name}
-								{#if m.triggers.length}
-									<div class="trig">{m.triggers.join(' · ')}</div>
-								{/if}
-							</td>
-							<td class="num gain">{m.xp.length ? '+' + m.xp.join('/') : ''}</td>
-							<td class="num loss">{m.fail.length ? '−' + m.fail.join('/') : ''}</td>
-						</tr>
-					{:else}
-						<tr><td colspan="3" class="empty">No missions matched.</td></tr>
+
+			<div
+				class="map-frame card"
+				bind:this={mapFrame}
+				onmousemove={onMove}
+				role="presentation"
+			>
+				<svg viewBox="0 0 {mapSize} {mapSize}" role="img" aria-label="AO Thalim map">
+					<image href="/map/minimap.png" width={mapSize} height={mapSize} />
+					{#each visible as r (r.id)}
+						{@const cat = regionCategory(r)}
+						{@const color = categoryColors[cat]}
+						{#if r.type === 'rect'}
+							<rect
+								x={r.x1}
+								y={flip(r.y2 ?? 0)}
+								width={(r.x2 ?? 0) - (r.x1 ?? 0)}
+								height={(r.y2 ?? 0) - (r.y1 ?? 0)}
+								fill={color}
+								stroke={color}
+								class="shape"
+								class:hl={hovered === r.id}
+								class:sel={selected === r.id}
+								onmouseenter={() => (hovered = r.id)}
+								onmouseleave={() => (hovered = null)}
+								onclick={() => selectRegion(r.id)}
+								role="button"
+								tabindex="-1"
+								onkeydown={(e) => e.key === 'Enter' && selectRegion(r.id)}
+							/>
+						{:else if r.type === 'circle'}
+							<circle
+								cx={r.cx}
+								cy={flip(r.cy ?? 0)}
+								r={r.r}
+								fill={color}
+								stroke={color}
+								class="shape"
+								class:hl={hovered === r.id}
+								class:sel={selected === r.id}
+								onmouseenter={() => (hovered = r.id)}
+								onmouseleave={() => (hovered = null)}
+								onclick={() => selectRegion(r.id)}
+								role="button"
+								tabindex="-1"
+								onkeydown={(e) => e.key === 'Enter' && selectRegion(r.id)}
+							/>
+						{:else}
+							<polygon
+								points="{r.cx},{flip((r.cy ?? 0) + (r.h ?? 0) / 2)} {(r.cx ?? 0) +
+									(r.w ?? 0) / 2},{flip(r.cy ?? 0)} {r.cx},{flip(
+									(r.cy ?? 0) - (r.h ?? 0) / 2
+								)} {(r.cx ?? 0) - (r.w ?? 0) / 2},{flip(r.cy ?? 0)}"
+								fill={color}
+								stroke={color}
+								class="shape"
+								class:hl={hovered === r.id}
+								class:sel={selected === r.id}
+								onmouseenter={() => (hovered = r.id)}
+								onmouseleave={() => (hovered = null)}
+								onclick={() => selectRegion(r.id)}
+								role="button"
+								tabindex="-1"
+								onkeydown={(e) => e.key === 'Enter' && selectRegion(r.id)}
+							/>
+						{/if}
 					{/each}
-				</tbody>
-			</table>
-		</div>
-	</section>
-</div>
+				</svg>
+
+				{#if hoveredRegion}
+					{@const cat = regionCategory(hoveredRegion)}
+					{@const rel = related.get(hoveredRegion.id) ?? []}
+					{@const c = regionCenter(hoveredRegion)}
+					<div
+						class="tip"
+						style="left: {tipPos.x}px; top: {tipPos.y}px; --c: {categoryColors[cat]}"
+					>
+						<div class="tip-head">
+							<b>{hoveredRegion.name}</b>
+							<span class="tip-cat">{cat}</span>
+						</div>
+						<div class="tip-meta">
+							{hoveredRegion.type} · {regionSizeLabel(hoveredRegion)} · at {Math.round(c.x)},{Math.round(
+								c.y
+							)}
+						</div>
+						{#if rel.length}
+							<div class="tip-label">Related missions</div>
+							<ul class="tip-missions">
+								{#each rel.slice(0, 4) as m (m.name)}
+									<li>
+										<span class="tip-xp">{m.xp.length ? `+${m.xp.join('/')}` : `−${m.fail.join('/')}`}</span>
+										{m.name}
+									</li>
+								{/each}
+								{#if rel.length > 4}<li class="tip-more">+{rel.length - 4} more — click to filter</li>{/if}
+							</ul>
+						{:else}
+							<div class="tip-meta dim">no mission matched by name</div>
+						{/if}
+					</div>
+				{/if}
+			</div>
+
+			<div class="region-list">
+				{#each visible as r (r.id)}
+					<button
+						class="region-pill"
+						class:hl={hovered === r.id}
+						class:sel={selected === r.id}
+						style="--c: {categoryColors[regionCategory(r)]}"
+						onmouseenter={() => (hovered = r.id)}
+						onmouseleave={() => (hovered = null)}
+						onclick={() => selectRegion(r.id)}
+					>
+						{r.name}
+					</button>
+				{/each}
+			</div>
+		</section>
+
+		<section class="missions-panel">
+			<h2 class="section">
+				Missions · {filteredMissions.length}
+			</h2>
+			{#if selectedRegion}
+				<div class="filter-banner">
+					Missions matching <b>{selectedRegion.name}</b>
+					<button class="chip" onclick={() => (selected = null)}>clear ✕</button>
+				</div>
+			{:else}
+				<input
+					class="mission-search"
+					type="search"
+					placeholder="Search missions…"
+					aria-label="Search missions"
+					bind:value={missionQuery}
+				/>
+			{/if}
+			<div class="tablewrap">
+				<table class="data">
+					<thead>
+						<tr>
+							<th>Outcome</th>
+							<th class="num">XP</th>
+							<th class="num">Fail</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each filteredMissions as m (m.name)}
+							<tr>
+								<td>
+									{m.name}
+									{#if m.triggers.length}
+										<div class="trig">{m.triggers.join(' · ')}</div>
+									{/if}
+								</td>
+								<td class="num gain">{m.xp.length ? '+' + m.xp.join('/') : ''}</td>
+								<td class="num loss">{m.fail.length ? '−' + m.fail.join('/') : ''}</td>
+							</tr>
+						{:else}
+							<tr><td colspan="3" class="empty">No missions matched.</td></tr>
+						{/each}
+					</tbody>
+				</table>
+			</div>
+		</section>
+	</div>
+</Page>
 
 <style>
 	.layout {

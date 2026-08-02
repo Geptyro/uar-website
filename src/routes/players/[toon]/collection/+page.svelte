@@ -15,6 +15,7 @@
 	import { skillIdentifiers, mosById, mosList, siXpLabel, type Si } from '$lib/mos';
 	import Tooltip from '$lib/components/Tooltip.svelte';
 	import Seo from '$lib/components/Seo.svelte';
+	import { Page } from 'sveltekit-commons';
 
 	let { data } = $props();
 
@@ -109,178 +110,180 @@
 		lines(d.req, p.decal === d.num ? 'Equipped' : decalsUnlocked.has(d.num) ? 'Unlocked' : 'Locked');
 </script>
 
-<Seo
-	title="{p.name} — Collection"
-	description="Classes, Skill Identifiers, medals, decals, camouflages and vehicle gear unlocked by {p.name} in Undead Assault Reborn."
-/>
+<Page>
+	<Seo
+		title="{p.name} — Collection"
+		description="Classes, Skill Identifiers, medals, decals, camouflages and vehicle gear unlocked by {p.name} in Undead Assault Reborn."
+	/>
 
-<!-- Two pairs that read across rather than down: what you may play beside
-     what you may play it with, then the two things you wear. One grid shape
-     and one tile size throughout, so a column break lands on the same rhythm
-     on both sides. -->
-<div class="duo">
-	<section>
-		<h2 class="section">
-			Classes unlocked <span class="counthint">{unlockedClasses} / {classRoster.length}</span>
-		</h2>
-		<div class="ugrid">
-			{#each classRoster as c (c.m.id)}
-				<Tooltip
-					label={c.m.name}
-					text={classTip(c)}
-					href="/mos/{c.m.id}"
-					linkText="Class page"
-					placement="entry"
-				>
-					<span class="utile" class:locked={!c.unlocked}>
-						{#if c.m.icon}
-							<img class="uimg" src={c.m.icon} alt="" loading="lazy" />
-						{:else}
-							<span class="uimg placeholder"></span>
-						{/if}
-						<span class="uname">{c.m.name}</span>
-					</span>
-				</Tooltip>
-			{/each}
-		</div>
-		<p class="note"><a href="/mos">Compare all classes →</a></p>
-	</section>
-
-	<section>
-		<h2 class="section">
-			Skill Identifiers
-			<span class="counthint">{p.unlocks.sis.length} / {sisSorted.length}</span>
-		</h2>
-		<div class="ugrid">
-			{#each sisSorted as s (s.num)}
-				<Tooltip
-					label="{s.name} · {s.code}"
-					text={siTip(s)}
-					href="/si"
-					linkText="All Skill Identifiers"
-					placement="entry"
-				>
-					<span class="utile" class:locked={!sisUnlocked.has(s.num)}>
-						{#if s.icon}
-							<img class="uimg fit" src={s.icon} alt="" loading="lazy" />
-						{:else}
-							<span class="uimg placeholder"></span>
-						{/if}
-						<span class="uname">{s.name}</span>
-						<span class="ucode mono">{s.code}</span>
-					</span>
-				</Tooltip>
-			{/each}
-		</div>
-		<p class="note"><a href="/si">All Skill Identifiers →</a></p>
-	</section>
-</div>
-
-<div class="duo">
-	<section>
-		<h2 class="section">
-			Medals <span class="counthint">{p.unlocks.medals.length} / {medals.length}</span>
-		</h2>
-		<div class="ugrid">
-			{#each medals as m (m.num)}
-				<Tooltip
-					label={m.name}
-					text={medalTip(m)}
-					href="/medals"
-					linkText="All medals & decals"
-					placement="entry"
-				>
-					<span class="utile" class:locked={!medalsUnlocked.has(m.num)}>
-						{#if m.icon}
-							<img class="uimg fit" src={m.icon} alt="" loading="lazy" />
-						{:else}
-							<span class="uimg placeholder star">★</span>
-						{/if}
-						<span class="uname">{m.name}</span>
-					</span>
-				</Tooltip>
-			{/each}
-		</div>
-	</section>
-
-	<section>
-		<h2 class="section">
-			Decals <span class="counthint">{decalsUnlocked.size} / {decals.length}</span>
-		</h2>
-		<div class="ugrid">
-			{#each decals as d (d.num)}
-				<Tooltip
-					label={decalName(d.num)}
-					text={decalTip(d)}
-					href="/medals"
-					linkText="All medals & decals"
-					placement="entry"
-				>
-					<span
-						class="utile"
-						class:locked={!decalsUnlocked.has(d.num)}
-						class:worn={p.decal === d.num}
+	<!-- Two pairs that read across rather than down: what you may play beside
+	     what you may play it with, then the two things you wear. One grid shape
+	     and one tile size throughout, so a column break lands on the same rhythm
+	     on both sides. -->
+	<div class="duo">
+		<section>
+			<h2 class="section">
+				Classes unlocked <span class="counthint">{unlockedClasses} / {classRoster.length}</span>
+			</h2>
+			<div class="ugrid">
+				{#each classRoster as c (c.m.id)}
+					<Tooltip
+						label={c.m.name}
+						text={classTip(c)}
+						href="/mos/{c.m.id}"
+						linkText="Class page"
+						placement="entry"
 					>
-						{#if d.icon}
-							<img class="uimg fit pad" src={d.icon} alt="" loading="lazy" />
-						{:else}
-							<span class="uimg placeholder"></span>
-						{/if}
-						<span class="uname">{decalName(d.num)}</span>
-					</span>
-				</Tooltip>
-			{/each}
-		</div>
-	</section>
-</div>
-<!-- both halves above land on the same page, so they share one way out -->
-<p class="note"><a href="/medals">All medals & decals →</a></p>
-
-<h2 class="section">
-	Camouflages <span class="counthint">{p.unlocks.camos.length} / {camos.length}</span>
-</h2>
-<div class="ugrid">
-	{#each camos as c (c.num)}
-		<Tooltip label={c.name} text={camoTip(c)} href="/camos" linkText="All camouflages">
-			<span class="utile" class:locked={!camosUnlocked.has(c.num)} class:worn={p.camo === c.num}>
-				{#if c.swatch}
-					<img class="uimg swatch" src={c.swatch} alt="" loading="lazy" />
-				{:else}
-					<span class="uimg placeholder"></span>
-				{/if}
-				<span class="uname">{c.name}</span>
-			</span>
-		</Tooltip>
-	{/each}
-</div>
-<p class="note"><a href="/camos">All camouflages →</a></p>
-
-<!-- The gear ladders were in the aside, where they were the one unlock set
-     that did not sit with the others. They are lists rather than grids
-     because each is an ordered ladder — a piece needs the ones before it. -->
-{#if playerGear.length}
-	<h2 class="section">Vehicle gear</h2>
-	<div class="gearcols">
-		{#each playerGear as g (g.key)}
-			<div class="card geargroup">
-				<a class="gear-head" href="/mos/{g.mosId}">
-					{#if g.mosInfo?.icon}
-						<img class="gear-mos" src={g.mosInfo.icon} alt="" loading="lazy" />
-					{/if}
-					<span class="gear-title">{g.label}</span>
-					<span class="gear-count mono">{g.flags.filter(Boolean).length}/{g.items.length}</span>
-				</a>
-				<ul class="gear">
-					{#each g.items as item, i (item.name)}
-						<li class:locked={!g.flags[i]} title={item.desc ?? undefined}>
-							<span class="tick">{g.flags[i] ? '✓' : '·'}</span>{item.name}
-						</li>
-					{/each}
-				</ul>
+						<span class="utile" class:locked={!c.unlocked}>
+							{#if c.m.icon}
+								<img class="uimg" src={c.m.icon} alt="" loading="lazy" />
+							{:else}
+								<span class="uimg placeholder"></span>
+							{/if}
+							<span class="uname">{c.m.name}</span>
+						</span>
+					</Tooltip>
+				{/each}
 			</div>
+			<p class="note"><a href="/mos">Compare all classes →</a></p>
+		</section>
+
+		<section>
+			<h2 class="section">
+				Skill Identifiers
+				<span class="counthint">{p.unlocks.sis.length} / {sisSorted.length}</span>
+			</h2>
+			<div class="ugrid">
+				{#each sisSorted as s (s.num)}
+					<Tooltip
+						label="{s.name} · {s.code}"
+						text={siTip(s)}
+						href="/si"
+						linkText="All Skill Identifiers"
+						placement="entry"
+					>
+						<span class="utile" class:locked={!sisUnlocked.has(s.num)}>
+							{#if s.icon}
+								<img class="uimg fit" src={s.icon} alt="" loading="lazy" />
+							{:else}
+								<span class="uimg placeholder"></span>
+							{/if}
+							<span class="uname">{s.name}</span>
+							<span class="ucode mono">{s.code}</span>
+						</span>
+					</Tooltip>
+				{/each}
+			</div>
+			<p class="note"><a href="/si">All Skill Identifiers →</a></p>
+		</section>
+	</div>
+
+	<div class="duo">
+		<section>
+			<h2 class="section">
+				Medals <span class="counthint">{p.unlocks.medals.length} / {medals.length}</span>
+			</h2>
+			<div class="ugrid">
+				{#each medals as m (m.num)}
+					<Tooltip
+						label={m.name}
+						text={medalTip(m)}
+						href="/medals"
+						linkText="All medals & decals"
+						placement="entry"
+					>
+						<span class="utile" class:locked={!medalsUnlocked.has(m.num)}>
+							{#if m.icon}
+								<img class="uimg fit" src={m.icon} alt="" loading="lazy" />
+							{:else}
+								<span class="uimg placeholder star">★</span>
+							{/if}
+							<span class="uname">{m.name}</span>
+						</span>
+					</Tooltip>
+				{/each}
+			</div>
+		</section>
+
+		<section>
+			<h2 class="section">
+				Decals <span class="counthint">{decalsUnlocked.size} / {decals.length}</span>
+			</h2>
+			<div class="ugrid">
+				{#each decals as d (d.num)}
+					<Tooltip
+						label={decalName(d.num)}
+						text={decalTip(d)}
+						href="/medals"
+						linkText="All medals & decals"
+						placement="entry"
+					>
+						<span
+							class="utile"
+							class:locked={!decalsUnlocked.has(d.num)}
+							class:worn={p.decal === d.num}
+						>
+							{#if d.icon}
+								<img class="uimg fit pad" src={d.icon} alt="" loading="lazy" />
+							{:else}
+								<span class="uimg placeholder"></span>
+							{/if}
+							<span class="uname">{decalName(d.num)}</span>
+						</span>
+					</Tooltip>
+				{/each}
+			</div>
+		</section>
+	</div>
+	<!-- both halves above land on the same page, so they share one way out -->
+	<p class="note"><a href="/medals">All medals & decals →</a></p>
+
+	<h2 class="section">
+		Camouflages <span class="counthint">{p.unlocks.camos.length} / {camos.length}</span>
+	</h2>
+	<div class="ugrid">
+		{#each camos as c (c.num)}
+			<Tooltip label={c.name} text={camoTip(c)} href="/camos" linkText="All camouflages">
+				<span class="utile" class:locked={!camosUnlocked.has(c.num)} class:worn={p.camo === c.num}>
+					{#if c.swatch}
+						<img class="uimg swatch" src={c.swatch} alt="" loading="lazy" />
+					{:else}
+						<span class="uimg placeholder"></span>
+					{/if}
+					<span class="uname">{c.name}</span>
+				</span>
+			</Tooltip>
 		{/each}
 	</div>
-{/if}
+	<p class="note"><a href="/camos">All camouflages →</a></p>
+
+	<!-- The gear ladders were in the aside, where they were the one unlock set
+	     that did not sit with the others. They are lists rather than grids
+	     because each is an ordered ladder — a piece needs the ones before it. -->
+	{#if playerGear.length}
+		<h2 class="section">Vehicle gear</h2>
+		<div class="gearcols">
+			{#each playerGear as g (g.key)}
+				<div class="card geargroup">
+					<a class="gear-head" href="/mos/{g.mosId}">
+						{#if g.mosInfo?.icon}
+							<img class="gear-mos" src={g.mosInfo.icon} alt="" loading="lazy" />
+						{/if}
+						<span class="gear-title">{g.label}</span>
+						<span class="gear-count mono">{g.flags.filter(Boolean).length}/{g.items.length}</span>
+					</a>
+					<ul class="gear">
+						{#each g.items as item, i (item.name)}
+							<li class:locked={!g.flags[i]} title={item.desc ?? undefined}>
+								<span class="tick">{g.flags[i] ? '✓' : '·'}</span>{item.name}
+							</li>
+						{/each}
+					</ul>
+				</div>
+			{/each}
+		</div>
+	{/if}
+</Page>
 
 <style>
 	.counthint {
