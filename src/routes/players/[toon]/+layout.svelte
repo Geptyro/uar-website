@@ -60,8 +60,8 @@
 <!--
 	The same move by hand, for the screen the shortcuts cannot reach. It takes
 	only the drags nothing else wants: the shell's rail keeps the drag that opens
-	the drawer, and the replay table keeps its own sideways scroll outright — so
-	the replays tab is the one you still change from the bar.
+	the drawer, and the replay table keeps every sideways drag it can still spend
+	— run it to its last column and the next pull that way changes tab.
 -->
 <TabSwipe
 	tabs={barTabs}
