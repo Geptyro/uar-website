@@ -23,11 +23,17 @@
 	import { PLAYER_TABS, playerHref, tabSegment } from '$lib/playerTabs';
 	import { careerXp, totalWins, camoName, decalName } from '$lib/players';
 	import { decals } from '$lib/unlocks';
+	import { BAN_EFFECT, banKind } from '$lib/banned';
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
 
 	let { data, children } = $props();
 
 	const p = $derived(data.player);
+	/* Every tab, not just the overview: the figures this qualifies are spread
+	   across all four of them, and a visitor who arrives on the collection
+	   should not have to find the overview to learn the boards left this
+	   profile out. */
+	const ban = $derived(banKind(data.toon));
 	// num 0 (rank insignia) is everyone's default decal, never bank-stored
 	const decalsUnlocked = $derived(new Set([0, ...p.unlocks.decals]));
 
@@ -98,6 +104,20 @@
 	gestures="both"
 	onnavigate={(to) => void goto(to, { noScroll: true })}
 />
+
+<!--
+	A sibling of the page rather than something inside it, for the same reason
+	the tab bar is: it belongs to the profile, not to whichever tab is open, and
+	from here it stays put while the tab under it scrolls. It carries the page's
+	own gutters by hand, since it is outside the box that supplies them.
+-->
+{#if ban}
+	<aside class="banned">
+		<strong>Banned by the map.</strong>
+		This account is on Undead Assault Reborn's own ban list, which {BAN_EFFECT[ban]} every
+		time it plays. Its figures are shown here, but left off every board.
+	</aside>
+{/if}
 
 {#if framesOverview}
 	<Page>
@@ -179,6 +199,25 @@
 {/snippet}
 
 <style>
+	/* Outside Page, so the gutters are declared rather than inherited — the same
+	   --content-pad-x it uses, which keeps the banner's edges flush with the
+	   text under it at every width. --danger is the site's red, and the same one
+	   --hostile paints the undead in: a ban is the strongest thing a profile can
+	   say about itself, and it should not read as a caution. */
+	.banned {
+		margin: 12px var(--content-pad-x, 36px) 0;
+		padding: 9px 13px;
+		border: 1px solid var(--danger);
+		border-radius: var(--radius-2);
+		background: color-mix(in srgb, var(--danger) 9%, transparent);
+		color: var(--text);
+		font-size: 12.5px;
+		line-height: 1.5;
+	}
+	.banned strong {
+		color: var(--danger);
+	}
+
 	/* Main column beside its aside. Unlike the page this replaced, there is no
 	   third row spanning both: the replay table that used to need one has a tab
 	   of its own now, and that tab drops the aside entirely.

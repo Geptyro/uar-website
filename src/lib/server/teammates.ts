@@ -10,6 +10,7 @@
 
 import type { Teammate } from '../players.ts';
 import { LOOPS_PER_SECOND } from '../gameEnd.ts';
+import { isBanned } from '../banned.ts';
 
 /** The slice of a replay doc this aggregation needs. */
 export interface TeammateReplay {
@@ -37,6 +38,10 @@ export function topTeammates(replays: TeammateReplay[], key: string, limit = 10)
 		for (const s of r.sightings) {
 			const mate = s.toon || s.name;
 			if (!mate || seen.has(mate)) continue;
+			// this is a ranked list on somebody else's profile, so it drops the
+			// map's banned handles like the other boards do ($lib/banned). The
+			// banned player's own list is unaffected: `key` is never filtered
+			if (isBanned(mate)) continue;
 			seen.add(mate);
 			const cur = mates.get(mate);
 			if (!cur) {

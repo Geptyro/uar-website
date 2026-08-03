@@ -23,6 +23,7 @@ import { PER_PAGE, pageNumber, type Paged } from 'sveltekit-commons/paging';
 import { cacheKeyMatches, cacheState } from 'sveltekit-commons/cache';
 import { escapeRegex } from 'sveltekit-commons/text';
 import { careerXp, totalWins } from '../xp.ts';
+import { BANNED_TOONS } from '../banned.ts';
 import { bucketConfigured, deleteObject } from './replay/s3.ts';
 import { pinnedOnArrival, prunableReplays } from '../replayRetention.ts';
 import { withLock } from '../mutex.ts';
@@ -451,6 +452,13 @@ const CLAN_PROJECTION = {
 };
 
 /**
+ * The clause that keeps the map's banned handles off a board (see $lib/banned).
+ * Spread into a filter rather than exported as one, so each call site still
+ * reads as its own query.
+ */
+const NOT_BANNED: Record<string, unknown> = { _id: { $nin: BANNED_TOONS } };
+
+/**
  * Members of one clan, or every player who is in a clan when `tag` is omitted.
  *
  * The clan boards used to read every profile whole — history, unlocks and all,
@@ -461,16 +469,25 @@ const CLAN_PROJECTION = {
 export async function getClanMembers(tag?: string): Promise<Record<string, unknown>[]> {
 	return cached(tag ? `clan:${tag}` : 'clans:members', async () => {
 		const d = await db();
+		const filter: Record<string, unknown> = tag
+			? { clan: tag, ...NOT_BANNED }
+			: { clan: { $nin: ['', null] }, ...NOT_BANNED };
 		return d
 			.collection('players')
-			.find(tag ? { clan: tag } : { clan: { $nin: ['', null] } }, { projection: CLAN_PROJECTION })
+			.find(filter, { projection: CLAN_PROJECTION })
 			.toArray() as Promise<Record<string, unknown>[]>;
 	});
 }
 
-/** Total profiles on record — a counter, not a reason to read the collection. */
+/**
+ * Profiles the boards will show — a counter, not a reason to read the
+ * collection. Banned handles are left out so this agrees with the leaderboard
+ * it is printed above, rather than promising a row the list will not produce.
+ */
 export async function countPlayers(): Promise<number> {
-	return cached('players:count', async () => (await db()).collection('players').countDocuments({}));
+	return cached('players:count', async () =>
+		(await db()).collection('players').countDocuments(NOT_BANNED)
+	);
 }
 
 /**
@@ -525,7 +542,12 @@ export async function getPlayersPage(opts: {
 	page: string | null;
 }): Promise<Paged<Record<string, unknown>>> {
 	const field = PLAYER_SORT_FIELDS[opts.sort] ?? 'careerXp';
-	const filter = playerSearchFilter(opts.q);
+	/* Browsing this table is reading a board, so it drops the handles the map
+	   bans. Searching it is looking someone up, and that still finds them: the
+	   point of the exclusion is that a forged career does not outrank an earned
+	   one, not that the profile becomes unreachable — it stays linked from every
+	   game they played, and the command palette finds it too. */
+	const filter = opts.q ? playerSearchFilter(opts.q) : NOT_BANNED;
 	const d = await db();
 	const col = d.collection('players');
 	const total = opts.q ? await col.countDocuments(filter) : await countPlayers();
@@ -1310,9 +1332,13 @@ export async function getPlayerDirectory(): Promise<
 export async function getPlayerSitemap(): Promise<{ toon: string; lastSeen?: string }[]> {
 	return cached('playerSitemap', async () => {
 		const d = await db();
+		/* Banned handles are left out: their page still loads and is still
+		   findable on the site, but it carries a statement about a named person's
+		   account, and there is no reason to go asking search engines to index
+		   that against their name. */
 		const docs = (await d
 			.collection('players')
-			.find({}, { projection: { _id: 1, lastSeen: 1 } })
+			.find(NOT_BANNED, { projection: { _id: 1, lastSeen: 1 } })
 			.toArray()) as unknown as { _id: string; lastSeen?: string }[];
 		return docs.map((p) => ({ toon: p._id, lastSeen: p.lastSeen }));
 	});

@@ -23,6 +23,7 @@
  */
 
 import { careerXp } from '../xp.ts';
+import { isBanned } from '../banned.ts';
 import type { WeeklyBoards, WeeklyXpEntry, WeeklyPrestige, WeeklyClassPick } from '../players.ts';
 
 /** The slice of a replay doc this aggregation needs. */
@@ -64,6 +65,13 @@ export function weeklyBoards(replays: WeeklyXpReplay[], now: Date, limit = 10): 
 			for (const mos of raw.mos) picks.set(mos, (picks.get(mos) ?? 0) + 1);
 			const s: Sighting = { ...raw, playedAt };
 			const key = s.toon || s.name;
+			/* The two player boards drop the map's banned handles ($lib/banned);
+			   the class counts above them do not, and the line between the two is
+			   where the figure comes from. A week's XP gain is the bank's word for
+			   itself, which is the thing being forged. Which class someone picked
+			   is the replay's own record of the game, as true of them as of
+			   anyone, and dropping it would misreport how popular a class was. */
+			if (isBanned(key)) continue;
 			const p = players.get(key);
 			if (!p) {
 				players.set(key, { first: s, latest: s });

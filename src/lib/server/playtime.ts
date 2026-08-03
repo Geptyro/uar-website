@@ -11,6 +11,7 @@
 
 import type { MosTopPlayer } from '../players.ts';
 import { LOOPS_PER_SECOND } from '../gameEnd.ts';
+import { isBanned } from '../banned.ts';
 
 /** The slice of a replay doc this aggregation needs. */
 export interface PlaytimeReplay {
@@ -32,6 +33,10 @@ export function topPlayersByMos(
 	for (const r of replays) {
 		const seconds = Math.round((r.gameLoops ?? r.durationLoops ?? 0) / LOOPS_PER_SECOND);
 		for (const s of r.sightings) {
+			// a board, so the map's banned handles are left off it ($lib/banned).
+			// Dropped here rather than from the finished rows, or excluding one
+			// would leave the board a place short of its limit
+			if (isBanned(s.toon || s.name)) continue;
 			for (const mos of s.mos) {
 				let players = byMos.get(mos);
 				if (!players) byMos.set(mos, (players = new Map()));
