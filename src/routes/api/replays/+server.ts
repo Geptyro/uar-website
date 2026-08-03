@@ -16,7 +16,11 @@
 import { json, error } from '@sveltejs/kit';
 import { createHash } from 'node:crypto';
 import { rateLimiter } from 'sveltekit-commons/rate-limit';
-import { parseReplayOffThread, peekReplayOffThread } from '$lib/server/replay/offthread';
+import {
+	parseReplayOffThread,
+	peekReplayOffThread,
+	ReplayWorkerError
+} from '$lib/server/replay/offthread';
 import { decideIngest, canonicalName } from '$lib/server/replay/ingest';
 import { startedAtOf } from '$lib/gameEnd';
 import { deleteObject, putObject } from '$lib/server/replay/s3';
@@ -55,6 +59,25 @@ const mosIds = new Set((rawMos as { id: string }[]).map((m) => m.id));
 // only accepted submissions. Here the attempt is the cost: a rejected upload
 // has already been read off the wire and peeked at in a worker.
 const uploads = rateLimiter({ limit: 1000, windowMs: 60 * 60 * 1000 });
+
+/**
+ * Re-raise a parse failure that was ours, not the file's, as a 503.
+ *
+ * The status is the whole point. A client cannot see why a parse failed, so it
+ * goes by the code, and the two answers are not degrees of the same thing: the
+ * Companion retries a 5xx a couple of minutes later, and takes 4xx as a verdict
+ * on the file — it records the path as skipped and never offers that game
+ * again. So while the worker was answering "not a readable replay" whenever it
+ * ran out of time under load, a busy minute permanently cost good replays.
+ *
+ * Only worker failures come through here; a replay the parser genuinely could
+ * not read still falls past this to the 400 it deserves.
+ */
+function rethrowIfWorkerFailed(e: unknown): void {
+	if (!(e instanceof ReplayWorkerError)) return;
+	console.error('upload deferred — replay worker unavailable:', e);
+	error(503, 'Too busy to process replays right now — this one will be retried automatically.');
+}
 
 /** Pre-upload dedupe check: GET /api/replays?sha256=<hex> -> { exists }. */
 export const GET: RequestHandler = async ({ url }) => {
@@ -97,6 +120,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 	try {
 		peeked = await peekReplayOffThread(data);
 	} catch (e) {
+		rethrowIfWorkerFailed(e);
 		console.warn('upload peek failed:', e);
 		error(400, 'Not a readable StarCraft II replay.');
 	}
@@ -130,6 +154,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 		try {
 			parsed = await parseReplayOffThread(name, data, mosIds);
 		} catch (e) {
+			rethrowIfWorkerFailed(e);
 			console.warn('upload parse failed:', e);
 			error(400, 'Not a readable StarCraft II replay.');
 		}

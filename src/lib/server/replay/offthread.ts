@@ -21,6 +21,26 @@ import type { WorkerRequest, WorkerResponse } from './worker.ts';
 /** A parse that runs this long is not a replay we want to wait on. */
 const JOB_TIMEOUT_MS = 30_000;
 
+/**
+ * The worker failed us — it timed out, died, or refused a job — as opposed to
+ * the replay being unreadable.
+ *
+ * Worth a type of its own because the two are indistinguishable to whoever
+ * awaits a parse, and answering the wrong one is not a cosmetic mistake: a
+ * parse that merely ran out of time under load used to come back as "not a
+ * readable StarCraft II replay", which is a permanent verdict about the file.
+ * The Companion believes it, writes the path off in its state file and never
+ * offers that game again — so a busy minute silently cost real replays.
+ * A genuine parse failure still arrives as a normal Error, via the worker's
+ * own catch, and still means what it says.
+ */
+export class ReplayWorkerError extends Error {
+	constructor(message: string, options?: ErrorOptions) {
+		super(message, options);
+		this.name = 'ReplayWorkerError';
+	}
+}
+
 type Pending = {
 	resolve: (value: unknown) => void;
 	reject: (reason: Error) => void;
@@ -86,14 +106,16 @@ function getWorker(): Worker | null {
 			job.resolve(msg.result);
 		}
 	});
-	// a dead worker must not strand the requests waiting on it
+	// a dead worker must not strand the requests waiting on it. Both of these
+	// are the worker's failure, never the file's — including for the jobs that
+	// were merely queued behind the one that killed it
 	worker.on('error', (e) => {
 		worker = null;
-		failAll(e instanceof Error ? e : new Error(String(e)));
+		failAll(new ReplayWorkerError('replay worker failed', { cause: e }));
 	});
 	worker.on('exit', () => {
 		worker = null;
-		failAll(new Error('replay worker exited'));
+		failAll(new ReplayWorkerError('replay worker exited'));
 	});
 	// let the process shut down without waiting on an idle worker
 	worker.unref();
@@ -110,7 +132,7 @@ function run<T>(req: Omit<WorkerRequest, 'id'>, inProcess: () => T): Promise<T> 
 			// it is wedged on this job; a fresh one starts on the next request
 			void w.terminate();
 			worker = null;
-			reject(new Error(`replay worker timed out after ${JOB_TIMEOUT_MS}ms`));
+			reject(new ReplayWorkerError(`replay worker timed out after ${JOB_TIMEOUT_MS}ms`));
 		}, JOB_TIMEOUT_MS);
 		pending.set(id, { resolve: resolve as (v: unknown) => void, reject, timer });
 		w.postMessage({ ...req, id } satisfies WorkerRequest);

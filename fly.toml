@@ -43,9 +43,19 @@ primary_region = 'cdg'
     method = 'GET'
     path = '/'
 
-# 512mb: replay uploads are parsed in-process (bzip2 decompression + full
-# game-event decode of ~10MB replays spikes well past what 256mb allows).
+# 512mb: parsing a replay (bzip2 decompression + full game-event decode of a
+# ~10MB file) spikes well past what 256mb allows, in the worker thread as much
+# as it did in-process.
+#
+# 2 cpus, which is shared-cpu-2x at this memory: parsing is a few hundred ms of
+# solid CPU, and on one core the worker thread only moved that off the event
+# loop — it still had to take the core from the requests it was meant to stop
+# blocking. During a companion's first-run backfill that starved everything: a
+# ~250ms parse ran past the worker's 30s timeout, health checks on a static
+# path failed, and the timeouts were being answered to the uploader as
+# "not a readable replay". A second core gives the parse somewhere to run that
+# is not the thread serving pages.
 [[vm]]
   memory = '512mb'
   cpu_kind = 'shared'
-  cpus = 1
+  cpus = 2
