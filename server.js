@@ -23,29 +23,17 @@
 // drift is the standing cost of wrapping it.
 import http from 'node:http';
 import { handler } from './build/handler.js';
+import { ART_CACHE_CONTROL, isArtPath } from './artPaths.js';
 
 const PORT = process.env.PORT || 8080;
 const HOST = process.env.HOST || '0.0.0.0';
 const SHUTDOWN_TIMEOUT = parseInt(process.env.SHUTDOWN_TIMEOUT ?? '30', 10);
 
-/**
- * Game art extracted from the map: class and item icons, camo swatches, the
- * minimap, the share cards, and the models the unit pages load. Not
- * /_app/immutable/*, which sirv already caches for a year — this is only what
- * static/ serves, which sirv gives no policy at all.
- *
- * Long max-age + must-revalidate rather than `immutable`: these filenames are
- * stable but their content is regenerated from the game data, so a refresh has
- * to be able to reach a browser that already holds one.
- */
-const ART = /^\/(icons|camos|map|og)\/[^/]+\.png$|^\/models\/[^/]+\.glb$/;
-const ONE_MONTH = 30 * 24 * 60 * 60;
-
 const server = http.createServer((req, res) => {
-	// matched on the path alone: these are served by path, and a cache-busting
-	// query string must not drop the response to no policy at all
-	if (ART.test((req.url ?? '').split('?')[0])) {
-		res.setHeader('Cache-Control', `public, max-age=${ONE_MONTH}, must-revalidate`);
+	// what counts as art, and the policy it gets, live in artPaths.js so they can
+	// be tested without opening a socket
+	if (isArtPath(req.url)) {
+		res.setHeader('Cache-Control', ART_CACHE_CONTROL);
 	}
 	// Deliberately nothing for anything else. Pages here carry a strong ETag and
 	// no Last-Modified, so a browser has nothing to compute heuristic freshness
