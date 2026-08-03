@@ -11,7 +11,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
-import { parseEntry } from '../src/lib/changelog.ts';
+import { compareVersions, parseEntry } from '../src/lib/changelog.ts';
 
 function git(...args: string[]): string {
 	return execFileSync('git', args, { encoding: 'utf8' }).trim();
@@ -27,6 +27,32 @@ if (git('tag', '-l', version)) {
 	console.error(`Tag ${version} already exists — pick the next version (check \`git tag\`).`);
 	process.exit(1);
 }
+/*
+ * Refuse to release below what is already out.
+ *
+ * The check above does not cover it: an unused number is not a free one. Two
+ * sessions share this tree, so another can tag v0.35.0 while this one is still
+ * thinking in v0.34.x — and v0.34.1 is then perfectly taggable. The commit is
+ * fine (it lands on top, so the tree is a superset), but two deploys are now in
+ * flight for the same branch and whichever finishes last wins: the lower tag
+ * landing second puts production back behind the newer release, quietly, with
+ * both workflows green. It also decides what the site calls "latest", which
+ * reads version order and not tag date.
+ */
+const highest = git('tag', '-l', 'v*.*.*')
+	.split('\n')
+	.filter((t) => /^v\d+\.\d+\.\d+$/.test(t))
+	.sort(compareVersions)
+	.pop();
+if (highest && compareVersions(version, highest) <= 0) {
+	console.error(
+		`${version} is not above ${highest}, which is already released — another session ` +
+			`probably tagged while this one was working. Re-check what landed, then pick a ` +
+			`version above ${highest}.`
+	);
+	process.exit(1);
+}
+
 const dir = join('changelog', version);
 if (existsSync(dir)) {
 	console.error(`${dir} already exists.`);
