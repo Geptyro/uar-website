@@ -48,7 +48,7 @@
 		"grid-router": "git+https://github.com/Geptyro/grid-router.git",
 		"mongodb": "^7.5.0",
 		"seek-bzip": "^2.0.0",
-		"sveltekit-commons": "git+https://github.com/Geptyro/sveltekit-commons.git#semver:^0.12.0",
+		"sveltekit-commons": "git+https://github.com/Geptyro/sveltekit-commons.git#semver:^0.13.0",
 		"uar-shared": "git+https://github.com/Geptyro/uar-shared.git#semver:^0.8.0"
 	}
 }

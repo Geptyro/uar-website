@@ -1030,10 +1030,17 @@
 		box-shadow: 0 0 0 2px var(--accent);
 	}
 
+	/* A class with no portrait yet still holds the tile, or the rail reads as a
+	   column of pictures with a hole in it. --nav-tile is the square NavItem
+	   draws a real portrait at, so this follows it rather than measuring the
+	   result. */
 	.mos-placeholder {
-		display: inline-block;
-		width: var(--nav-slot);
-		height: var(--nav-slot);
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%);
+		width: var(--nav-tile);
+		height: var(--nav-tile);
 		border-radius: var(--radius-2);
 		background: var(--surface-raised);
 	}
@@ -1064,7 +1071,7 @@
 	.credit :global(.made-by) {
 		--madeby-label-display: var(--label-display);
 		--madeby-dir: var(--foot-dir);
-		--madeby-align: var(--nav-justify);
+		--madeby-align: var(--foot-align);
 		--madeby-glyph: calc(var(--nav-glyph) - 3px);
 		--madeby-ink: var(--text-dim);
 		margin-top: 6px;
