@@ -10,6 +10,7 @@ import {
 	warmCache
 } from '$lib/server/db';
 import { warmReplayWorker } from '$lib/server/replay/offthread';
+import { startPushNotifier } from '$lib/server/notify';
 
 // one parsing worker for the lifetime of the server, started before the
 // first upload rather than inside it
@@ -58,6 +59,12 @@ if (!dev && dbConfigured() && pruneEnabled()) {
 	setTimeout(sweep, SWEEP_AFTER_BOOT_MS).unref();
 	setInterval(sweep, SWEEP_EVERY_MS).unref();
 }
+
+// Browser notifications for lobby/ready changes. Listens on the same channel
+// the SSE stream uses, so it needs no hook in any write path; it re-baselines
+// on boot, which is why a deploy is quiet rather than announcing the standing
+// roster to everyone.
+startPushNotifier();
 
 export const handle: Handle = async ({ event, resolve }) => {
 	event.locals.session = readSession(event.cookies);

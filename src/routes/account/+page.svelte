@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import { rememberUmamiId } from '$lib/analytics';
 	import Seo from '$lib/components/Seo.svelte';
+	import PushNotifications from '$lib/components/PushNotifications.svelte';
 	import { Page } from 'sveltekit-commons';
 
 	let { data } = $props();
@@ -140,6 +141,10 @@
 			“Sign out” only ends this browser session. “Disconnect” also deletes the stored link, so
 			your player pages are no longer marked as verified.
 		</p>
+
+		<!-- signed-in only: a subscription is stored against the account, which is
+		     also what lets the server leave you out of your own news -->
+		<PushNotifications />
 	{/if}
 
 	<!-- outside the Battle.net branch on purpose: the theme is yours whether or

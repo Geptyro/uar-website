@@ -15,18 +15,25 @@
  *
  * Changes broadcast on the ready SSE channel — clients refetch both
  * /api/ready and /api/presence on any 'change' event.
+ *
+ * Heartbeats are held in this process, not in Mongo (server/presenceStore.ts):
+ * they are stale in two minutes and never read historically, so persisting
+ * them only bought a write per player per minute. A restart therefore starts
+ * with no chips and refills as the companions re-beat, within a minute.
  */
 import { error, json } from '@sveltejs/kit';
 import {
 	clearReady,
 	dbConfigured,
-	deletePresence,
-	getActivePresence,
 	getNamesByToon,
 	getPlayerDirectory,
-	getReadyPlayers,
-	upsertPresence
+	getReadyPlayers
 } from '$lib/server/db';
+import {
+	deletePresence,
+	getActivePresence,
+	upsertPresence
+} from '$lib/server/presenceStore';
 import { publishReadyChange } from '$lib/server/events';
 import {
 	PRESENCE_STALE_MS,
@@ -41,14 +48,13 @@ export const prerender = false;
 
 export const GET: RequestHandler = async ({ locals, setHeaders }) => {
 	setHeaders({ 'cache-control': 'private, no-store' });
-	if (!dbConfigured()) {
-		return json({ players: [], me: null, known: {}, groups: { lobbies: [], games: [] } });
-	}
-	const docs = await getActivePresence(PRESENCE_STALE_MS);
+	// presence is in-process now, so the chips survive a database that is not
+	// configured or briefly unreachable; only the name resolution below needs it
+	const docs = getActivePresence(PRESENCE_STALE_MS);
 	// the widget colors its own chip by where the session user is
-	const mine = locals.session ? docs.find((d) => d._id === locals.session!.sub) : undefined;
+	const mine = locals.session ? docs.find((d) => d.sub === locals.session!.sub) : undefined;
 	// a heartbeat only carries the account; the profile name comes from the link
-	const names = docs.length > 0 ? await getNamesByToon() : {};
+	const names = docs.length > 0 && dbConfigured() ? await getNamesByToon() : {};
 	const players: PresenceEntry[] = docs.map((d) => ({
 		battletag: d.battletag,
 		name: (d.toon ? names[d.toon] : null) ?? null,
@@ -70,7 +76,7 @@ export const GET: RequestHandler = async ({ locals, setHeaders }) => {
 	// that against the directory recognised nobody.
 	const rosterNames = new Set(players.flatMap((p) => (p.roster ?? []).map(bareName)));
 	const known: Record<string, { toon: string; avatar?: string }> = {};
-	if (rosterNames.size > 0) {
+	if (rosterNames.size > 0 && dbConfigured()) {
 		const directory = await getPlayerDirectory();
 		for (const name of rosterNames) if (directory[name]) known[name] = directory[name];
 	}
@@ -85,12 +91,11 @@ export const GET: RequestHandler = async ({ locals, setHeaders }) => {
 export const POST: RequestHandler = async ({ locals, request }) => {
 	const s = locals.session;
 	if (!s) error(401, 'sign in with Battle.net to report presence');
-	if (!dbConfigured()) error(503, 'player database not configured');
 	const beat = validateBeat(await request.json().catch(() => null));
 	if (!beat) error(400, 'malformed presence heartbeat');
 
-	await upsertPresence({
-		_id: s.sub,
+	upsertPresence({
+		sub: s.sub,
 		battletag: s.battletag,
 		...(s.toon ? { toon: s.toon } : {}),
 		...(s.avatar ? { avatar: s.avatar } : {}),
@@ -104,8 +109,10 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 		at: new Date().toISOString()
 	});
 
-	// in a lobby or game = not looking anymore: withdraw the ready flag
-	if (beat.status === 'ingame' || beat.status === 'lobby') {
+	// in a lobby or game = not looking anymore: withdraw the ready flag. The
+	// flag itself is still in Mongo, so this half needs a database; the
+	// heartbeat above no longer does
+	if (dbConfigured() && (beat.status === 'ingame' || beat.status === 'lobby')) {
 		const ready = await getReadyPlayers();
 		if (ready.some((r) => r._id === s.sub)) await clearReady(s.sub);
 	}
@@ -116,8 +123,7 @@ export const POST: RequestHandler = async ({ locals, request }) => {
 export const DELETE: RequestHandler = async ({ locals }) => {
 	const s = locals.session;
 	if (!s) error(401, 'not signed in');
-	if (!dbConfigured()) error(503, 'player database not configured');
-	await deletePresence(s.sub);
+	deletePresence(s.sub);
 	publishReadyChange();
 	return json({ ok: true });
 };

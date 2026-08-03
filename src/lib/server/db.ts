@@ -151,19 +151,28 @@ export interface ReadyDoc {
 	until: string; // ISO timestamp the flag expires (one hour later)
 }
 
-export interface PresenceDoc {
-	_id: string; // Battle.net account id (the OAuth `sub` claim) — one heartbeat each
+// Presence is not stored here: a heartbeat is stale in two minutes and is
+// never read historically, so it lives in this process — see
+// server/presenceStore.ts for why, and for what a deploy costs.
+
+/**
+ * One browser's Web Push subscription. Keyed by endpoint, so re-subscribing
+ * the same browser replaces its row rather than accumulating dead ones —
+ * which matters because a browser that revokes permission or clears its
+ * storage tells the site nothing, and the only other way a row is ever
+ * removed is a push service answering 404/410.
+ */
+export interface PushSubDoc {
+	_id: string; // the push service endpoint URL
+	sub: string; // Battle.net account id — who to leave out of their own news
 	battletag: string;
-	toon?: string;
-	avatar?: string;
-	status: 'menus' | 'lobby' | 'ingame';
-	uar: boolean;
-	players?: number;
-	displayTime?: number;
-	roster?: string[];
-	lobbyId?: number;
-	selfName?: string;
-	at: string; // ISO timestamp of the last heartbeat — stale after ~2 min
+	/** UA public key, base64url. */
+	p256dh: string;
+	/** UA auth secret, base64url. */
+	auth: string;
+	prefs: { ready: boolean; lobby: boolean };
+	createdAt: string;
+	seenAt: string;
 }
 
 let client: MongoClient | null = null;
@@ -264,13 +273,13 @@ export async function closeDb(): Promise<void> {
  * long the TTL is. A short TTL there buys nothing and costs a re-read.
  *
  * The clock only matters for the things nothing in this process invalidates:
- * feedback triage (written straight to Atlas by the admin tool), the ready and
- * presence flags (which expire on a timestamp), and the windowed boards (whose
- * window slides even when the data behind it does not).
+ * feedback triage (written straight to Atlas by the admin tool), the ready
+ * flags (which expire on a timestamp), and the windowed boards (whose window
+ * slides even when the data behind it does not).
  */
 const TTL_MS = 10 * 60_000;
 /** Keys whose value ages on its own, and so cannot rely on invalidation. */
-const SHORT_TTL_KEYS = new Set(['ready', 'presence', 'weeklyBoards']);
+const SHORT_TTL_KEYS = new Set(['ready', 'weeklyBoards']);
 const SHORT_TTL_MS = 30_000;
 const ttlFor = (key: string) =>
 	SHORT_TTL_KEYS.has(key) || key.startsWith('replays:activity') ? SHORT_TTL_MS : TTL_MS;
@@ -1176,38 +1185,57 @@ export async function clearReady(sub: string): Promise<void> {
 	invalidateCache('ready');
 }
 
-/** Fresh lobby/ingame heartbeats (stale ones are ignored, cleaned lazily). */
-export async function getActivePresence(staleMs: number, now = Date.now()): Promise<PresenceDoc[]> {
-	return cached('presence', async () => {
+/**
+ * Every push subscription, for the fan-out.
+ *
+ * Cached because the fan-out re-reads it on every roster change while the
+ * collection itself changes about once per player per device, ever — and the
+ * cluster throttles on bytes returned, not on queries.
+ */
+export async function getPushSubs(): Promise<PushSubDoc[]> {
+	return cached('push', async () => {
 		const d = await db();
-		const cutoff = new Date(now - staleMs).toISOString();
-		return d
-			.collection<PresenceDoc>('presence')
-			.find({ at: { $gt: cutoff }, status: { $in: ['lobby', 'ingame'] } })
-			.sort({ at: 1 })
-			.toArray();
+		return d.collection<PushSubDoc>('pushSubs').find().toArray();
 	});
 }
 
-export async function getPresence(sub: string): Promise<PresenceDoc | null> {
+/** This account's subscriptions — the account page reads its own state. */
+export async function getPushSubsForAccount(sub: string): Promise<PushSubDoc[]> {
 	const d = await db();
-	return d.collection<PresenceDoc>('presence').findOne({ _id: sub });
+	return d.collection<PushSubDoc>('pushSubs').find({ sub }).toArray();
 }
 
-export async function upsertPresence(doc: PresenceDoc): Promise<void> {
+/** Cap per account, so a browser that re-subscribes on a loop cannot grow it. */
+const MAX_SUBS_PER_ACCOUNT = 10;
+
+export async function upsertPushSub(doc: PushSubDoc): Promise<void> {
 	const d = await db();
-	const col = d.collection<PresenceDoc>('presence');
+	const col = d.collection<PushSubDoc>('pushSubs');
 	await col.replaceOne({ _id: doc._id }, doc, { upsert: true });
-	// opportunistic cleanup — anything hours-stale is never read again
-	await col.deleteMany({ at: { $lt: new Date(Date.now() - 6 * 3_600_000).toISOString() } });
-	// only the roster changed — everything else in the cache is untouched
-	invalidateCache('presence');
+	// oldest first, drop the overflow: the browsers someone actually uses are
+	// the ones that re-subscribed most recently
+	const mine = await col.find({ sub: doc.sub }, { projection: { _id: 1, seenAt: 1 } }).toArray();
+	if (mine.length > MAX_SUBS_PER_ACCOUNT) {
+		const stale = mine
+			.sort((a, b) => a.seenAt.localeCompare(b.seenAt))
+			.slice(0, mine.length - MAX_SUBS_PER_ACCOUNT)
+			.map((s) => s._id);
+		await col.deleteMany({ _id: { $in: stale } });
+	}
+	invalidateCache('push');
 }
 
-export async function deletePresence(sub: string): Promise<void> {
+export async function deletePushSub(endpoint: string): Promise<void> {
 	const d = await db();
-	await d.collection<PresenceDoc>('presence').deleteOne({ _id: sub });
-	invalidateCache('presence');
+	await d.collection<PushSubDoc>('pushSubs').deleteOne({ _id: endpoint });
+	invalidateCache('push');
+}
+
+/** Drops every device — what unlinking an account has to do. */
+export async function deletePushSubsForAccount(sub: string): Promise<void> {
+	const d = await db();
+	await d.collection<PushSubDoc>('pushSubs').deleteMany({ sub });
+	invalidateCache('push');
 }
 
 /**

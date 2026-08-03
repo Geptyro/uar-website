@@ -1,6 +1,12 @@
 import { redirect } from '@sveltejs/kit';
 import { bnetConfigured } from '$lib/server/bnet';
-import { dbConfigured, deleteAccount, getAccount, getPlayerSummary } from '$lib/server/db';
+import {
+	dbConfigured,
+	deleteAccount,
+	deletePushSubsForAccount,
+	getAccount,
+	getPlayerSummary
+} from '$lib/server/db';
 import { clearSession } from '$lib/server/session';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -60,7 +66,13 @@ export const actions: Actions = {
 		redirect(303, '/account');
 	},
 	unlink: async ({ cookies, locals }) => {
-		if (locals.session) await deleteAccount(locals.session.sub);
+		if (locals.session) {
+			await deleteAccount(locals.session.sub);
+			// "Disconnect" means the site keeps nothing — and a subscription
+			// nobody can turn off from the account page any more would keep
+			// notifying a browser whose account is gone
+			await deletePushSubsForAccount(locals.session.sub);
+		}
 		clearSession(cookies);
 		redirect(303, '/account');
 	}

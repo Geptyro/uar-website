@@ -62,12 +62,19 @@
 	only the drags nothing else wants: the shell's rail keeps the drag that opens
 	the drawer, and the replay table keeps every sideways drag it can still spend
 	— run it to its last column and the next pull that way changes tab.
+
+	`middle` is on, so the desktop has the move too: hold the middle button and
+	push sideways. Horizontal scroll does it as well, on any wheel, and neither
+	needs a narrow screen. The cost of `middle` is the browser's autoscroll, and
+	it is worth paying here — this is a reference people read down a list on,
+	not a page anyone drives by the scroll anchor.
 -->
 <TabSwipe
 	tabs={barTabs}
 	{active}
 	onnavigate={(to) => void goto(to, { noScroll: true })}
 	preload={preloadData}
+	middle
 />
 
 <!--
@@ -88,6 +95,7 @@
 	{active}
 	label="{p.name} sections"
 	shortcuts
+	gestures="both"
 	onnavigate={(to) => void goto(to, { noScroll: true })}
 />
 

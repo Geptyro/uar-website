@@ -28,7 +28,22 @@ jobs:
     with:
       app: uar-website
       bootstrap: true
-    secrets:
-      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-      # dotenv-style lines staged onto the app with each release (MONGODB_URI…)
-      APP_SECRETS: ${{ secrets.APP_SECRETS }}
+      # Repo secrets forwarded to the Fly app, by name — the values live only
+      # in GitHub's secret store and never in this file.
+      #
+      # Migration in progress: the older APP_SECRETS blob below still carries
+      # MONGODB_URI, AUTH_SECRET and the Battle.net credentials. Both sources
+      # merge into one `flyctl secrets import`, so keys can move up here one at
+      # a time. Nothing forces the pace — the blob is write-only, so moving a
+      # key means having its value to hand.
+      #
+      # Tigris credentials (AWS_*, BUCKET_NAME) are deliberately absent: those
+      # were set on the app by `fly storage create` and are not repo secrets.
+      app-secrets: |
+        VAPID_PUBLIC_KEY
+        VAPID_PRIVATE_KEY
+        VAPID_SUBJECT
+    # required by app-secrets: a reusable workflow cannot read a secret it was
+    # not told the name of. It hands the template every secret in this repo,
+    # and the allowlist above governs which of them reach Fly.
+    secrets: inherit

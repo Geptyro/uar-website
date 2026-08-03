@@ -9,7 +9,8 @@
  * It exists mainly so the site is installable: Chrome only keeps a File
  * System Access grant across sessions for an installed app, and that grant is
  * what stops /companion's browser replay sync asking for the folder every
- * visit.
+ * visit. It also receives push notifications (see the `push` listener below),
+ * which is the one job that has to run with every tab closed.
  *
  * What it does NOT do is cache pages or API responses, and that is the whole
  * design. Player pages, replays and the leaderboards are server-rendered from
@@ -44,6 +45,66 @@ self.addEventListener('activate', (event) => {
 				if (key.startsWith('uar-immutable-') && key !== CACHE) await caches.delete(key);
 			}
 			await self.clients.claim();
+		})()
+	);
+});
+
+/**
+ * Push notifications — a lobby forming, or someone flagging themselves ready.
+ *
+ * This is the half of the feature the page cannot do: the site is closed, the
+ * tab is gone, and this worker is woken by the push service to show it. The
+ * payload is decrypted by the browser before it gets here (RFC 8291), so what
+ * arrives is the plain object server/notify.ts sent.
+ *
+ * `tag` collapses: a second "someone is ready" replaces the first rather than
+ * stacking, because the notification always states the current total and an
+ * older copy of that is just wrong.
+ */
+self.addEventListener('push', (event) => {
+	event.waitUntil(
+		(async () => {
+			// a push with no payload is a wakeup from a service doing its own
+			// housekeeping; showing "New notification" for that is worse than
+			// showing nothing, but a permission grant obliges us to show *something*
+			let data: { title?: string; body?: string; tag?: string; url?: string } = {};
+			try {
+				data = event.data ? event.data.json() : {};
+			} catch {
+				// malformed payload — fall through to the generic wording
+			}
+			await self.registration.showNotification(data.title ?? 'Undead Assault Reborn', {
+				body: data.body ?? 'Something changed on UAR.',
+				tag: data.tag ?? 'uar',
+				icon: '/icon-192.png',
+				badge: '/icon-192.png',
+				data: { url: data.url ?? '/' }
+			});
+		})()
+	);
+});
+
+/**
+ * Clicking one lands on the site — reusing an open tab when there is one,
+ * because a player who already has UAR open does not want a second copy of it.
+ */
+self.addEventListener('notificationclick', (event) => {
+	event.notification.close();
+	const url = (event.notification.data as { url?: string } | undefined)?.url ?? '/';
+	event.waitUntil(
+		(async () => {
+			const target = new URL(url, self.location.origin);
+			const clients = await self.clients.matchAll({
+				type: 'window',
+				includeUncontrolled: true
+			});
+			for (const client of clients) {
+				if (new URL(client.url).origin !== target.origin) continue;
+				await client.focus();
+				if ('navigate' in client && client.url !== target.href) await client.navigate(target.href);
+				return;
+			}
+			await self.clients.openWindow(target.href);
 		})()
 	);
 });

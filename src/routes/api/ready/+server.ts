@@ -5,14 +5,8 @@
  * restarts the hour.
  */
 import { error, json } from '@sveltejs/kit';
-import {
-	clearReady,
-	dbConfigured,
-	getNamesByToon,
-	getPresence,
-	getReadyPlayers,
-	setReady
-} from '$lib/server/db';
+import { clearReady, dbConfigured, getNamesByToon, getReadyPlayers, setReady } from '$lib/server/db';
+import { getPresence } from '$lib/server/presenceStore';
 import { publishReadyChange } from '$lib/server/events';
 import { READY_DURATION_MS, type ReadyPlayer } from '$lib/ready';
 import { PRESENCE_STALE_MS } from '$lib/presence';
@@ -66,7 +60,7 @@ export const POST: RequestHandler = async ({ locals }) => {
 	if (!dbConfigured()) error(503, 'player database not configured');
 	// in a lobby or game = not looking: block flagging while a fresh
 	// heartbeat says so (the same transition also auto-withdraws the flag)
-	const presence = await getPresence(s.sub);
+	const presence = getPresence(s.sub);
 	if (
 		presence &&
 		presence.status !== 'menus' &&
