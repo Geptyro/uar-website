@@ -55,10 +55,21 @@ const mosIds = new Set((rawMos as { id: string }[]).map((m) => m.id));
 // only stops something pathological — ingest is serialised and the player
 // rebuild is coalesced, so a legitimate backfill costs little.
 //
+// The ceiling has to be read against how fast a backfill can actually go, and
+// that changed underneath it. At 1000/hour it was unreachable while a starved
+// machine managed about one upload a minute; on two cores the same backfill
+// runs at roughly seventeen, which is the limit almost exactly — so the guard
+// had quietly become a thing real backfills hit rather than a guard against
+// abuse. A companion that hits it is not refused for good (429 keeps the file
+// queued and retries in fifteen minutes) but it does stall for a quarter of an
+// hour at a time, and the Companion release that re-offers the games a busy
+// server wrongly rejected queues them all at once — precisely the burst most
+// likely to run into it.
+//
 // `hit` — every ATTEMPT is charged, unlike the feedback form, which charges
 // only accepted submissions. Here the attempt is the cost: a rejected upload
 // has already been read off the wire and peeked at in a worker.
-const uploads = rateLimiter({ limit: 1000, windowMs: 60 * 60 * 1000 });
+const uploads = rateLimiter({ limit: 5000, windowMs: 60 * 60 * 1000 });
 
 /**
  * Re-raise a parse failure that was ours, not the file's, as a 503.
