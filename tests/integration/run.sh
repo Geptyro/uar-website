@@ -54,7 +54,9 @@ export AWS_ENDPOINT_URL_S3="http://localhost:$SPORT" BUCKET_NAME=uar-it
 # deployment this rig stands in for runs with it on
 export REPLAY_PRUNE=1
 export PORT=$APPPORT ORIGIN="http://localhost:$APPPORT" BODY_SIZE_LIMIT=16M
-node build &
+# server.js, not `node build`: that wrapper is what the Dockerfile starts, so
+# this rig would otherwise be exercising an entry point production does not use
+node server.js &
 SERVER_PID=$!
 for i in $(seq 1 30); do
 	curl -sf "http://localhost:$APPPORT/" >/dev/null && break
