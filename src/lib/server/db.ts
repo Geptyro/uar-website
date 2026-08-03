@@ -23,6 +23,7 @@ import { PER_PAGE, pageNumber, type Paged } from 'sveltekit-commons/paging';
 import { cacheKeyMatches, cacheState } from 'sveltekit-commons/cache';
 import { escapeRegex } from 'sveltekit-commons/text';
 import { careerXp, totalWins } from '../xp.ts';
+import { restorePins, type CutEntry } from '../progressionCuts.ts';
 import { BANNED_TOONS } from '../banned.ts';
 import { bucketConfigured, deleteObject } from './replay/s3.ts';
 import { pinnedOnArrival, prunableReplays } from '../replayRetention.ts';
@@ -216,7 +217,10 @@ export async function ensureIndexes(): Promise<void> {
 		// the leaderboard's default order, and the tiebreak under every other one
 		d.collection('players').createIndex({ careerXp: -1, _id: 1 }, { name: 'careerXp' }),
 		// clan pages select a roster by tag
-		d.collection('players').createIndex({ clan: 1 }, { name: 'clan' })
+		d.collection('players').createIndex({ clan: 1 }, { name: 'clan' }),
+		// the sweep's under-lock question, asked once per file it means to
+		// delete: "is this somebody's restore point?" (multikey over the array)
+		d.collection('players').createIndex({ restoreFiles: 1 }, { name: 'restoreFiles' })
 	]);
 }
 
@@ -1673,7 +1677,7 @@ async function persistTeammates(docs: DerivedDoc[], onlyToons?: string[]): Promi
  * entries and 78 KB for the most active).
  */
 export function withDerived(p: Record<string, unknown>): Record<string, unknown> {
-	const history = (p.history ?? []) as { file: string; mos: string[] }[];
+	const history = (p.history ?? []) as ({ file: string; mos: string[] } & CutEntry)[];
 	// class picks counted across every game — the one profile figure that
 	// genuinely needs the whole history, so it is tallied here instead
 	const classGames: Record<string, number> = {};
@@ -1685,7 +1689,14 @@ export function withDerived(p: Record<string, unknown>): Record<string, unknown>
 		historyCount: history.length,
 		classGames,
 		// the newest game, pinned by retention and offered as a bank backup
-		latestFile: history.at(-1)?.file ?? null
+		latestFile: history.at(-1)?.file ?? null,
+		/* The games recording a bank this profile went on to lose (see
+		   $lib/progressionCuts.ts). Stored rather than derived in the sweep for
+		   the reason every other field here is: the retention pass would
+		   otherwise have to read every sighting's XP out of the whole archive on
+		   every run, where this costs one array of file names per profile and
+		   only 91 of them have anything in it at all. */
+		restoreFiles: restorePins(history)
 	};
 }
 
@@ -1875,6 +1886,23 @@ async function retentionDocs(): Promise<RetentionDoc[]> {
 }
 
 /**
+ * Every file some profile needs kept as a restore point, from the `restoreFiles`
+ * each rebuild writes (see `withDerived`).
+ *
+ * Asked of the profiles that have one rather than of the whole collection: the
+ * overwhelming majority of players have never lost progression and carry an
+ * empty array, and this runs on a cluster that charges by the byte returned.
+ */
+async function restorePinnedFiles(): Promise<Set<string>> {
+	const d = await db();
+	const rows = await d
+		.collection('players')
+		.find({ 'restoreFiles.0': { $exists: true } }, { projection: { restoreFiles: 1 } })
+		.toArray();
+	return new Set(rows.flatMap((r) => (r.restoreFiles ?? []) as string[]));
+}
+
+/**
  * @param docs the archive to decide over, when the caller already holds it.
  * Omitted, the sweep reads its own narrow projection — the case for a run on a
  * clock, which is the only one that can catch a blob released by *another*
@@ -1885,6 +1913,7 @@ export async function sweepReplayBlobs(docs?: RetentionDoc[]): Promise<number> {
 	sweepRunning = true;
 	try {
 		const all = docs ?? (await retentionDocs());
+		const restorePinned = await restorePinnedFiles();
 		const files = prunableReplays(
 			all.map((r) => ({
 				file: r._id,
@@ -1892,7 +1921,8 @@ export async function sweepReplayBlobs(docs?: RetentionDoc[]): Promise<number> {
 				toons: (r.sightings ?? []).map((s) => s.toon).filter(Boolean),
 				blobPruned: Boolean(r.blobPrunedAt)
 			})),
-			keepPerPlayer()
+			keepPerPlayer(),
+			restorePinned
 		);
 		if (!files.length) return 0;
 
@@ -1915,6 +1945,18 @@ export async function sweepReplayBlobs(docs?: RetentionDoc[]): Promise<number> {
 					// have moved on since the set was computed
 					if (!cur || cur.blobPrunedAt) return 0;
 					if (cur.sha256 !== shaAtDecision.get(file)) return 0;
+					/* Asked again here, and not only when the set was built,
+					   because this is the one pin that can appear *while* the
+					   sweep runs: the upload that reveals a player's bank went
+					   backwards rebuilds their profile inside this same lock,
+					   and may have done so since. Cheap — an indexed existence
+					   check against the ~91 profiles that carry any. */
+					if (
+						await d
+							.collection('players')
+							.findOne({ restoreFiles: file }, { projection: { _id: 1 } })
+					)
+						return 0;
 					await deleteObject(`replays/${file}`);
 					// marked only after the bytes are actually gone, so a
 					// failure here leaves the file eligible for a retry

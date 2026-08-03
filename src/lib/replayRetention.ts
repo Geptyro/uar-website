@@ -7,10 +7,28 @@
  * once every player in it has a more recent replay of their own. The Mongo doc
  * (lobbyId, sha256, sightings) is never deleted — only the bytes go.
  *
- * The rule is monotonic: ingesting an older replay never un-prunes anything,
- * and ingesting a newer one only ever releases older blobs. "Nobody's latest"
- * can therefore never revert to false, which is why the pass is safe to run
- * incrementally and why a blob can wait for the next daily sweep with no risk.
+ * That rule alone throws away the backups that matter most. A player who lost
+ * their save file goes on playing from a fresh bank, and those games are newer
+ * than the one worth keeping — so the last recording of the progression they
+ * lost is released the moment the rest of that lobby has moved on too. Hence
+ * the second source of pins, `alwaysKeep`: the files named by
+ * $lib/progressionCuts.ts as sitting immediately before a backwards step, which
+ * retention holds regardless of how many newer games their players have.
+ *
+ * The "latest" half is monotonic: ingesting an older replay never un-prunes
+ * anything, and ingesting a newer one only ever releases older blobs.
+ * "Nobody's latest" can therefore never revert to false, which is why the pass
+ * is safe to run incrementally and why a blob can wait for the next daily sweep
+ * with no risk.
+ *
+ * `alwaysKeep` is deliberately *not* monotonic and cannot be made so: a cut
+ * only becomes visible when the player uploads the game that shows the
+ * diminished bank, which can be months after the pre-cut replay stopped being
+ * anybody's latest. A file can therefore be released, pruned, and only then
+ * named as a restore point — at which point the bytes are already gone and the
+ * pin has nothing left to hold. Nothing here can recover those; the pin exists
+ * so it stops happening from now on, and the sweep re-checks the set under its
+ * lock (see `sweepReplayBlobs`) so a cut landing mid-sweep still wins.
  *
  * Dependency-free on purpose (CLAUDE.md) so node:test can load it directly.
  */
@@ -29,13 +47,23 @@ export interface RetentionReplay {
 
 /**
  * Files that must keep their blob: for every player, their `keepPerPlayer`
- * most recent replays.
+ * most recent replays, plus every file in `alwaysKeep` that the archive still
+ * has a document for.
  *
  * Ties on playedAt are broken by file name so the result never depends on
  * the input order — two replays of the same minute (distinct lobbies, hence
  * the `-<lobbyId>` suffix) would otherwise pin nondeterministically.
+ *
+ * `alwaysKeep` is intersected with `replays` rather than added blind, so the
+ * returned set keeps its meaning: files this archive holds and must not delete.
+ * A restore point naming a game that has since been pruned is expected — see
+ * the note on monotonicity above — and simply has nothing to pin.
  */
-export function pinnedReplays(replays: RetentionReplay[], keepPerPlayer = 1): Set<string> {
+export function pinnedReplays(
+	replays: RetentionReplay[],
+	keepPerPlayer = 1,
+	alwaysKeep: Iterable<string> = []
+): Set<string> {
 	if (keepPerPlayer < 1) throw new RangeError('keepPerPlayer must be at least 1');
 	const newestFirst = [...replays].sort(
 		(a, b) => b.playedAt.localeCompare(a.playedAt) || b.file.localeCompare(a.file)
@@ -50,6 +78,8 @@ export function pinnedReplays(replays: RetentionReplay[], keepPerPlayer = 1): Se
 			pinned.add(replay.file);
 		}
 	}
+	const known = new Set(replays.map((r) => r.file));
+	for (const file of alwaysKeep) if (known.has(file)) pinned.add(file);
 	return pinned;
 }
 
@@ -62,8 +92,12 @@ export function pinnedReplays(replays: RetentionReplay[], keepPerPlayer = 1): Se
  * Those are the replays most likely to be worth re-parsing later, and once the
  * bytes are gone no future parser fix can reach them.
  */
-export function prunableReplays(replays: RetentionReplay[], keepPerPlayer = 1): string[] {
-	const pinned = pinnedReplays(replays, keepPerPlayer);
+export function prunableReplays(
+	replays: RetentionReplay[],
+	keepPerPlayer = 1,
+	alwaysKeep: Iterable<string> = []
+): string[] {
+	const pinned = pinnedReplays(replays, keepPerPlayer, alwaysKeep);
 	return replays
 		.filter((r) => !pinned.has(r.file) && !r.blobPruned && r.toons.length > 0)
 		.map((r) => r.file)

@@ -101,6 +101,76 @@ test('duplicate toons within one replay do not consume extra keep slots', () => 
 	assert.deepEqual(prunableReplays(replays, 1), ['a.SC2Replay']);
 });
 
+test('a restore point is kept even though everyone has played past it', () => {
+	const replays = [
+		r('precut.SC2Replay', '2026-01-01T10:00:00Z', ['wiped', 't2']),
+		r('after.SC2Replay', '2026-02-01T10:00:00Z', ['wiped', 't2'])
+	];
+	// the ordinary rule releases it — both players moved on
+	assert.deepEqual(prunableReplays(replays), ['precut.SC2Replay']);
+	// named as a restore point, it stays; only the file named is spared
+	assert.deepEqual(prunableReplays(replays, 1, ['precut.SC2Replay']), []);
+	assert.deepEqual(
+		[...pinnedReplays(replays, 1, ['precut.SC2Replay'])].sort(),
+		['after.SC2Replay', 'precut.SC2Replay']
+	);
+});
+
+test('a restore point naming a game the archive no longer holds pins nothing', () => {
+	const replays = [
+		r('a.SC2Replay', '2026-01-01T10:00:00Z', ['t1']),
+		r('b.SC2Replay', '2026-02-01T10:00:00Z', ['t1'])
+	];
+	// the pre-cut blob was swept before the cut became visible — the pin has
+	// nothing left to hold, and must not invent a file the caller never gave us
+	assert.deepEqual([...pinnedReplays(replays, 1, ['gone.SC2Replay'])], ['b.SC2Replay']);
+	assert.deepEqual(prunableReplays(replays, 1, ['gone.SC2Replay']), ['a.SC2Replay']);
+});
+
+test('an already-pruned restore point is not offered for deletion again', () => {
+	const replays = [
+		r('precut.SC2Replay', '2026-01-01T10:00:00Z', ['wiped'], true),
+		r('after.SC2Replay', '2026-02-01T10:00:00Z', ['wiped'])
+	];
+	assert.deepEqual(prunableReplays(replays, 1, ['precut.SC2Replay']), []);
+});
+
+test('restore pins compose with keepPerPlayer rather than replacing it', () => {
+	const replays = [
+		r('precut.SC2Replay', '2026-01-01T10:00:00Z', ['t1']),
+		r('mid.SC2Replay', '2026-02-01T10:00:00Z', ['t1']),
+		r('newer.SC2Replay', '2026-03-01T10:00:00Z', ['t1']),
+		r('newest.SC2Replay', '2026-04-01T10:00:00Z', ['t1'])
+	];
+	assert.deepEqual(prunableReplays(replays, 2, ['precut.SC2Replay']), ['mid.SC2Replay']);
+	// a pin on a file the keep-window already covers changes nothing
+	assert.deepEqual(prunableReplays(replays, 2, ['newest.SC2Replay']), [
+		'mid.SC2Replay',
+		'precut.SC2Replay'
+	]);
+});
+
+test('duplicate restore pins are harmless', () => {
+	const replays = [
+		r('precut.SC2Replay', '2026-01-01T10:00:00Z', ['t1', 't2']),
+		r('after.SC2Replay', '2026-02-01T10:00:00Z', ['t1', 't2'])
+	];
+	// two players in the same lobby were both wiped, so both name the same file
+	assert.deepEqual(
+		prunableReplays(replays, 1, ['precut.SC2Replay', 'precut.SC2Replay']),
+		[]
+	);
+});
+
+test('no restore pins leaves the rule exactly as it was', () => {
+	const replays = [
+		r('a.SC2Replay', '2026-01-01T10:00:00Z', ['t1']),
+		r('b.SC2Replay', '2026-02-01T10:00:00Z', ['t1'])
+	];
+	assert.deepEqual(prunableReplays(replays, 1, []), prunableReplays(replays, 1));
+	assert.deepEqual([...pinnedReplays(replays, 1, [])], [...pinnedReplays(replays, 1)]);
+});
+
 test('a game nobody has played past is pinned on arrival', () => {
 	// the ordinary upload: a game that just finished, every count zero
 	assert.equal(pinnedOnArrival([0, 0, 0, 0]), true);

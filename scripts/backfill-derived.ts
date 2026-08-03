@@ -31,11 +31,19 @@ await mongo.connect();
 const players = mongo.db(process.env.MONGODB_DB || 'uar').collection('players');
 
 /** The stored fields `withDerived` produces — what this script maintains. */
-const DERIVED = ['careerXp', 'totalWins', 'historyCount', 'classGames', 'latestFile'] as const;
+const DERIVED = [
+	'careerXp',
+	'totalWins',
+	'historyCount',
+	'classGames',
+	'latestFile',
+	'restoreFiles'
+] as const;
 
 // the inputs withDerived reads, plus the stored values to diff against. Of
-// history only the two fields classGames/latestFile need — an inclusion
-// projection throughout, since Mongo refuses to mix the two kinds.
+// history, classGames/latestFile need file and mos, and `restoreFiles` needs
+// the bank figures either side of a cut — an inclusion projection throughout,
+// since Mongo refuses to mix the two kinds.
 const docs = (await players
 	.find(
 		{},
@@ -51,8 +59,15 @@ const docs = (await players
 				historyCount: 1,
 				classGames: 1,
 				latestFile: 1,
+				restoreFiles: 1,
 				'history.file': 1,
-				'history.mos': 1
+				'history.mos': 1,
+				'history.playedAt': 1,
+				'history.gamesPlayed': 1,
+				'history.prestige': 1,
+				'history.xpEn': 1,
+				'history.xpWo': 1,
+				'history.xpCo': 1
 			}
 		}
 	)
