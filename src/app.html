@@ -20,6 +20,21 @@
 				var t = localStorage.getItem('uar:theme');
 				if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
 			} catch (e) {}
+
+			// Same problem, same answer: the sidebar's remembered collapse lives in
+			// storage, the server cannot read it, so the page would land with the
+			// nav open and animate it shut in front of you on every load. AppShell
+			// reads this attribute and declines to expand a nav you had already
+			// closed. It is a starting position only — once hydrated the component
+			// owns the state, so this never has to be cleared.
+			//
+			// The key is the `navKey` passed to AppShell in +layout.svelte and the
+			// two have to agree; nothing checks that for you. '0' rather than
+			// truthiness because that is what the shell writes for closed.
+			try {
+				if (localStorage.getItem('uar:nav-open') === '0')
+					document.documentElement.dataset.nav = 'closed';
+			} catch (e) {}
 		</script>
 	</head>
 	<body data-sveltekit-preload-data="hover">

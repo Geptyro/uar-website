@@ -361,6 +361,8 @@
 		   can claw back the width every card was spending twice over */
 		--card-pad-x: 14px;
 		--card-pad-y: 12px;
+		/* the air above an `h2.section`, i.e. the gap between two sections */
+		--section-gap: 34px;
 		/* Anything floating must clear every piece of chrome or it gets sliced
 		   by the rail, which is fixed and so painted late whatever the source
 		   order. Read by HoverPop as well, so the top-bar pops land on the same
@@ -482,7 +484,12 @@
 		letter-spacing: 0.14em;
 		text-transform: uppercase;
 		color: var(--text-dim);
-		margin: 34px 0 12px;
+		/* Named because it is spacing *between* sections, and the first heading
+		   on a page is not between anything — whoever leads a column has to give
+		   it back, and can only do that in the same terms and at the same
+		   breakpoint (the profile's overview does it by hand at 4px; the
+		   collection's first row reads this). */
+		margin: var(--section-gap) 0 12px;
 	}
 	:global(h2.section::after) {
 		content: '';
@@ -1084,6 +1091,7 @@
 		:global(:root) {
 			--card-pad-x: 10px;
 			--card-pad-y: 10px;
+			--section-gap: 24px;
 		}
 		:global(.card) {
 			padding: var(--card-pad-y) var(--card-pad-x);
@@ -1104,7 +1112,7 @@
 			--fig-x: 9px;
 		}
 		:global(h2.section) {
-			margin: 24px 0 10px;
+			margin: var(--section-gap) 0 10px;
 		}
 		:global(.quote) {
 			padding: 11px 12px;

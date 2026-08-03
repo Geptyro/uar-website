@@ -196,9 +196,16 @@
 	}
 
 	/* The tabs render into .main, so the frame owns the rhythm above their
-	   first heading rather than each tab repeating it: 34px of top margin is
-	   spacing between sections, not a gap under the bar. */
-	.main :global(h2.section:first-child) {
+	   first heading rather than each tab repeating it: --section-gap of top
+	   margin is spacing between sections, not a gap under the bar.
+
+	   A direct child, and that matters. As a descendant selector this read
+	   "any heading that leads its container" rather than "the first heading on
+	   the page", so every section on the overview that wraps its own heading —
+	   Wins by mode, Played with, Classes played — was quietly led in at 4px too
+	   and butted straight up against the block above it. Only the page's own
+	   first heading is not between two sections; the rest have earned the gap. */
+	.main > :global(h2.section:first-child) {
 		margin-top: 4px;
 	}
 

@@ -300,6 +300,22 @@
 		align-items: start;
 	}
 
+	/* The top row gives back the spacing its headings did not need: --section-gap
+	   is the air *between* two sections, and nothing is above this one but the
+	   tab bar. Left at full it opened the collection 30px lower than the overview
+	   and the activity tabs, which lead with 4px, and the three read as different
+	   pages.
+
+	   On the row rather than on its headings, which is what makes it survive the
+	   grid collapsing: at two columns both headings have to stay level, and at
+	   one the section below still wants the full gap above it. Moving the row
+	   moves only what is at the top, in either shape. The 4px is the profile
+	   frame's own lead-in (see its `.main h2.section:first-child`) and the two
+	   have to agree by hand. */
+	.duo:first-child {
+		margin-top: calc(4px - var(--section-gap));
+	}
+
 	/* ---------- unlock grids: classes, SIs, medals, camos, decals ----------
 	   One shape for the five. What differs between them is the picture: cover
 	   for a portrait or a swatch, contain for a medal, an SI or a decal that
