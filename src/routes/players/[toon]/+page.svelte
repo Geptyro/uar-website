@@ -7,6 +7,7 @@
 	import { rankFor, nextRank, totalWins, modeNames, XP_CAP } from '$lib/players';
 	import { mosById } from '$lib/mos';
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
+	import { portraitFallback } from '$lib/portrait';
 	import ModeMark from '$lib/components/ModeMark.svelte';
 	import Seo from '$lib/components/Seo.svelte';
 	import { playerDescription } from '$lib/seo';
@@ -156,7 +157,13 @@
 									<tr>
 										<td class="pos">{i + 1}</td>
 										<td class="figcell">
-											<img class="figimg" src={t.avatarUrl || anonPortrait} alt="" loading="lazy" />
+											<img
+												class="figimg"
+												src={t.avatarUrl || anonPortrait}
+												alt=""
+												loading="lazy"
+												use:portraitFallback={anonPortrait}
+											/>
 											{#if t.clan}<span class="pclan">&lt;{t.clan}&gt;</span>{/if}
 											{#if t.toon}
 												<a class="pname" href="/players/{t.toon}">{t.name}</a>

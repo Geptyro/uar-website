@@ -10,6 +10,7 @@
 	import RecentGames from '$lib/components/RecentGames.svelte';
 	import Seo from '$lib/components/Seo.svelte';
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
+	import { portraitFallback } from '$lib/portrait';
 
 	let { data } = $props();
 
@@ -63,6 +64,7 @@
 											src={(p.toon && data.avatars[p.toon]) || anonPortrait}
 											alt=""
 											loading="lazy"
+											use:portraitFallback={anonPortrait}
 										/>
 										{#if p.clan}<span class="pclan">&lt;{p.clan}&gt;</span>{/if}
 										{#if p.toon}
@@ -298,6 +300,7 @@
 								src={(p.toon && data.avatars[p.toon]) || anonPortrait}
 								alt=""
 								loading="lazy"
+								use:portraitFallback={anonPortrait}
 							/>
 							<span class="pr-who">
 								{#if p.clan}<span class="pclan">&lt;{p.clan}&gt;</span>{/if}

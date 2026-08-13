@@ -13,6 +13,7 @@
 	import { applyText } from '$lib/units';
 	import { gearGroups as accountGear, type MosTopPlayer } from '$lib/players';
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
+	import { portraitFallback } from '$lib/portrait';
 	import FactsCard, { type Fact } from '$lib/components/FactsCard.svelte';
 	import ModelCard from '$lib/components/ModelCard.svelte';
 	import DescCard from '$lib/components/DescCard.svelte';
@@ -361,7 +362,13 @@
 								<tr>
 									<td class="pos">{i + 1}</td>
 									<td class="figcell">
-										<img class="figimg" src={p.avatarUrl || anonPortrait} alt="" loading="lazy" />
+										<img
+											class="figimg"
+											src={p.avatarUrl || anonPortrait}
+											alt=""
+											loading="lazy"
+											use:portraitFallback={anonPortrait}
+										/>
 										{#if p.clan}<span class="pclan">&lt;{p.clan}&gt;</span>{/if}
 										{#if p.toon}
 											<a class="pname" href="/players/{p.toon}">{p.name}</a>

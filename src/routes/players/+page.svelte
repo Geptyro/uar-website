@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { rankFor, totalWins, totalXp, careerXp, type PlayerProfile } from '$lib/players';
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
+	import { portraitFallback } from '$lib/portrait';
 	import Pager from '$lib/components/Pager.svelte';
 	import Seo from '$lib/components/Seo.svelte';
 	import { goto } from '$app/navigation';
@@ -123,6 +124,7 @@
 									src={data.avatars[p.toon] ?? anonPortrait}
 									alt=""
 									loading="lazy"
+									use:portraitFallback={anonPortrait}
 								/>
 								<span class="nameblock">
 									{#if p.clan}<a class="clan" href="/clans/{encodeURIComponent(p.clan)}"

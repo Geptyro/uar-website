@@ -25,6 +25,7 @@
 	import { decals } from '$lib/unlocks';
 	import { BAN_EFFECT, banKind } from '$lib/banned';
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
+	import { portraitFallback } from '$lib/portrait';
 
 	let { data, children } = $props();
 
@@ -135,7 +136,12 @@
 		<aside class="infobox">
 			<div class="card box">
 				<div class="idhead">
-					<img class="portrait-lg" src={data.avatarUrl ?? anonPortrait} alt="" />
+					<img
+						class="portrait-lg"
+						src={data.avatarUrl ?? anonPortrait}
+						alt=""
+						use:portraitFallback={anonPortrait}
+					/>
 					<div class="idtext">
 						<div class="idname">
 							{#if p.clan}<span class="idclan">&lt;{p.clan}&gt;</span>{/if}{p.name}

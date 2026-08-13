@@ -8,6 +8,7 @@
 	import 'uar-shared/palette.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
+	import { portraitFallback } from '$lib/portrait';
 	import { MadeBy } from 'cedricdessalles-commons';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
@@ -170,7 +171,13 @@
 		     in the one place the design shows it -->
 		{#if pageTitle.section}<span class="crumb-section">{pageTitle.section} /</span>{/if}
 		{#if pageTitle.icon}
-			<img class="crumb-icon" class:round={pageTitle.round} src={pageTitle.icon} alt="" />
+			<img
+				class="crumb-icon"
+				class:round={pageTitle.round}
+				src={pageTitle.icon}
+				alt=""
+				use:portraitFallback={anonPortrait}
+			/>
 		{/if}
 		{#if pageTitle.title}<h1 class="crumb-title">{pageTitle.title}</h1>{/if}
 	{/snippet}
@@ -195,7 +202,12 @@
 							href={me.toon ? `/players/${me.toon}` : '/account'}
 							title={me.toon ? 'Your player profile' : 'Your Battle.net account'}
 						>
-							<img class="acct-avatar" src={me.avatar ?? anonPortrait} alt="" />
+							<img
+								class="acct-avatar"
+								src={me.avatar ?? anonPortrait}
+								alt=""
+								use:portraitFallback={anonPortrait}
+							/>
 							<span class="acct-tag">{me.battletag}</span>
 						</a>
 						<a

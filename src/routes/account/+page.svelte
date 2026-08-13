@@ -1,5 +1,6 @@
 <script lang="ts">
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
+	import { portraitFallback } from '$lib/portrait';
 	import { onMount } from 'svelte';
 	import { rememberUmamiId } from '$lib/analytics';
 	import Seo from '$lib/components/Seo.svelte';
@@ -86,7 +87,12 @@
 	{:else}
 		<div class="card box">
 			<div class="who">
-				<img class="who-avatar" src={data.avatar ?? anonPortrait} alt="" />
+				<img
+					class="who-avatar"
+					src={data.avatar ?? anonPortrait}
+					alt=""
+					use:portraitFallback={anonPortrait}
+				/>
 				<span class="tag t-mos">✓ signed in</span>
 				<b class="btag">{data.battletag}</b>
 			</div>
@@ -101,7 +107,13 @@
 				<ul class="linked">
 					{#each data.linked as l (l.toon)}
 						<li>
-							<img class="portrait" src={l.avatarUrl ?? anonPortrait} alt="" loading="lazy" />
+							<img
+								class="portrait"
+								src={l.avatarUrl ?? anonPortrait}
+								alt=""
+								loading="lazy"
+								use:portraitFallback={anonPortrait}
+							/>
 							{#if l.player}
 								<a href="/players/{l.toon}">
 									{#if l.player.clan}&lt;{l.player.clan}&gt;{/if}
