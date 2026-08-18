@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { hasFailed } from '../src/lib/portrait.ts';
 
+// $lib/portrait re-exports uar-shared/portrait, so this also guards the
+// installed shared package: a bad publish fails here rather than in a browser.
+
 /** Minimal stand-in for the parts of HTMLImageElement `hasFailed` reads. */
 function img(src: string | null, complete: boolean, naturalWidth: number) {
 	return { complete, naturalWidth, getAttribute: () => src };
