@@ -21,7 +21,7 @@
 	import { Page, TabBar, TabSwipe } from 'sveltekit-commons';
 
 	import { PLAYER_TABS, playerHref, tabSegment } from '$lib/playerTabs';
-	import { careerXp, totalWins, camoName, decalName } from '$lib/players';
+	import { careerXp, totalWins, camoName, decalName, fmtPlaytime } from '$lib/players';
 	import { decals } from '$lib/unlocks';
 	import { BAN_EFFECT, banKind } from '$lib/banned';
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
@@ -37,6 +37,11 @@
 	const ban = $derived(banKind(data.toon));
 	// num 0 (rank insignia) is everyone's default decal, never bank-stored
 	const decalsUnlocked = $derived(new Set([0, ...p.unlocks.decals]));
+	/* The games behind "time on record" — the ingested ones, which is why the
+	   figure carries a count of its own beside the map's career total. */
+	const recordedGames = $derived(
+		`${data.historyCount.toLocaleString('en')} ${data.historyCount === 1 ? 'game' : 'games'}`
+	);
 
 	const active = $derived(tabSegment(page.route.id) ?? '');
 	const onOverview = $derived(active === '');
@@ -171,12 +176,33 @@
 					<dd>{careerXp(p).toLocaleString('en')}</dd>
 					<dt>Games played</dt>
 					<dd>{p.gamesPlayed.toLocaleString('en')}</dd>
+					{#if p.playSeconds !== undefined}
+						<!--
+							Recorded time, and it says so: `gamesPlayed` above is the map's own
+							career count, while this is summed over the games somebody uploaded
+							— each for as long as this player was in it — so it is small beside
+							a long career and grows only as the archive does. The count is what
+							keeps the two figures from being read as one.
+						-->
+						<dt>Time on record</dt>
+						<dd
+							title="{fmtPlaytime(p.playSeconds)} across the {recordedGames} on record — this player's own time in each, not the game's length."
+						>
+							{fmtPlaytime(p.playSeconds)}
+							<span class="qual">in {recordedGames}</span>
+						</dd>
+					{/if}
 					<dt>Wins</dt>
 					<dd>{totalWins(p).toLocaleString('en')}</dd>
 					<dt>Revives</dt>
 					<dd>{p.revives.toLocaleString('en')}</dd>
+					<!-- the map's figure, shown as the map shows it — see PlayerProfile.avgGameTime -->
 					<dt>Avg game</dt>
-					<dd>{p.avgGameTime ? `${Math.round(p.avgGameTime / 60)} min` : '—'}</dd>
+					<dd
+						title="The map's own figure: a running average of game length that the map updates only when a game is lost — wins do not move it."
+					>
+						{p.avgGameTime ? `${Math.round(p.avgGameTime / 60)} min` : '—'}
+					</dd>
 					<dt>Camo</dt>
 					<dd>{camoName(p.camo)}</dd>
 					<dt>Decal</dt>
@@ -337,6 +363,15 @@
 	}
 	.facts dd:last-of-type {
 		border-bottom: none;
+	}
+	/* the qualifier on a figure that needs one — set like the labels, so it
+	   reads as a caption on the number and not as a second number */
+	.facts .qual {
+		font-family: var(--font-mono);
+		font-size: 10px;
+		font-weight: 500;
+		letter-spacing: 0.06em;
+		color: var(--text-faint);
 	}
 	.idhead .you {
 		font-family: var(--font-mono);

@@ -66,6 +66,7 @@
 				total={data.historyTotal}
 				label="replays"
 				param="h"
+				shortcuts
 			/>
 		</div>
 

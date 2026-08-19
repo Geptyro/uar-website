@@ -10,18 +10,7 @@ export const prerender = false;
  * `?sort=` value from reaching the query — the field each one maps to lives
  * next to the query it builds.
  */
-const SORTS = [
-	'name',
-	'career',
-	'xpEn',
-	'xpWo',
-	'xpCo',
-	'prestige',
-	'games',
-	'wins',
-	'revives',
-	'avg'
-];
+const SORTS = ['name', 'career', 'prestige', 'games', 'wins', 'revives', 'time', 'avg'];
 
 export const load: PageServerLoad = async ({ url }) => {
 	const key = url.searchParams.get('sort') ?? '';

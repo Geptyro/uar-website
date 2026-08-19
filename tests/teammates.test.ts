@@ -100,3 +100,37 @@ test('credits the game, not a recording left running after it ended', () => {
 		{ name: 'Bob', clan: '', toon: 't2', games: 1, seconds: 4726 }
 	]);
 });
+
+test('credits the stretch both players were in, cut at whichever left first', () => {
+	const game = 16 * 5400; // a 90-minute game
+	const replays: TeammateReplay[] = [
+		{
+			playedAt: '2026-08-04T20:19:00Z',
+			durationLoops: game,
+			gameLoops: game,
+			sightings: [
+				sighting('t1', 'Alice'),
+				// left at minute 25: shared 25 min with everyone still there
+				{ ...sighting('t2', 'Bob'), leftLoop: 16 * 1500 },
+				// dropped during loading: no time with anyone
+				{ ...sighting('t3', 'Cara'), leftLoop: 0 },
+				// stayed to the end (a sighting from before leaves were read reads the same)
+				sighting('t4', 'Dan')
+			]
+		}
+	];
+	assert.deepEqual(topTeammates(replays, 't1'), [
+		{ name: 'Dan', clan: '', toon: 't4', games: 1, seconds: 5400 },
+		{ name: 'Bob', clan: '', toon: 't2', games: 1, seconds: 1500 },
+		{ name: 'Cara', clan: '', toon: 't3', games: 1, seconds: 0 }
+	]);
+	// and from the leaver's own side, the same 25 minutes with each of them
+	assert.deepEqual(
+		topTeammates(replays, 't2').map((m) => [m.toon, m.seconds]),
+		[
+			['t1', 1500],
+			['t4', 1500],
+			['t3', 0]
+		]
+	);
+});

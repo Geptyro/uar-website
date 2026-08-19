@@ -23,13 +23,20 @@
  *   the burst is one click per player on one control id. The one ending that
  *   skips the dialog is Competitive, whose `gf_NextRound` force-ends every
  *   client with `GameOver` — a mode that cannot idle in the first place.
- * - players leaving, which the tracker stream gives away for free: a player's
- *   `SPlayerStatsEvent` ticks every ten game-seconds until their client is
- *   out of the game, and clicking the exit button is what puts it out.
+ * - players being put out of the game, which the tracker stream gives away
+ *   for free: a player's `SPlayerStatsEvent` ticks every ten game-seconds
+ *   until the map calls `GameOver` for them, and clicking the exit button is
+ *   what does that. Note the wording: a player who *quits* mid-game keeps
+ *   ticking until the game ends — SC2 goes on emitting stats for a slot whose
+ *   user has gone (measured over 27 of 27 mid-game leavers in the archive) —
+ *   so this signal dates endings, never departures. Where a player left is a
+ *   different event in a different stream: `SGameUserLeaveEvent` in
+ *   game.events, which is what `leftLoop` on a sighting records and
+ *   `playedLoops` below credits.
  *
  * The last of those is the cheap one — it comes out of a stream `parseReplay`
- * already decodes in full — so the reader leans on it and pays for the
- * game.events scan only when there is a marker-less split to explain.
+ * already decodes in full — so the reader leans on it for the ending and uses
+ * the game.events scan only when there is a marker-less split to explain.
  *
  * Dependency-free (pattern: xp.ts) so node:test can load it directly.
  */
@@ -176,6 +183,25 @@ export function gameEndLoop(ev: EndEvidence): number {
 	for (const p of departedEarly(ev.players, ev.recordingLoops)) evidence.push(p.lastLoop);
 	const end = Math.min(ev.recordingLoops, Math.max(...evidence));
 	return ev.recordingLoops - end <= IDLE_GRACE_LOOPS ? ev.recordingLoops : end;
+}
+
+/**
+ * How many loops of a game one player was actually in it for.
+ *
+ * `leftLoop` is the loop of that player's `SGameUserLeaveEvent`, when the
+ * recording saw one; players still in when the recording stopped have none
+ * and are credited the game's length. Clamped to the game's length because a
+ * player who sat in a finished map before leaving did not play the idle tail
+ * any more than the recorder did (see `gameEndLoop`).
+ *
+ * This is what every playtime figure credits — a profile's total, the
+ * per-class boards, the teammate lists. Whole-game crediting was measured
+ * at 7% phantom time across long twelve-player games, concentrated on the
+ * few who left at minute two and were written down for ninety.
+ */
+export function playedLoops(gameLoops: number, leftLoop?: number | null): number {
+	if (leftLoop === undefined || leftLoop === null) return gameLoops;
+	return Math.max(0, Math.min(leftLoop, gameLoops));
 }
 
 /**

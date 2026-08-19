@@ -2,14 +2,15 @@
  * Who a player has spent the most time in-game with, aggregated from the
  * stored replay docs they appear in.
  *
- * Time credited for a shared game is the game's own length — the same measure
- * the per-MOS playtime boards use, with the same fallback for docs that
- * predate it and the same caveat: banks carry no per-player leave time, so an
- * early leaver is credited the full game.
+ * Time credited for a shared game is the stretch both were in it: the game's
+ * own length — the same measure the per-MOS playtime boards use, with the
+ * same fallback for docs that predate it — cut at whichever of the two left
+ * first, where the sightings record it (`leftLoop`; a sighting from before
+ * that was read counts as staying to the end).
  */
 
 import type { Teammate } from '../players.ts';
-import { LOOPS_PER_SECOND } from '../gameEnd.ts';
+import { LOOPS_PER_SECOND, playedLoops } from '../gameEnd.ts';
 import { isBanned } from '../banned.ts';
 
 /** The slice of a replay doc this aggregation needs. */
@@ -19,7 +20,7 @@ export interface TeammateReplay {
 	durationLoops?: number;
 	/** The game's own length in the same loops, where it is known. */
 	gameLoops?: number;
-	sightings: { toon: string; name: string; clan: string }[];
+	sightings: { toon: string; name: string; clan: string; leftLoop?: number }[];
 }
 
 /**
@@ -31,8 +32,10 @@ export function topTeammates(replays: TeammateReplay[], key: string, limit = 10)
 	// teammate key (toon, falling back to name) -> accumulated row
 	const mates = new Map<string, Teammate & { at: string }>();
 	for (const r of replays) {
-		const seconds = Math.round((r.gameLoops ?? r.durationLoops ?? 0) / LOOPS_PER_SECOND);
-		if (!r.sightings.some((s) => (s.toon || s.name) === key)) continue;
+		const gameLoops = r.gameLoops ?? r.durationLoops ?? 0;
+		const own = r.sightings.find((s) => (s.toon || s.name) === key);
+		if (!own) continue;
+		const ownLoops = playedLoops(gameLoops, own.leftLoop);
 		// one credit per player per game, even if a lobby lists them twice
 		const seen = new Set<string>([key]);
 		for (const s of r.sightings) {
@@ -43,6 +46,9 @@ export function topTeammates(replays: TeammateReplay[], key: string, limit = 10)
 			// banned player's own list is unaffected: `key` is never filtered
 			if (isBanned(mate)) continue;
 			seen.add(mate);
+			const seconds = Math.round(
+				Math.min(ownLoops, playedLoops(gameLoops, s.leftLoop)) / LOOPS_PER_SECOND
+			);
 			const cur = mates.get(mate);
 			if (!cur) {
 				mates.set(mate, {

@@ -49,8 +49,28 @@ export interface PlayerProfile {
 	prestige: number;
 	gamesPlayed: number;
 	revives: number;
-	/** Average game length in seconds. */
+	/**
+	 * The map's own "average game time", in seconds. Not what the name says:
+	 * the map folds each game into it as `(length + previous) / 2`, and only
+	 * on the two loss paths (MapScript.galaxy, gt_GameOverLastAlivePlayer*),
+	 * so it is a half-weight average of lost games and wins never move it.
+	 * Shown as the map shows it; not something a total can be derived from.
+	 */
 	avgGameTime: number;
+	/**
+	 * Seconds this player has been in ingested games, each counted for as long
+	 * as they were in it (see playedLoops in lib/gameEnd.ts). Recorded time,
+	 * not a career: `gamesPlayed` is the map's own count and runs far ahead of
+	 * the games anyone uploaded. Absent on profiles not rebuilt since it was
+	 * added.
+	 */
+	playSeconds?: number;
+	/**
+	 * The same seconds by class picked (MOS id -> seconds), each game counted
+	 * in full for every class it listed — the time counterpart of the game
+	 * counts a profile shows under "Classes played". Absent with `playSeconds`.
+	 */
+	classSeconds?: Record<string, number>;
 	/** Games won per game mode, aligned with `modeNames`. */
 	winsByMode: number[];
 	/** Currently equipped camo / decal ids. */
@@ -75,6 +95,12 @@ export interface MosTopPlayer {
 	games: number;
 	/** Total recorded time on this class across ingested replays, in seconds. */
 	seconds: number;
+	/** Of those games, how many were settled won / lost (see lib/outcome.ts).
+	 *  Absent on boards stored before the class stats existed. */
+	wins?: number;
+	losses?: number;
+	/** When the player was last recorded on the class. */
+	lastAt?: string;
 }
 
 /** One row of a profile's "played with" board (see server/teammates.ts). */
@@ -209,6 +235,19 @@ export interface ReplayDetail {
 export const modeNames: string[] = progression.modes;
 
 /** A stored game's mode number (1-based) as its name, empty when unknown. */
+/**
+ * Recorded seconds as a figure a board or an infobox can carry: whole hours
+ * past ten, one decimal under, minutes under an hour. Never "0 min" — a game
+ * that counted at all is at least a minute of someone's time.
+ */
+export function fmtPlaytime(seconds: number): string {
+	if (seconds >= 3600) {
+		const h = seconds / 3600;
+		return `${h >= 10 ? Math.round(h) : h.toFixed(1)} h`;
+	}
+	return `${Math.max(1, Math.round(seconds / 60))} min`;
+}
+
 export function modeName(mode: number | null | undefined): string {
 	return mode ? (modeNames[mode - 1] ?? `Mode ${mode}`) : '';
 }

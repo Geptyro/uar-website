@@ -12,7 +12,15 @@
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
 	import { portraitFallback } from '$lib/portrait';
 
+	import { mosById, mosHref } from '$lib/mos';
+
 	let { data } = $props();
+
+	/* The week's picks count every hero unit born, and a piloted vehicle is one
+	   of those — so the Predator showed up beside the Assault Engineer with the
+	   same count, as if a lobby could pick it. It is a tab of its pilot's page,
+	   not a class: it comes off the board here. */
+	const classPicks = $derived(data.weekly.classPicks.filter((c) => !mosById.get(c.mos)?.pilotedBy));
 
 	const COMPANION_REPO = 'https://github.com/Geptyro/uar-companion';
 
@@ -40,7 +48,7 @@
 
 	<div class="layout">
 	<div class="main">
-	{#if data.weekly.xp.length || data.weekly.classPicks.length}
+	{#if data.weekly.xp.length || classPicks.length}
 		<h2 class="section">This week · last 7 days</h2>
 		<div class="boards">
 			{#if data.weekly.xp.length}
@@ -88,7 +96,7 @@
 					</table>
 				</div>
 			{/if}
-			{#if data.weekly.classPicks.length}
+			{#if classPicks.length}
 				<div class="tablewrap">
 					<table class="data board">
 						<thead>
@@ -100,7 +108,7 @@
 							</tr>
 						</thead>
 						<tbody>
-							{#each data.weekly.classPicks as c, i (c.mos)}
+							{#each classPicks as c, i (c.mos)}
 								{@const u = unitById.get(c.mos)}
 								<tr>
 									<td class="pos">{i + 1}</td>
@@ -110,13 +118,13 @@
 										{:else}
 											<span class="figimg placeholder"></span>
 										{/if}
-										<a class="pname" href="/mos/{c.mos}">{u?.name || c.mos}</a>
+										<a class="pname" href={mosHref(c.mos)}>{u?.name || c.mos}</a>
 									</td>
 									<td class="num" title="times picked in ingested games this week">{c.picks}</td>
 									<td class="barcell">
 										<div
 											class="boardbar"
-											style="width: {(100 * c.picks) / data.weekly.classPicks[0].picks}%"
+											style="width: {(100 * c.picks) / classPicks[0].picks}%"
 										></div>
 									</td>
 								</tr>
@@ -142,7 +150,7 @@
 	<h2 class="section">MOS · Player classes</h2>
 	<div class="cards">
 		{#each mosUnits as u (u.id)}
-			<a class="card mos-card" href="/mos/{u.id}">
+			<a class="card mos-card" href={mosHref(u.id)}>
 				{#if u.icon}
 					<img class="card-icon" src={u.icon} alt="" loading="lazy" />
 				{:else}

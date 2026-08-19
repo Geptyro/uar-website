@@ -12,7 +12,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseReplay } from '../src/lib/server/replay/extract.ts';
+import { parseReplay, PARSER_GENERATION } from '../src/lib/server/replay/extract.ts';
 import { startedAtOf } from '../src/lib/gameEnd.ts';
 import { putObject, objectExists, bucketConfigured } from '../src/lib/server/replay/s3.ts';
 import { db, dbConfigured, rebuildPlayers, replayExists, insertReplayDoc } from '../src/lib/server/db.ts';
@@ -72,6 +72,7 @@ for (const file of files) {
 			...(parsed.outcome ? { outcome: parsed.outcome } : {}),
 			...(parsed.mode ? { mode: parsed.mode } : {}),
 			...(parsed.modifiersRead ? { modifiers: parsed.modifiers } : {}),
+			parser: PARSER_GENERATION,
 			sightings: parsed.sightings
 		});
 		console.log(`  doc     ${name} inserted (${parsed.sightings.length} profiles)`);

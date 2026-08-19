@@ -28,7 +28,7 @@ import { BANNED_TOONS } from '../banned.ts';
 import { bucketConfigured, deleteObject } from './replay/s3.ts';
 import { pinnedOnArrival, prunableReplays } from '../replayRetention.ts';
 import { withLock } from '../mutex.ts';
-import { topPlayersByMos } from './playtime.ts';
+import { classBoardsByMos, type MosBoard } from './playtime.ts';
 import { topTeammates } from './teammates.ts';
 import { startedAtOf } from '../gameEnd.ts';
 import type { ActivityGame } from '../activity.ts';
@@ -121,6 +121,13 @@ export interface ReplayDoc {
 	 * (and keep the upload dedupe answering "known" — see replayExistsBySha).
 	 */
 	blobPrunedAt?: string;
+	/**
+	 * The parser generation that wrote `sightings` — see PARSER_GENERATION in
+	 * replay/extract.ts. Absent on docs from before it was stamped, which a
+	 * backfill treats as generation 0: readable docs below the current one
+	 * are re-read from the bucket for whatever the newer parser adds.
+	 */
+	parser?: number;
 	sightings: ReplaySighting[];
 }
 
@@ -287,7 +294,9 @@ const TTL_MS = 10 * 60_000;
 const SHORT_TTL_KEYS = new Set(['ready', 'weeklyBoards']);
 const SHORT_TTL_MS = 30_000;
 const ttlFor = (key: string) =>
-	SHORT_TTL_KEYS.has(key) || key.startsWith('replays:activity') ? SHORT_TTL_MS : TTL_MS;
+	SHORT_TTL_KEYS.has(key) || key.startsWith('replays:activity') || key.startsWith('mosWeek:')
+		? SHORT_TTL_MS
+		: TTL_MS;
 /**
  * How long past its TTL an entry may still be served while its refresh runs.
  * Past the TTL the value is refetched, but nobody is made to *wait* for that
@@ -497,9 +506,20 @@ export async function countPlayers(): Promise<number> {
 /**
  * Player rows without the per-game history and the unlock arrays — those
  * are only needed on a profile page, and carrying them for every player
- * made the leaderboard payload grow with the archive.
+ * made the leaderboard payload grow with the archive. The per-profile maps
+ * `withDerived` and the merge store (class tallies, teammates, restore pins)
+ * are left off for the same reason: the board renders none of them, and on
+ * a cluster metered by bytes fifty rows of them is a page of nothing.
  */
-const PLAYER_LIST_PROJECTION = { _id: 0, history: 0, unlocks: 0 };
+const PLAYER_LIST_PROJECTION = {
+	_id: 0,
+	history: 0,
+	unlocks: 0,
+	classGames: 0,
+	classSeconds: 0,
+	teammates: 0,
+	restoreFiles: 0
+};
 
 /**
  * Leaderboard column -> the field Mongo sorts on. Two of them are stored only
@@ -510,13 +530,13 @@ const PLAYER_LIST_PROJECTION = { _id: 0, history: 0, unlocks: 0 };
 const PLAYER_SORT_FIELDS: Record<string, string> = {
 	name: 'name',
 	career: 'careerXp',
-	xpEn: 'xpEn',
-	xpWo: 'xpWo',
-	xpCo: 'xpCo',
 	prestige: 'prestige',
 	games: 'gamesPlayed',
 	wins: 'totalWins',
 	revives: 'revives',
+	// absent on profiles not rebuilt since it was added; Mongo ranks a missing
+	// field below every number, so those rows simply trail the board
+	time: 'playSeconds',
 	avg: 'avgGameTime'
 };
 
@@ -1040,6 +1060,45 @@ async function readReplay(file: string): Promise<ReplayDetail | null> {
 /** Stored per-class board, written by `persistMosBoards`. */
 const mosBoardId = (mosId: string) => `mosPlaytime:${mosId}`;
 
+/** What `persistMosBoards` stores per class: the board, its totals, the last games, and when. */
+export type MosBoardDoc = MosBoard & { at: string };
+
+/**
+ * A class's stored board — everything its Players tab shows — or null when
+ * no recorded game has had the class in it.
+ *
+ * A doc written before the totals existed carries rows alone. Rather than
+ * show that page degraded until the next upload happens to recompute the
+ * boards, the first read of one rebuilds them — the same read and the same
+ * write the upload pipeline would do, once, for every class at once — and
+ * reads again. Under the ingest lock, so it cannot race an upload's own
+ * rebuild, and behind the cache, so a burst of views does not queue up
+ * archive scans.
+ */
+export async function getMosBoard(mosId: string): Promise<Partial<MosBoardDoc> | null> {
+	return cached(`mosBoard:${mosId}`, async () => {
+		const d = await db();
+		const read = async () =>
+			((await d.collection('meta').findOne({ _id: mosBoardId(mosId) } as never)) as
+				| Partial<MosBoardDoc>
+				| null) ?? null;
+		let doc = await read();
+		if (doc && !doc.stats) {
+			await withLock('replay-ingest', async () => {
+				const rows = (await d
+					.collection<ReplayDoc>('replays')
+					.find({}, { projection: DERIVED_PROJECTION })
+					.toArray()) as DerivedDoc[];
+				await persistMosBoards(rows);
+			});
+			// the other classes' cached docs are old-shape too
+			invalidateCache('mosBoard:');
+			doc = await read();
+		}
+		return doc;
+	});
+}
+
 /**
  * One class's playtime board. All-time, so unlike the weekly widgets it cannot
  * be narrowed by a date window — instead it is aggregated once when the
@@ -1047,12 +1106,40 @@ const mosBoardId = (mosId: string) => `mosPlaytime:${mosId}`;
  * rather than a scan of every replay's sightings.
  *
  */
-export async function getMosTopPlayers(mosId: string): Promise<MosTopPlayer[]> {
-	return cached(`mosBoard:${mosId}`, async () => {
+/**
+ * A class's last seven days: the same board, over only the games in the
+ * window. Computed at read time from a narrow query — seven days, this class
+ * — the way the front page's weekly boards are, because a sliding window is
+ * the one thing the derived pass cannot store. Null when the window is empty.
+ */
+export async function getMosWeek(mosId: string): Promise<MosBoard | null> {
+	return cached(`mosWeek:${mosId}`, async () => {
 		const d = await db();
-		const doc = await d.collection('meta').findOne({ _id: mosBoardId(mosId) } as never);
-		return ((doc as { rows?: MosTopPlayer[] } | null)?.rows ?? []) as MosTopPlayer[];
+		const since = new Date(Date.now() - WINDOW_MS).toISOString().slice(0, 19) + 'Z';
+		const docs = (await d
+			.collection<ReplayDoc>('replays')
+			.find({ playedAt: { $gte: since }, 'sightings.mos': mosId }, { projection: DERIVED_PROJECTION })
+			.toArray()) as DerivedDoc[];
+		const boards = classBoardsByMos(
+			docs.map((r) => ({
+				file: r._id,
+				playedAt: r.playedAt,
+				durationLoops: r.durationLoops,
+				gameLoops: r.gameLoops,
+				outcome: replayOutcomeOf(r) ?? null,
+				mode: replayModeOf(r) ?? null,
+				sightings: r.sightings ?? []
+			})),
+			// the same twenty-five the all-time board keeps
+			{ limit: 25, recent: 0, alongside: 0 }
+		);
+		return boards[mosId] ?? null;
 	});
+}
+
+export async function getMosTopPlayers(mosId: string): Promise<MosTopPlayer[]> {
+	// the API's ten, off the stored board's longer list
+	return ((await getMosBoard(mosId))?.rows ?? []).slice(0, 10);
 }
 
 /**
@@ -1564,7 +1651,8 @@ const DERIVED_PROJECTION = {
 	'sightings.clan': 1,
 	'sightings.mos': 1,
 	'sightings.winsByMode': 1,
-	'sightings.gamesPlayed': 1
+	'sightings.gamesPlayed': 1,
+	'sightings.leftLoop': 1
 };
 
 type DerivedDoc = Pick<
@@ -1580,13 +1668,19 @@ type DerivedDoc = Pick<
 	| 'sightings'
 >;
 
-/** Recompute the all-time per-class playtime boards and store them. */
+/**
+ * Recompute the all-time per-class boards — top players, totals, last games —
+ * and store them, one doc per class (see playtime.ts for what is counted).
+ */
 async function persistMosBoards(docs: DerivedDoc[]): Promise<number> {
-	const boards = topPlayersByMos(
+	const boards = classBoardsByMos(
 		docs.map((r) => ({
+			file: r._id,
 			playedAt: r.playedAt,
 			durationLoops: r.durationLoops,
 			gameLoops: r.gameLoops,
+			outcome: replayOutcomeOf(r) ?? null,
+			mode: replayModeOf(r) ?? null,
 			sightings: r.sightings ?? []
 		}))
 	);
@@ -1595,8 +1689,12 @@ async function persistMosBoards(docs: DerivedDoc[]): Promise<number> {
 		const d = await db();
 		const at = new Date().toISOString();
 		await d.collection('meta').bulkWrite(
-			entries.map(([mos, rows]) => ({
-				replaceOne: { filter: { _id: mosBoardId(mos) }, replacement: { rows, at }, upsert: true }
+			entries.map(([mos, board]) => ({
+				replaceOne: {
+					filter: { _id: mosBoardId(mos) },
+					replacement: { ...board, at } satisfies MosBoardDoc,
+					upsert: true
+				}
 			})) as never[],
 			{ ordered: false }
 		);

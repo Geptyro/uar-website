@@ -6,15 +6,17 @@
  * signature event carrying the owner's toon handle. Tracker events additionally
  * reveal each player's class picks (hero units born).
  *
- * Object key order deliberately mirrors the python script so both generators
- * produce byte-identical players.json.
+ * Object key order deliberately mirrors the python script, which was the
+ * reference this port was checked against byte for byte. The port has since
+ * moved on from it — `leftLoop` on a sighting and `playSeconds` on a player
+ * come from streams the script never read — so the two no longer agree, but
+ * the shared keys keep their order and their meaning.
  */
 
 import { MPQArchive } from './mpq-node.ts';
 import {
 	getProtocol,
 	hasProtocol,
-	type Protocol,
 	decodeReplayHeader,
 	decodeReplayDetails,
 	decodeReplayInitdata,
@@ -38,9 +40,22 @@ import {
 	exitDialogLoop,
 	gameEndLoop,
 	needsExitScan,
+	playedLoops,
+	LOOPS_PER_SECOND,
 	type DialogClick,
 	type PlayerEnd
 } from '../../gameEnd.ts';
+
+/**
+ * Which generation of this parser wrote a replay document's sightings.
+ * Stamped on every doc the ingest writes, so a backfill can ask "which
+ * readable docs has a newer parser not seen?" without a marker field per
+ * feature. Bump it when the parser starts writing something onto sightings
+ * that older docs lack and a re-read of the blob could supply.
+ *
+ *   1 — `leftLoop` per sighting (scripts/backfill-leaves.ts)
+ */
+export const PARSER_GENERATION = 1;
 
 const utf8 = new TextDecoder('utf-8');
 
@@ -72,6 +87,16 @@ export interface ReplaySighting {
 	decal: number;
 	unlocks: Unlocks;
 	mos: string[];
+	/**
+	 * The loop this player's client left the game — their `SGameUserLeaveEvent`
+	 * — when the recording saw one. Absent for whoever was still in when the
+	 * recording stopped (a recording that ends with its own recorder leaving
+	 * does carry that leave, as the last thing in it). `playedLoops`
+	 * (lib/gameEnd.ts) turns it into the time this player is credited with;
+	 * it is not the game's end, and it is not clamped here, so a player who
+	 * idled in a finished map keeps the loop they actually went at.
+	 */
+	leftLoop?: number;
 	playedAt: string;
 	file: string;
 }
@@ -236,30 +261,6 @@ export function peekReplay(
 	};
 }
 
-/**
- * Every dialog-button click in the whole game-events stream, for the
- * exit-dialog scan. Decoding all of it costs around a second on a long game,
- * which is why `needsExitScan` gates the call; a stream that stops mid-event
- * still dates everything it did decode.
- */
-function scanDialogClicks(protocol: Protocol, archive: MPQArchive): DialogClick[] {
-	const clicks: DialogClick[] = [];
-	try {
-		for (const ev of decodeReplayGameEvents(protocol, archive.readFile('replay.game.events')!)) {
-			if (!(ev._event as string).endsWith('STriggerDialogControlEvent')) continue;
-			if ((ev.m_eventType as number) !== DIALOG_CLICKED) continue;
-			clicks.push({
-				user: ev._userid.m_userId as number,
-				control: ev.m_controlId as number,
-				loop: ev._gameloop as number
-			});
-		}
-	} catch {
-		// truncated stream — keep the clicks it yielded
-	}
-	return clicks;
-}
-
 export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>): ParsedReplay {
 	const archive = new MPQArchive(data);
 	const header = decodeReplayHeader(archive.userDataContent);
@@ -290,26 +291,46 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 	// (the dialog's control ids move between games), so the scanner keeps them
 	// all and `tallyModifiers` picks its own out.
 	const dialogEvents: ModifierEvent[] = [];
-	// The preload is replayed at gameloop 0 and the mode vote closes inside
-	// the first minute, so only the head of game.events matters.
-	// Decompressing the whole stream costs over a second on a long game — an
-	// order of magnitude more than decoding the few hundred events we want —
-	// so read a slice and fall back to the whole file if it did not cover the
-	// preload.
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const scanHead = (events: Generator<any>): { preload: boolean; endLoop: number } => {
-		let preload = false;
-		let endLoop = 0;
-		for (const ev of events) {
+	// Every dialog-button click in the stream, for the exit-dialog scan
+	// (lib/gameEnd.ts) — collected here so that scan never has to decode
+	// game.events a second time.
+	const clicks: DialogClick[] = [];
+	// The loop each user's client left the game, from SGameUserLeaveEvent —
+	// the one record of a departure a replay holds. The tracker's per-player
+	// stats keep ticking for a slot whose user has quit (see lib/gameEnd.ts),
+	// so this is what a player's own time in the game is measured by.
+	const leaves = new Map<number, number>();
+
+	// One pass over the whole of game.events. It used to be a slice: the bank
+	// preload is replayed at gameloop 0 and the mode vote closes inside the
+	// first minute, so 512 KB covered everything wanted and skipped a couple of
+	// seconds of bzip2 on a long game. Leave events end that economy — a player
+	// can go at any loop, and only reading to the end finds them all — and it
+	// buys back the second full decode the exit-dialog scan used to make.
+	//
+	// The head-only fields keep their old window: dialog traffic and the vote
+	// are only collected inside VOTE_SCAN_LOOPS, and `endLoop` is still "the
+	// first loop past the window, or where the stream stopped", so a recording
+	// too short to have covered a ballot reads exactly as it did before.
+	let headEnd: number | null = null;
+	let lastLoop = 0;
+	try {
+		for (const ev of decodeReplayGameEvents(protocol, archive.readFile('replay.game.events')!)) {
 			const loop = ev._gameloop as number;
-			if (loop > VOTE_SCAN_LOOPS) return { preload: true, endLoop: loop };
-			endLoop = loop;
-			if (loop > 0) preload = true; // past the bank preload
 			const t = ev._event as string;
+			lastLoop = loop;
+			if (loop > VOTE_SCAN_LOOPS) headEnd ??= loop;
+			if (t.endsWith('SGameUserLeaveEvent')) {
+				const uid = ev._userid.m_userId as number;
+				if (!leaves.has(uid)) leaves.set(uid, loop);
+				continue;
+			}
 			if (t.endsWith('STriggerDialogControlEvent')) {
 				const user = ev._userid.m_userId as number;
 				const control = ev.m_controlId as number;
 				const type = ev.m_eventType as number;
+				if (type === DIALOG_CLICKED) clicks.push({ user, control, loop });
+				if (loop > VOTE_SCAN_LOOPS) continue;
 				if (type === DIALOG_CLICKED || type === 1) {
 					dialogEvents.push({
 						user,
@@ -322,7 +343,7 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 				if (mode !== undefined && type === DIALOG_CLICKED) modeClicks.push({ user, mode, loop });
 				continue;
 			}
-			if (!t.includes('Bank')) continue;
+			if (loop > VOTE_SCAN_LOOPS || !t.includes('Bank')) continue;
 			const uid = ev._userid.m_userId as number;
 			if (t.endsWith('SBankFileEvent')) {
 				curBank.set(uid, utf(ev.m_name));
@@ -340,30 +361,10 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 				toons.set(uid, utf(ev.m_toonHandle));
 			}
 		}
-		// ran out of events: the recording itself stopped this early
-		return { preload, endLoop };
-	};
-
-	// 512 KB covers a full twelve-player preload several times over, and
-	// decodes several game-minutes past the vote even on a busy twelve-player
-	// opening
-	let scanned: { preload: boolean; endLoop: number };
-	try {
-		scanned = scanHead(
-			decodeReplayGameEvents(protocol, archive.readFile('replay.game.events', 512 * 1024)!)
-		);
 	} catch {
-		scanned = { preload: false, endLoop: 0 }; // slice ended mid-event
+		// truncated stream — keep everything it yielded
 	}
-	if (!scanned.preload) {
-		banks.clear();
-		toons.clear();
-		curBank.clear();
-		curKey.clear();
-		modeClicks.length = 0;
-		dialogEvents.length = 0;
-		scanned = scanHead(decodeReplayGameEvents(protocol, archive.readFile('replay.game.events')!));
-	}
+	const scanned = { endLoop: headEnd ?? lastLoop };
 
 	// class picks (each player's hero unit(s) born) and the end-of-game
 	// markers, from tracker events
@@ -440,10 +441,10 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 		if (last !== undefined) humanEnds.push({ user: uid, lastLoop: last });
 	}
 	const markerLoop = winLoop ?? wipeLoop;
-	// the whole of game.events is only decoded for the marker-less endings
-	// that leave nothing cheaper to date — a second of CPU on a long game
+	// still gated: with a marker in hand the dialog would only refine an
+	// answer already had, and the burst search is not free on a click-heavy game
 	const exitLoop = needsExitScan(humanEnds, durationLoops, markerLoop)
-		? exitDialogLoop(scanDialogClicks(protocol, archive), humanEnds)
+		? exitDialogLoop(clicks, humanEnds)
 		: null;
 	const gameLoops = gameEndLoop({
 		recordingLoops: durationLoops,
@@ -472,6 +473,9 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 			decal: Number(bank['CurrentDecal'] || 0),
 			unlocks: decodeUnlocks(bank),
 			mos: mosPlayed.get(uid) ?? [],
+			// only when the recording saw this client go; whoever was still in
+			// when it stopped has no leave event
+			...(leaves.has(uid) ? { leftLoop: leaves.get(uid)! } : {}),
 			playedAt,
 			file
 		});
@@ -578,6 +582,9 @@ export interface PlayersData {
 export function buildPlayersData(parsed: { replay: ParsedReplay; size: number }[]): PlayersData {
 	const byToon = new Map<string, ReplaySighting[]>();
 	const replaysMeta: PlayersData['replays'] = [];
+	// each game's own length, for the time its players are credited with —
+	// the recording's where a doc predates the split (see lib/gameEnd.ts)
+	const gameLoopsOf = new Map<string, number>();
 
 	for (const { replay, size } of [...parsed].sort((a, b) =>
 		a.replay.file < b.replay.file ? -1 : a.replay.file > b.replay.file ? 1 : 0
@@ -588,6 +595,7 @@ export function buildPlayersData(parsed: { replay: ParsedReplay; size: number }[
 			players: replay.sightings.length,
 			size
 		});
+		gameLoopsOf.set(replay.file, replay.gameLoops || replay.durationLoops);
 		for (const s of replay.sightings) {
 			const key = s.toon || s.name;
 			if (!byToon.has(key)) byToon.set(key, []);
@@ -630,6 +638,24 @@ export function buildPlayersData(parsed: { replay: ParsedReplay; size: number }[
 				...(awards.length ? { awards } : {})
 			};
 		});
+		// Time on record: each ingested game, for as long as this player was in
+		// it. Summed here rather than derived from the history because the
+		// history carries no lengths — one more key on the only unbounded array
+		// a profile has would be paid for on every read of it — and this is one
+		// integer. Ingested games only, so it undercounts a career: `gamesPlayed`
+		// is the map's own count and runs far ahead of `history.length`.
+		// The same time, by class picked — the counterpart of `classGames`
+		// (db.ts, withDerived), and credited the way the per-class boards do it:
+		// a game with a re-pick counts in full for each class it listed.
+		let playSeconds = 0;
+		const classSeconds: Record<string, number> = {};
+		for (const s of sightings) {
+			const seconds = Math.round(
+				playedLoops(gameLoopsOf.get(s.file) ?? 0, s.leftLoop) / LOOPS_PER_SECOND
+			);
+			playSeconds += seconds;
+			for (const id of s.mos) classSeconds[id] = (classSeconds[id] ?? 0) + seconds;
+		}
 		players.push({
 			name: cur.name,
 			clan: cur.clan,
@@ -641,6 +667,8 @@ export function buildPlayersData(parsed: { replay: ParsedReplay; size: number }[
 			gamesPlayed: cur.gamesPlayed,
 			revives: cur.revives,
 			avgGameTime: cur.avgGameTime,
+			playSeconds,
+			classSeconds,
 			winsByMode: cur.winsByMode,
 			camo: cur.camo,
 			decal: cur.decal,

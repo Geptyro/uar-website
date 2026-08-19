@@ -4,8 +4,8 @@
 	 * played to get there. The collection and the games behind it are their own
 	 * tabs — see $lib/playerTabs.ts for why.
 	 */
-	import { rankFor, nextRank, totalWins, modeNames, XP_CAP } from '$lib/players';
-	import { mosById } from '$lib/mos';
+	import { rankFor, nextRank, totalWins, modeNames, fmtPlaytime, XP_CAP } from '$lib/players';
+	import { mosById, mosHref } from '$lib/mos';
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
 	import { portraitFallback } from '$lib/portrait';
 	import ModeMark from '$lib/components/ModeMark.svelte';
@@ -46,20 +46,19 @@
 	);
 
 	// Counted across every game the player has ever played, so it is tallied
-	// when the profile is rebuilt rather than from a page of history.
+	// when the profile is rebuilt rather than from a page of history. The time
+	// beside each count is the same tally in seconds (see PlayerProfile.
+	// classSeconds); a profile not rebuilt since it was added has none.
 	const classesPlayed = $derived(
 		Object.entries(data.classGames)
 			.sort((a, b) => b[1] - a[1])
-			.map(([id, games]) => ({ id, games, info: mosById.get(id) }))
+			.map(([id, games]) => ({
+				id,
+				games,
+				seconds: data.classSeconds[id] as number | undefined,
+				info: mosById.get(id)
+			}))
 	);
-
-	function fmtPlaytime(seconds: number): string {
-		if (seconds >= 3600) {
-			const h = seconds / 3600;
-			return `${h >= 10 ? Math.round(h) : h.toFixed(1)} h`;
-		}
-		return `${Math.max(1, Math.round(seconds / 60))} min`;
-	}
 </script>
 
 <Seo
@@ -200,6 +199,7 @@
 							<th class="pos">#</th>
 							<th>Class</th>
 							<th class="num">Games</th>
+							<th class="num">Time</th>
 							<th class="barcell"></th>
 						</tr>
 					</thead>
@@ -209,7 +209,7 @@
 								<td class="pos">{i + 1}</td>
 								<td class="figcell classcell">
 									{#if c.info}
-										<a class="classlink" href="/mos/{c.id}" title={c.info.name}>
+										<a class="classlink" href={mosHref(c.id)} title={c.info.name}>
 											{#if c.info.icon}
 												<img class="figimg" src={c.info.icon} alt="" loading="lazy" />
 											{:else}
@@ -223,6 +223,7 @@
 									{/if}
 								</td>
 								<td class="num">{c.games}</td>
+								<td class="num">{c.seconds === undefined ? '—' : fmtPlaytime(c.seconds)}</td>
 								<td class="barcell">
 									<div
 										class="boardbar"

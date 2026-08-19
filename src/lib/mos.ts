@@ -4,6 +4,7 @@ import rawSi from '$lib/data/si.json';
 import rawRanks from '$lib/data/ranks.json';
 import type { Weapon } from '$lib/units';
 import { rankRewardsForMos, type MosRankReward, type RankTrack } from './ranks';
+import { mosTabHref, vehicleSlug } from './mosTabs';
 
 export interface Skill {
 	id: string;
@@ -156,8 +157,16 @@ export function rankRewardsFor(mosId: string): MosRankReward[] {
 	return rankRewardsForMos(rankTracks, mosId);
 }
 
-/** Everything with a class page — the sidebar, the index and the comparisons. */
-export const mosList = allMos.filter((m) => m.id !== 'TemplateMOS');
+/**
+ * Everything with a class page of its own — the sidebar, the index, the
+ * comparisons and the sitemap.
+ *
+ * A piloted vehicle is not one of them: the Predator is a tab of the Assault
+ * Engineer's page (see `mosHref`), not a class you pick, so listing it beside
+ * the classes made the roster one longer than the game's and put a "class"
+ * in the sidebar that no lobby has ever fielded.
+ */
+export const mosList = allMos.filter((m) => m.id !== 'TemplateMOS' && !m.pilotedBy);
 
 /**
  * …of which these are the ones a player picks in the hero dialog. Only for counting the
@@ -167,6 +176,19 @@ export const mosList = allMos.filter((m) => m.id !== 'TemplateMOS');
 export const pickableMos = mosList.filter((m) => m.selectable !== false);
 
 export const mosById = new Map(allMos.map((m) => [m.id, m]));
+
+/**
+ * Where a MOS id's page is. A class's own page for a class; for a piloted
+ * vehicle, the vehicle tab of its pilot — the one place its stats, weapons
+ * and gear are laid out. `/mos/Goliath2` itself redirects there, so a link
+ * that bypasses this still lands, but the redirect is a stub page and this
+ * is the address.
+ */
+export function mosHref(id: string, segment = ''): string {
+	const m = mosById.get(id);
+	if (m?.pilotedBy) return mosTabHref(m.pilotedBy, vehicleSlug(m.name));
+	return mosTabHref(id, segment);
+}
 
 export function mosName(id: string): string {
 	if (id === 'SiegeTankSieged') return 'AMX S-880 (sieged)';

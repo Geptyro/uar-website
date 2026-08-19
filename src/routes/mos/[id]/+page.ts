@@ -1,11 +1,6 @@
-import { error } from '@sveltejs/kit';
-import { allMos, mosById, usableItemsFor, siFor } from '$lib/mos';
-import type { EntryGenerator, PageLoad } from './$types';
+import { allMos } from '$lib/mos';
+import type { EntryGenerator } from './$types';
 
+/* Every class, and the piloted vehicle too: its entry prerenders the redirect
+   stub that sends /mos/Goliath2 to the Assault Engineer's vehicle tab. */
 export const entries: EntryGenerator = () => allMos.map((m) => ({ id: m.id }));
-
-export const load: PageLoad = ({ params }) => {
-	const mos = mosById.get(params.id);
-	if (!mos) error(404, `No MOS class with id "${params.id}"`);
-	return { mos, items: usableItemsFor(mos.id), si: siFor(mos.id) };
-};

@@ -17,6 +17,7 @@
  */
 import type { PaletteRow } from 'sveltekit-commons/palette';
 import { playerHref } from './playerTabs.ts';
+import { mosTabHref, vehicleSlug } from './mosTabs.ts';
 
 export type PaletteKind = 'page' | 'mos' | 'si' | 'entity' | 'player';
 
@@ -78,20 +79,49 @@ export function entityRows(index: EntityIndexRow[]): PaletteRow[] {
 	}));
 }
 
-/** MOS class rows. `mos` is the in-game code (LK19, SFAAT…) and matches too. */
+/**
+ * MOS class rows. `mos` is the in-game code (LK19, SFAAT…) and matches too.
+ *
+ * A class that brings a vehicle gets a second row for it — the vehicle is a
+ * tab of the class's page, not a page of its own, but "Predator" is still a
+ * word someone types.
+ */
 export function mosRows(
-	list: { id: string; name: string; mos: string; role: string; icon: string | null }[]
+	list: {
+		id: string;
+		name: string;
+		mos: string;
+		role: string;
+		icon: string | null;
+		vehicle?: { id: string; name: string; icon: string | null } | null;
+	}[]
 ): PaletteRow[] {
-	return list.map((m) => ({
-		kind: 'mos',
-		id: m.id,
-		href: `/mos/${encodeURIComponent(m.id)}`,
-		label: m.name,
-		note: m.mos || 'class',
-		icon: m.icon,
-		alias: [m.id, m.mos, m.role].filter(Boolean),
-		weight: KIND_WEIGHT.mos
-	}));
+	return list.flatMap((m) => [
+		{
+			kind: 'mos',
+			id: m.id,
+			href: mosTabHref(m.id),
+			label: m.name,
+			note: m.mos || 'class',
+			icon: m.icon,
+			alias: [m.id, m.mos, m.role].filter(Boolean),
+			weight: KIND_WEIGHT.mos
+		},
+		...(m.vehicle
+			? [
+					{
+						kind: 'mos',
+						id: m.vehicle.id,
+						href: mosTabHref(m.id, vehicleSlug(m.vehicle.name)),
+						label: m.vehicle.name,
+						note: `${m.name}'s vehicle`,
+						icon: m.vehicle.icon,
+						alias: [m.vehicle.id, 'vehicle'],
+						weight: KIND_WEIGHT.mos
+					}
+				]
+			: [])
+	]);
 }
 
 /**

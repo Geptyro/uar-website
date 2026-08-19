@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { rankTracks, rankBonusAt, mosById, mosName, mosPageId, type RankTrack } from '$lib/mos';
+	import { rankTracks, rankBonusAt, mosById, mosHref, mosName, mosPageId, type RankTrack } from '$lib/mos';
 	import Seo from '$lib/components/Seo.svelte';
 	import StatIcon from '$lib/components/StatIcon.svelte';
 	import { Page } from 'sveltekit-commons';
@@ -118,7 +118,7 @@
 														<b>{rw.name}</b>
 														{#if rw.kind === 'unit'}<i class="reward-kind">free at spawn</i>{/if}
 														<span class="reward-mos">
-															{#if page}<a href="/mos/{page}">{mosName(rw.mos)}</a>{:else}{mosName(
+															{#if page}<a href={mosHref(page)}>{mosName(rw.mos)}</a>{:else}{mosName(
 																	rw.mos
 																)}{/if}
 														</span>

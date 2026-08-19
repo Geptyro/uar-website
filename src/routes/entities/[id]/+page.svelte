@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { unitById, tagClass, applyText } from '$lib/units';
-	import { mosById, items, allowedLabel } from '$lib/mos';
+	import { mosById, mosHref, items, allowedLabel } from '$lib/mos';
 	import FactsCard, { type Fact } from '$lib/components/FactsCard.svelte';
 	import ModelCard from '$lib/components/ModelCard.svelte';
 	import DescCard from '$lib/components/DescCard.svelte';
@@ -143,7 +143,7 @@
 				title={unit.name || unit.id}
 				chip={unit.mos ? `MOS ${unit.mos}` : unit.name && unit.name !== unit.id ? unit.id : null}
 				{facts}
-				link={mosById.has(unit.id) ? { href: `/mos/${unit.id}`, label: 'Class page →' } : null}
+				link={mosById.has(unit.id) ? { href: mosHref(unit.id), label: 'Class page →' } : null}
 			>
 				{#snippet tags()}
 					<span class="tag {tagClass(unit.category)}">{unit.category}</span>

@@ -212,6 +212,35 @@ test('buildPlayersData: newest sighting wins, history ordered, career sort', () 
 	assert.equal(history[0].wins, 3); // winsByMode summed
 });
 
+test('buildPlayersData: time on record is each game for as long as the player was in it', () => {
+	const stayed = fakeSighting({ playedAt: '2026-01-01T00:00:00Z', file: 'a.SC2Replay' });
+	const left = fakeSighting({
+		toon: '2-S2-1-2',
+		name: 'Q',
+		playedAt: '2026-01-01T00:00:00Z',
+		file: 'a.SC2Replay',
+		mos: ['CombatMedic', 'SFAAT'], // re-picked: both classes get the ten seconds
+		leftLoop: 160 // ten seconds into a 1000-loop game
+	});
+	const again = fakeSighting({ playedAt: '2026-02-01T00:00:00Z', file: 'b.SC2Replay' });
+	const idler = fakeReplay('b.SC2Replay', '2026-02-01T00:00:00Z', [again]);
+	// a recording that ran on past the game: the game's length is what counts
+	idler.replay.durationLoops = 100_000;
+	idler.replay.gameLoops = 1000;
+	const data = buildPlayersData([
+		fakeReplay('a.SC2Replay', '2026-01-01T00:00:00Z', [stayed, left]),
+		idler
+	]);
+	const by = Object.fromEntries(data.players.map((p) => [p.toon as string, p]));
+	// P: two 1000-loop games at 16 loops/s, each rounded to whole seconds like
+	// the boards do (62.5 -> 63); Q: the ten seconds before leaving
+	assert.equal(by['2-S2-1-1'].playSeconds, 126);
+	assert.equal(by['2-S2-1-2'].playSeconds, 10);
+	// the same seconds by class picked, a re-pick game counting in full for both
+	assert.deepEqual(by['2-S2-1-2'].classSeconds, { CombatMedic: 10, SFAAT: 10 });
+	assert.deepEqual(by['2-S2-1-1'].classSeconds, {});
+});
+
 /* The committed golden set cannot cover this: all four of its replays give
    every player exactly one sighting, so there is never a pair to difference
    and "no awards anywhere" is its correct output. These two say what happens

@@ -16,7 +16,7 @@
 	import { SearchDialog } from 'sveltekit-commons';
 	import { rankRows, type PaletteRow, type RowGroup } from 'sveltekit-commons/palette';
 
-	import { mosList, skillIdentifiers } from '$lib/mos';
+	import { mosById, mosList, skillIdentifiers } from '$lib/mos';
 	import { page } from '$app/state';
 	import { extraDestinations, navItems } from '$lib/nav';
 	import { tabSegment } from '$lib/playerTabs';
@@ -44,7 +44,12 @@
 
 	const staticRows = $derived<PaletteRow[]>([
 		...pageRows([...navItems, ...extraDestinations]),
-		...mosRows(mosList),
+		...mosRows(
+			mosList.map((m) => ({
+				...m,
+				vehicle: m.vehicle ? (mosById.get(m.vehicle) ?? null) : null
+			}))
+		),
 		...siRows(skillIdentifiers),
 		...entities
 	]);

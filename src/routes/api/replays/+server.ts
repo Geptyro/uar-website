@@ -22,6 +22,7 @@ import {
 	ReplayWorkerError
 } from '$lib/server/replay/offthread';
 import { decideIngest, canonicalName } from '$lib/server/replay/ingest';
+import { PARSER_GENERATION } from '$lib/server/replay/extract';
 import { startedAtOf } from '$lib/gameEnd';
 import { deleteObject, putObject } from '$lib/server/replay/s3';
 import {
@@ -220,6 +221,9 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 			// keeps the page, the download and the dedupe message honest from the
 			// first moment instead of for the next hour
 			...(keepBlob ? {} : { blobPrunedAt: new Date().toISOString() }),
+			// so a later backfill knows which readable docs a newer parser has
+			// not seen (see PARSER_GENERATION)
+			parser: PARSER_GENERATION,
 			sightings: parsed.sightings
 		};
 		// replaceReplayDoc writes the doc whole, so blobPrunedAt is whatever was

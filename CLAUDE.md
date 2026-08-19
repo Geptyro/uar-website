@@ -43,8 +43,9 @@ files the change under a heading it never touched, so run
 - `npm run build` is three passes: `scripts/build-og.ts` draws the share cards
   into `static/og/` (gitignored, redrawn from `src/lib/data/` every build),
   then SvelteKit, then `vite.worker.config.ts`, which emits
-  `build/replay-worker.mjs`. Replay parsing runs in that worker (it is ~250ms
-  of CPU per upload); without the last pass the server silently falls back to
+  `build/replay-worker.mjs`. Replay parsing runs in that worker (a short game
+  is ~250ms of CPU, a long twelve-player one ~4s — it reads all of
+  game.events); without the last pass the server silently falls back to
   parsing in-process and blocking page requests.
 - The card renderer only sees the TTFs vendored in `scripts/fonts/` — read the
   README there before touching them. Handed a woff2, or run where it can find

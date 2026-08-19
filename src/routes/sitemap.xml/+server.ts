@@ -1,5 +1,7 @@
 import { units } from '$lib/units';
-import { mosList } from '$lib/mos';
+import { mosById, mosList } from '$lib/mos';
+import { hasGuide } from '$lib/guides';
+import { mosTabHref, vehicleSlug } from '$lib/mosTabs';
 import { dbConfigured, getClanMembers, getPlayerSitemap } from '$lib/server/db';
 import { SITE_URL } from '$lib/seo';
 import { sitemapDate, sitemapXml, type SitemapUrl } from 'sveltekit-commons/sitemap';
@@ -42,9 +44,20 @@ export const GET: RequestHandler = async ({ setHeaders }) => {
 	   which would claim all 505 changed on every deploy. Google leans on
 	   lastmod only while it proves accurate, and discounts a sitemap that
 	   cries wolf, so the honest thing is to say nothing for these. */
+	/* A class page and its tabs. The players tab is left out: it is a board that
+	   moves with every upload, and it says so on the page rather than in a
+	   sitemap that would have to keep up with it. */
+	const classPages: SitemapUrl[] = mosList.flatMap((m) => [
+		{ path: mosTabHref(m.id), priority: 0.8 },
+		{ path: mosTabHref(m.id, 'gear'), priority: 0.5 },
+		...(m.vehicle && mosById.get(m.vehicle)
+			? [{ path: mosTabHref(m.id, vehicleSlug(mosById.get(m.vehicle)!.name)), priority: 0.6 }]
+			: []),
+		...(hasGuide(m.id) ? [{ path: mosTabHref(m.id, 'guide'), priority: 0.7 }] : [])
+	]);
 	const urls: SitemapUrl[] = [
 		...STATIC,
-		...mosList.map((m) => ({ path: `/mos/${encodeURIComponent(m.id)}`, priority: 0.8 })),
+		...classPages,
 		...units.map((u) => ({ path: `/entities/${encodeURIComponent(u.id)}`, priority: 0.5 }))
 	];
 

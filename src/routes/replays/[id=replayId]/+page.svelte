@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { careerXp, modeName } from '$lib/players';
-	import { mosById, mosName, mosPageId } from '$lib/mos';
+	import { mosById, mosHref, mosName, mosPageId } from '$lib/mos';
 	import { fmtDuration } from '$lib/outcome';
 	import OutcomeMark from '$lib/components/OutcomeMark.svelte';
 	import ModeMark from '$lib/components/ModeMark.svelte';
@@ -120,7 +120,7 @@
 							{@const info = mosById.get(id)}
 							{@const pageId = mosPageId(id)}
 							{#if pageId}
-								<a class="tag t-mos" href="/mos/{pageId}">
+								<a class="tag t-mos" href={mosHref(pageId)}>
 									{#if info?.icon}<img class="class-icon" src={info.icon} alt="" loading="lazy" />{/if}
 									{mosName(id)}
 								</a>

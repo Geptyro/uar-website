@@ -78,6 +78,23 @@ test('a class matches on its in-game code and on its role', () => {
 	assert.equal(rankRows(rows, 'lk19').length, 1);
 });
 
+test('a class with a vehicle gets a row for it, pointing at its vehicle tab', () => {
+	const rows = mosRows([
+		{
+			id: 'AssaultEngineer',
+			name: 'Assault Engineer',
+			mos: '12H',
+			role: 'Assault Engineer',
+			icon: null,
+			vehicle: { id: 'Goliath2', name: 'Predator', icon: '/icons/predator.png' }
+		}
+	]);
+	assert.equal(rows.length, 2);
+	assert.equal(rows[1].href, '/mos/AssaultEngineer/predator');
+	assert.equal(rows[1].label, 'Predator');
+	assert.equal(rankRows(rows, 'predator')[0]?.href, '/mos/AssaultEngineer/predator');
+});
+
 test('an SI deep-links to its card and matches on its code', () => {
 	const rows = siRows([{ num: 1, name: 'Reactive Fire', code: 'RF', icon: null }]);
 	assert.equal(rows[0].href, '/si#si-1');

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { rankFor, totalWins, totalXp, careerXp, type PlayerProfile } from '$lib/players';
+	import { totalWins, careerXp, fmtPlaytime, type PlayerProfile } from '$lib/players';
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
 	import { portraitFallback } from '$lib/portrait';
 	import Pager from '$lib/components/Pager.svelte';
@@ -21,14 +21,24 @@
 			num: true,
 			hint: 'XP across the three tracks, plus 600,000 per prestige'
 		},
-		{ key: 'xpEn', label: 'Enlisted', num: true },
-		{ key: 'xpWo', label: 'Warrant Officer', num: true },
-		{ key: 'xpCo', label: 'Commissioned Officer', num: true },
 		{ key: 'prestige', label: 'Prestige', num: true },
 		{ key: 'games', label: 'Games', num: true },
 		{ key: 'wins', label: 'Wins', num: true },
 		{ key: 'revives', label: 'Revives', num: true },
-		{ key: 'avg', label: 'Avg game', num: true }
+		{
+			key: 'time',
+			label: 'Time on record',
+			num: true,
+			// "on record" and not "played": Games beside it is the map's own
+			// career count, this is only the games somebody uploaded
+			hint: 'Time in recorded games, each counted for as long as the player was in it — not the map\'s career total'
+		},
+		{
+			key: 'avg',
+			label: 'Avg game',
+			num: true,
+			hint: 'The map\'s own figure: a running average of game length it updates only after a loss'
+		}
 	];
 
 	// search as you type, once typing pauses — the surrounding <form> keeps
@@ -92,12 +102,12 @@
 			{#if data.dir !== 'desc'}<input type="hidden" name="dir" value={data.dir} />{/if}
 		</form>
 		<div class="right">
-			<Pager page={data.page} pages={data.pages} total={data.total} label="players" />
+			<Pager page={data.page} pages={data.pages} total={data.total} label="players" shortcuts />
 		</div>
 	</div>
 
 	<div class="tablewrap rows">
-		<table class="data" style="min-width: 860px">
+		<table class="data" style="min-width: 720px">
 			<thead>
 				<tr>
 					<th class="num">#</th>
@@ -136,20 +146,12 @@
 							</span>
 						</td>
 						<td class="num career">{careerXp(p).toLocaleString('en')}</td>
-						{#each [rankFor(1, p.xpEn), rankFor(2, p.xpWo), rankFor(3, p.xpCo)] as rank, t (t)}
-							{@const xp = t === 0 ? p.xpEn : t === 1 ? p.xpWo : p.xpCo}
-							<td class="num">
-								<span class="rankcell">
-									{#if rank?.icon}<img class="insignia" src={rank.icon} alt="" loading="lazy" />{/if}
-									<span class="grade mono" title={rank?.name}>{rank?.prefix ?? ''}</span>
-									<span class="xp">{xp.toLocaleString('en')}</span>
-								</span>
-							</td>
-						{/each}
 						<td class="num">{p.prestige || ''}</td>
 						<td class="num">{p.gamesPlayed.toLocaleString('en')}</td>
 						<td class="num">{totalWins(p).toLocaleString('en')}</td>
 						<td class="num">{p.revives.toLocaleString('en')}</td>
+						<!-- absent until the profile has been rebuilt since the field was added -->
+						<td class="num">{p.playSeconds === undefined ? '—' : fmtPlaytime(p.playSeconds)}</td>
 						<td class="num">{fmtMinutes(p.avgGameTime)}</td>
 					</tr>
 				{/each}
@@ -196,23 +198,5 @@
 		display: block;
 		font-size: 10.5px;
 		color: var(--text-faint);
-	}
-	.rankcell {
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-		white-space: nowrap;
-	}
-	.insignia {
-		width: 20px;
-		height: 20px;
-		object-fit: contain;
-	}
-	.grade {
-		font-weight: 650;
-		font-size: 11px;
-	}
-	.xp {
-		font-variant-numeric: tabular-nums;
 	}
 </style>

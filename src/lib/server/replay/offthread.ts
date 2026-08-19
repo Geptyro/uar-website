@@ -18,8 +18,15 @@ import { fileURLToPath } from 'node:url';
 import { parseReplay, peekReplay, type ParsedReplay } from './extract.ts';
 import type { WorkerRequest, WorkerResponse } from './worker.ts';
 
-/** A parse that runs this long is not a replay we want to wait on. */
-const JOB_TIMEOUT_MS = 30_000;
+/**
+ * A parse that runs this long is not a replay we want to wait on. Sixty
+ * seconds because a parse now reads the whole of game.events for the leave
+ * events (see extract.ts): a hundred-minute twelve-player game is ~4s of CPU
+ * on a desktop and a shared Fly vCPU is a good deal slower, so thirty left
+ * the longest games too little room under load — and a timeout here is what
+ * makes the Companion retry the file later, not what makes it give up.
+ */
+const JOB_TIMEOUT_MS = 60_000;
 
 /**
  * The worker failed us — it timed out, died, or refused a job — as opposed to

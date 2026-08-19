@@ -202,11 +202,13 @@ export class MPQArchive {
 	}
 
 	/**
-	 * @param maxBytes stop after this many decompressed bytes. The bank
-	 * preload we read from replay.game.events sits at the very start of a
-	 * file that can be ten megabytes, and decompressing all of it costs
-	 * over a second — far more than decoding the handful of events we
-	 * actually want. Callers must tolerate a truncated stream.
+	 * @param maxBytes stop after this many decompressed bytes. Written for the
+	 * bank preload, which sits at the very start of a replay.game.events that
+	 * can be ten megabytes and over a second of bzip2. The parser has since
+	 * gone back to reading that stream whole — the leave events it wants are
+	 * wherever players left — so nothing on the upload path passes this any
+	 * more, but the slice stays a supported read (the browser/node parity test
+	 * pins it). Callers must tolerate a truncated stream.
 	 */
 	readFile(filename: string, maxBytes = Infinity): Uint8Array | null {
 		const hashA = hash(filename, 'HASH_A');

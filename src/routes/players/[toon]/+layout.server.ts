@@ -37,6 +37,9 @@ export const load: LayoutServerLoad = async ({ params, locals }) => {
 		toon: params.toon,
 		historyCount: profile.historyCount ?? 0,
 		classGames: profile.classGames ?? {},
+		// empty rather than absent for a profile not rebuilt since it was added,
+		// so the overview reads it like classGames and shows a dash
+		classSeconds: profile.classSeconds ?? {},
 		latestFile: profile.latestFile ?? null,
 		// battletag of the Battle.net account that claimed this toon via /account
 		verified: account

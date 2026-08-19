@@ -93,8 +93,10 @@
 		if (p === '/account') return { section: '', title: 'Account' };
 		if (p === '/mos') return { section: 'MOS', title: 'Classes compared' };
 		if (p.startsWith('/mos/')) {
-			const m = mosById.get(decodeURIComponent(p.slice(5)));
-			return { section: 'MOS', title: m?.name ?? p.slice(5), icon: m?.icon };
+			// the class, whichever of its tabs is open — the tab bar names the tab
+			const id = decodeURIComponent(p.slice(5).split('/')[0]);
+			const m = mosById.get(id);
+			return { section: 'MOS', title: m?.name ?? id, icon: m?.icon };
 		}
 		return { section: '', title: '' };
 	});
@@ -320,7 +322,8 @@
 			<NavItem
 				href="/mos/{m.id}"
 				label={m.name}
-				active={page.url.pathname === `/mos/${m.id}`}
+				active={page.url.pathname === `/mos/${m.id}` ||
+					page.url.pathname.startsWith(`/mos/${m.id}/`)}
 				dense
 				onclick={close}
 				title={m.mos ? `${m.name} · ${m.mos}` : m.name}
@@ -632,14 +635,24 @@
 		white-space: nowrap;
 		vertical-align: middle;
 	}
-	/* The bar takes everything the named columns leave, and holds no floor of
-	   its own: cramped, it gives its width back rather than pushing the row
-	   wider than the card. A short bar reads fine; a board that scrolls
-	   sideways does not. */
+	/* The bar takes everything the named columns leave — but keeps a floor.
+	   It used to give all of it back when cramped, so a board with a few
+	   named columns kept its bar and a board with several lost it entirely on
+	   a phone: a bar an eighth of a row long says nothing. Now the bar keeps
+	   room to be a bar, and a board that cannot fit scrolls in its wrapper. */
 	:global(table.data.board th.barcell),
 	:global(table.data.board td.barcell) {
 		width: 100%;
-		min-width: 0;
+		min-width: 56px;
+	}
+	/* On a phone the named columns already take most of the row, and 56px
+	   beside them still read as a stub. A quarter of the screen is what a
+	   bar needs to show a ranking; the board scrolls for the rest. */
+	@media (max-width: 640px) {
+		:global(table.data.board th.barcell),
+		:global(table.data.board td.barcell) {
+			min-width: 110px;
+		}
 	}
 	/* the order is the ranking, and the number says how far down it you are */
 	:global(table.data.board th.pos),

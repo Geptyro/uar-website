@@ -16,6 +16,7 @@ import {
 	exitDialogLoop,
 	gameEndLoop,
 	needsExitScan,
+	playedLoops,
 	startedAtOf,
 	type DialogClick,
 	type PlayerEnd
@@ -164,4 +165,20 @@ test('startedAtOf walks back from the recording end, not the game end', () => {
 	// nothing to walk back with, or nothing parseable: unchanged
 	assert.equal(startedAtOf('2026-07-23T18:02:17Z'), '2026-07-23T18:02:17Z');
 	assert.equal(startedAtOf('not a date', 496), 'not a date');
+});
+
+test('playedLoops credits a player up to the moment they left, never past the game', () => {
+	const game = at(1, 34, 19); // 94:19, the prod game four people walked out of
+	// no leave event: still in when the recording stopped, credited the game
+	assert.equal(playedLoops(game), game);
+	assert.equal(playedLoops(game, undefined), game);
+	assert.equal(playedLoops(game, null), game);
+	// left at 17:42 of it: credited 17:42, not 94:19
+	assert.equal(playedLoops(game, at(0, 17, 42)), at(0, 17, 42));
+	// dropped during loading: a leave at loop 0 is no time at all
+	assert.equal(playedLoops(game, 0), 0);
+	// idled in the finished map and left hours later: clamped to the game
+	assert.equal(playedLoops(at(1, 18, 46), IDLED_RECORDING), at(1, 18, 46));
+	// a nonsense negative loop cannot take time away
+	assert.equal(playedLoops(game, -5), 0);
 });

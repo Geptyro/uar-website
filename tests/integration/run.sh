@@ -110,6 +110,11 @@ check "replacement is deduped again" 'exact replay file is already ingested' "$R
 
 R=$(curl -s "http://localhost:$APPPORT/players")
 check "/players SSR shows the player" 'KanaxStratz' "$R"
+# the class boards are derived on ingest and read by the SSR players tab; the
+# fixture's recording stopped before a hero was picked, so this is the empty
+# state — the page itself is what is checked, not a board
+R=$(curl -s "http://localhost:$APPPORT/mos/CombatEngineer/players")
+check "class players tab SSR" 'No recorded game has had a Combat Engineer' "$R"
 R=$(curl -s -o /dev/null -w '%{http_code} %{size_download}' "http://localhost:$APPPORT/replays/20260723-1808.SC2Replay")
 check "download streams from bucket" "200 $(stat -c%s tests/fixtures/20260723-1808.SC2Replay)" "$R"
 
