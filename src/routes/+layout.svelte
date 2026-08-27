@@ -12,7 +12,7 @@
 	import { MadeBy } from 'cedricdessalles-commons';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
-	import { mosList, mosById, mosHrefSameTab } from '$lib/mos';
+	import { mosList, mosById } from '$lib/mos';
 	import { displayName } from '$lib/ogcard';
 	import { latestVersionInfo } from '$lib/changelog';
 	import { rememberUmamiId } from '$lib/analytics';
@@ -327,11 +327,8 @@
 			{/snippet}
 		</NavItem>
 		{#each mosList as m (m.id)}
-			<!-- the tab stays open across classes: Gear to Gear, Players to
-			     Players — a reader comparing two classes' gear should not have
-			     to reopen the tab on every switch -->
 			<NavItem
-				href={mosHrefSameTab(m.id, page.route.id)}
+				href="/mos/{m.id}"
 				label={m.name}
 				active={page.url.pathname === `/mos/${m.id}` ||
 					page.url.pathname.startsWith(`/mos/${m.id}/`)}
