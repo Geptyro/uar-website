@@ -1,6 +1,6 @@
 import type { Handle } from '@sveltejs/kit';
 import { dev } from '$app/environment';
-import { readSession } from '$lib/server/session';
+import { readSession, sessionRenewal } from '$lib/server/session';
 import {
 	cacheStats,
 	dbConfigured,
@@ -66,7 +66,29 @@ if (!dev && dbConfigured() && pruneEnabled()) {
 // roster to everyone.
 startPushNotifier();
 
+/**
+ * A response a shared cache may keep must not carry someone's session with
+ * it. Everything that reads `locals.session` already answers
+ * `private, no-store`; this only spares the odd public route (the sitemap)
+ * from a Set-Cookie it never asked for.
+ */
+function publiclyCacheable(response: Response): boolean {
+	const cc = response.headers.get('cache-control') ?? '';
+	return cc.includes('public');
+}
+
 export const handle: Handle = async ({ event, resolve }) => {
-	event.locals.session = readSession(event.cookies);
-	return resolve(event);
+	const session = readSession(event.cookies);
+	event.locals.session = session;
+	const response = await resolve(event);
+	// Sliding expiry (see sessionRenewal), decided after the route has run so
+	// a route that set the cookie itself wins: `cookies.get` then returns that
+	// fresh value, whose expiry is a full term away, and no renewal is due.
+	// Sign-in, sign-out and the /api/me profile backfill all rely on that —
+	// a renewal of the *old* payload appended over theirs would undo them.
+	if (session !== null && !publiclyCacheable(response)) {
+		const renewal = sessionRenewal(event.cookies, session);
+		if (renewal !== null) response.headers.append('set-cookie', renewal);
+	}
+	return response;
 };

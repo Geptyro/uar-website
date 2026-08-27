@@ -12,7 +12,7 @@
 	import { MadeBy } from 'cedricdessalles-commons';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
-	import { mosList, mosById } from '$lib/mos';
+	import { mosList, mosById, mosHrefSameTab } from '$lib/mos';
 	import { displayName } from '$lib/ogcard';
 	import { latestVersionInfo } from '$lib/changelog';
 	import { rememberUmamiId } from '$lib/analytics';
@@ -194,7 +194,15 @@
 		     first moment of every page -->
 		<SyncChip compact={compactChips} />
 		{#if me !== undefined}
-			<ReadyToPlay signedIn={me.battletag != null} compact={compactChips} />
+			<!-- a refused write is the first thing that notices an expired
+			     session (this state is read once, at mount, and a tab can
+			     outlive a session by weeks) — take the chip's word for it and
+			     put the whole bar back to signed-out -->
+			<ReadyToPlay
+				signedIn={me.battletag != null}
+				compact={compactChips}
+				onexpired={() => (me = signedOut)}
+			/>
 			<div class="acct-group">
 				{#if me.battletag}
 					<div class="acct-chip">
@@ -319,8 +327,11 @@
 			{/snippet}
 		</NavItem>
 		{#each mosList as m (m.id)}
+			<!-- the tab stays open across classes: Gear to Gear, Players to
+			     Players — a reader comparing two classes' gear should not have
+			     to reopen the tab on every switch -->
 			<NavItem
-				href="/mos/{m.id}"
+				href={mosHrefSameTab(m.id, page.route.id)}
 				label={m.name}
 				active={page.url.pathname === `/mos/${m.id}` ||
 					page.url.pathname.startsWith(`/mos/${m.id}/`)}

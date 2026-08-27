@@ -15,7 +15,12 @@
 
 	type Split = { lobbies: PresenceGroup<PresenceEntry>[]; games: PresenceGroup<PresenceEntry>[] };
 
-	let { signedIn, compact = false }: { signedIn: boolean; compact?: boolean } = $props();
+	let {
+		signedIn,
+		compact = false,
+		/** the session turned out to be gone — the top bar owns that state */
+		onexpired
+	}: { signedIn: boolean; compact?: boolean; onexpired?: () => void } = $props();
 
 	let players = $state<ReadyPlayer[]>([]);
 	let presence = $state<PresenceEntry[]>([]);
@@ -25,6 +30,9 @@
 	let myUntil = $state<string | null>(null);
 	let busy = $state(false);
 	let now = $state(0);
+	/** why the last toggle did not take, shown next to the chip for a moment */
+	let notice = $state<string | null>(null);
+	let noticeTimer: ReturnType<typeof setTimeout> | null = null;
 
 	const active = $derived(activeReady(players, now));
 	// the server groups; a page left open across a deploy predates that field
@@ -67,6 +75,18 @@
 		}
 	}
 
+	/**
+	 * A refusal has to say so. Until this existed every non-ok answer left the
+	 * chip exactly as it was, so a click that the server turned down looked
+	 * identical to one that worked — which is how an expired session could go
+	 * unnoticed for a day.
+	 */
+	function say(message: string) {
+		notice = message;
+		if (noticeTimer) clearTimeout(noticeTimer);
+		noticeTimer = setTimeout(() => (notice = null), 8_000);
+	}
+
 	onMount(() => {
 		now = Date.now();
 		refresh();
@@ -80,19 +100,46 @@
 			events.close();
 			clearInterval(poll);
 			clearInterval(tick);
+			if (noticeTimer) clearTimeout(noticeTimer);
 		};
 	});
 
 	async function send(method: 'POST' | 'DELETE') {
 		if (busy) return;
 		busy = true;
+		notice = null;
 		try {
 			const res = await fetch('/api/ready', { method });
-			if (res.ok) apply(await res.json());
+			if (res.ok) {
+				apply(await res.json());
+			} else if (res.status === 401) {
+				// the session expired under an open tab: the whole top bar is
+				// wrong, not just this chip, so hand it up rather than
+				// explaining it here
+				onexpired?.();
+				say('Your session expired — sign in again.');
+			} else if (res.status === 409) {
+				// already in a lobby or game; the chip has a state for that and
+				// the refetched presence is what selects it
+				await refresh();
+				say(await reason(res, 'You are already in a lobby.'));
+			} else {
+				say(await reason(res, 'That did not go through — try again in a moment.'));
+			}
 		} catch {
-			// leave state as-is; the next poll reconciles
+			say('No answer from the site — check your connection.');
 		} finally {
 			busy = false;
+		}
+	}
+
+	/** The server's own wording when it sent one (SvelteKit `error()` shape). */
+	async function reason(res: Response, fallback: string): Promise<string> {
+		try {
+			const body = (await res.json()) as { message?: string };
+			return body?.message ?? fallback;
+		} catch {
+			return fallback;
 		}
 	}
 </script>
@@ -131,3 +178,32 @@
 		{/if}
 	</HoverPop>
 {/if}
+
+{#if notice}
+	<!-- role=status so it reaches a screen reader too: this is the only thing
+	     that ever says a toggle was refused -->
+	<span class="ready-notice" role="status">{notice}</span>
+{/if}
+
+<style>
+	.ready-notice {
+		max-width: 22ch;
+		padding: 0 10px;
+		display: flex;
+		align-items: center;
+		height: 30px;
+		border-radius: 99px;
+		background: var(--sidebar-2);
+		border: 1px solid var(--hostile, #a4463c);
+		color: var(--sidebar-ink);
+		font: 500 11px/1.15 var(--font-mono);
+		text-align: center;
+	}
+	/* the top bar gets tight before it goes compact; the chip itself is the
+	   part that must survive, so the explanation is what gives way */
+	@media (max-width: 900px) {
+		.ready-notice {
+			display: none;
+		}
+	}
+</style>
