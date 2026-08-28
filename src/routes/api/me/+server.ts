@@ -6,6 +6,8 @@
 import { json } from '@sveltejs/kit';
 import { dbConfigured, getAccount, pickPrimaryProfile } from '$lib/server/db';
 import { createSession } from '$lib/server/session';
+import { unreadCount } from '$lib/server/notifications';
+import { latestChatAt } from '$lib/server/chat';
 import type { RequestHandler } from './$types';
 
 export const prerender = false;
@@ -38,9 +40,22 @@ export const GET: RequestHandler = async ({ locals, cookies, setHeaders }) => {
 		}
 	}
 
+	// the bell's number; a count that fails is a bell with nothing on it
+	let unread = 0;
+	if (session && dbConfigured()) {
+		try {
+			unread = await unreadCount(session.sub);
+		} catch {
+			unread = 0;
+		}
+	}
+	// when the chat last moved, so a page can light the sidebar's dot on load
+	const chatAt = dbConfigured() ? await latestChatAt().catch(() => null) : null;
 	return json({
 		battletag: session?.battletag ?? null,
 		avatar: session?.avatar ?? null,
-		toon: session?.toon ?? null
+		toon: session?.toon ?? null,
+		unread,
+		chatAt
 	});
 };

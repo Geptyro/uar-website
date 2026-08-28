@@ -13,7 +13,7 @@
 	import { mechanicsFor } from '$lib/mechanics';
 	import ClassPanel from '$lib/components/ClassPanel.svelte';
 	import MechanicsGrid from '$lib/components/MechanicsGrid.svelte';
-	import AbilityTiles from '$lib/components/mos/AbilityTiles.svelte';
+	import AbilityTiles from '$lib/components/AbilityTiles.svelte';
 
 	let {
 		mos,

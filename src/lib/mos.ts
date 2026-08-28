@@ -4,7 +4,7 @@ import rawSi from '$lib/data/si.json';
 import rawRanks from '$lib/data/ranks.json';
 import type { Weapon } from '$lib/units';
 import { rankRewardsForMos, type MosRankReward, type RankTrack } from './ranks';
-import { mosTabHref, vehicleSlug } from './mosTabs';
+import { mosTabHref, sameTabHref, vehicleSlug, type MosCapabilities } from './mosTabs';
 
 export interface Skill {
 	id: string;
@@ -104,6 +104,8 @@ export interface Item {
 	mods: ItemMod[];
 	/** Weapons this item grants when carried, with resolved stats. */
 	grants: Weapon[];
+	/** The unit this item deploys as when used, if it places one (sentry gun, claymore, flare). */
+	deploys: string | null;
 	/** MOS unit ids that can use this item; null = everyone. Derived from carry-buff validators. */
 	allowed: string[] | null;
 	/** Equipment-state rules, e.g. "not with MP75 R equipped". */
@@ -122,6 +124,22 @@ export const itemTypeLabels: Record<ItemType, string> = {
 
 export const itemTypeOrder: ItemType[] = ['weapon', 'armor', 'equipment', 'consumable', 'supply'];
 
+/** One entry of an SI's menu (the Battle Buddy's minis), with the rule the script puts on it. */
+export interface SiChoice {
+	key: string;
+	name: string;
+	/** The unit it creates. */
+	unit: string;
+	/** The tooltip the button carries in the game, when it has one. */
+	note?: string;
+	/** Only while the hero stands in this region (a map.json region id). */
+	region?: number;
+	/** One per game. */
+	once?: boolean;
+	/** A named hero instead, for these classes; `unit` is what everyone else gets. */
+	special?: { unit: string; mos: string[]; once: boolean };
+}
+
 export interface Si {
 	num: number;
 	name: string;
@@ -135,6 +153,8 @@ export interface Si {
 	order: number;
 	/** Bottom row in the dialog — special/achievement unlocks. */
 	special: boolean;
+	/** A menu the SI opens in the game, when it has one. */
+	choices?: SiChoice[];
 }
 
 export type {
@@ -146,6 +166,24 @@ export type {
 	MosRankReward
 } from './ranks';
 export { rankBonusAt, rankStacks } from './ranks';
+import { RANK_KEY_OF_TRACK, RANK_TRACK_NAMES, mosTracks, type RankKey } from './ranks';
+
+export interface RankTrackInfo {
+	key: RankKey;
+	name: string;
+	icon: string | null;
+}
+
+/** One track by key: its name and its wireframe portrait from ranks.json. */
+export function rankTrackInfo(key: RankKey): RankTrackInfo {
+	const t = rankTracks.find((x) => RANK_KEY_OF_TRACK[x.track] === key);
+	return { key, name: t?.name ?? RANK_TRACK_NAMES[key], icon: t?.icon ?? null };
+}
+
+/** The tracks a class can be played on (see mosTracks), in the data's order. */
+export function rankTracksFor(mosId: string): RankTrackInfo[] {
+	return mosTracks(mosById.get(mosId)?.unlock).map(rankTrackInfo);
+}
 
 export const allMos: Mos[] = rawMos as Mos[];
 export const items: Item[] = rawItems as Item[];
@@ -188,6 +226,23 @@ export function mosHref(id: string, segment = ''): string {
 	const m = mosById.get(id);
 	if (m?.pilotedBy) return mosTabHref(m.pilotedBy, vehicleSlug(m.name));
 	return mosTabHref(id, segment);
+}
+
+/** What a class has, as far as its tab bar is concerned — see $lib/mosTabs. */
+export function mosCapabilities(id: string): MosCapabilities {
+	return { vehicle: mosById.get(id)?.vehicle != null };
+}
+
+/**
+ * The page of a class that matches the tab the reader is on now — for the
+ * sidebar and anything else that moves between classes while a tab is open.
+ * `routeId` is `page.route.id`; off a class page this is just `mosHref`.
+ */
+export function mosHrefSameTab(id: string, routeId: string | null | undefined): string {
+	const m = mosById.get(id);
+	if (!m || m.pilotedBy) return mosHref(id);
+	const vehicle = m.vehicle ? (mosById.get(m.vehicle) ?? null) : null;
+	return sameTabHref(id, mosCapabilities(id), routeId, vehicle);
 }
 
 export function mosName(id: string): string {

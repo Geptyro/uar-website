@@ -332,7 +332,7 @@
 				<li>It banks into <b>3 rank tracks</b>.</li>
 				<li>Rank unlocks classes, equipment and Skill Identifiers.</li>
 			</ul>
-			<a class="glink" href="/ranks">Rank thresholds →</a>
+			<a class="glink" href="/career">Rank thresholds →</a>
 		</article>
 
 		<article class="card d">
@@ -352,7 +352,7 @@
 			<span class="nx-t">Classes</span>
 			<span class="nx-d">Magazines, reloads and jam risk, side by side</span>
 		</a>
-		<a class="card nx" href="/si">
+		<a class="card nx" href="/career/si">
 			<span class="nx-t">Skill Identifiers</span>
 			<span class="nx-d">Career-wide perks — Quick Thinking lives here</span>
 		</a>

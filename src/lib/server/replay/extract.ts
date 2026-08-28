@@ -51,11 +51,16 @@ import {
  * Stamped on every doc the ingest writes, so a backfill can ask "which
  * readable docs has a newer parser not seen?" without a marker field per
  * feature. Bump it when the parser starts writing something onto sightings
- * that older docs lack and a re-read of the blob could supply.
+ * that older docs lack and a re-read of the blob could supply
+ * (scripts/backfill-parser.ts re-reads every readable doc below it).
  *
- *   1 — `leftLoop` per sighting (scripts/backfill-leaves.ts)
+ *   1 — `leftLoop` per sighting
+ *   2 — `leftReason`, `result`, `host`, `deaths`, `deadLoops` per sighting,
+ *       `mapChecksum` per game. (A 3 briefly existed for combat heatmaps,
+ *       which were built and then dropped before release; docs stamped 3
+ *       carry everything 2 does and are left alone.)
  */
-export const PARSER_GENERATION = 1;
+export const PARSER_GENERATION = 2;
 
 const utf8 = new TextDecoder('utf-8');
 
@@ -97,6 +102,28 @@ export interface ReplaySighting {
 	 * idled in a finished map keeps the loop they actually went at.
 	 */
 	leftLoop?: number;
+	/** `m_leaveReason` of that event: 0 is the user quitting, 11 a drop. */
+	leftReason?: number;
+	/**
+	 * SC2's own verdict for this player from `replay.details`: 1 won, 2 lost,
+	 * absent when undecided. The engine only writes one once the map has
+	 * called `GameOver` for the player — in UAR, the exit button on the end
+	 * screen — and, it seems, only for the calls the recording client was
+	 * still in the game to see: whole won games carry none when the recorder
+	 * left first. Where present it doubles as "was still there when the bank
+	 * was saved"; absent says nothing.
+	 */
+	result?: 1 | 2;
+	/** This user hosted the lobby (`m_lobbyState.m_hostUserId`). */
+	host?: true;
+	/** Times a hero of theirs went down (dead-hero marker born); absent when none. */
+	deaths?: number;
+	/**
+	 * Loops spent down, summed over those deaths and cut off at the moment
+	 * they left or the game ended. A leaver keeps a marker to the end, which
+	 * is not time they spent dead.
+	 */
+	deadLoops?: number;
 	playedAt: string;
 	file: string;
 }
@@ -234,6 +261,11 @@ export interface ParsedReplay {
 	modifiers: number[];
 	/** Whether the recording actually covered the modifier vote. */
 	modifiersRead: boolean;
+	/**
+	 * `m_mapFileSyncChecksum` — identifies the version of the map that was
+	 * played, which nothing else in a replay does (`baseBuild` is SC2's).
+	 */
+	mapChecksum: number;
 	sightings: ReplaySighting[];
 }
 
@@ -276,6 +308,25 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 	const playedAt = filetimeToIso(details.m_timeUTC as number);
 	const title = utf(details.m_title);
 
+	// The lobby's own facts. The host is a user id; SC2's per-player results
+	// sit on the details' player list, which is in working-set-slot order, and
+	// the lobby slots say which user sat in each — that is the only join there
+	// is between the two.
+	const lobby = initdata.m_syncLobbyState.m_lobbyState as {
+		m_hostUserId: number | null;
+		m_slots: { m_userId: number | null; m_workingSetSlotId?: number | null }[];
+	};
+	const hostUser = lobby.m_hostUserId ?? null;
+	const mapChecksum = (initdata.m_syncLobbyState.m_gameDescription.m_mapFileSyncChecksum as number) ?? 0;
+	const results = new Map<number, 1 | 2>();
+	for (const p of details.m_playerList as { m_result: number; m_workingSetSlotId: number | null }[]) {
+		if (p.m_result !== 1 && p.m_result !== 2) continue;
+		const slot = p.m_workingSetSlotId;
+		if (slot === null || slot === undefined) continue;
+		const uid = lobby.m_slots[slot]?.m_userId;
+		if (uid !== null && uid !== undefined) results.set(uid, p.m_result);
+	}
+
 	// bank contents per user, replayed as events at gameloop 0
 	const banks = new Map<number, Record<string, string>>();
 	const toons = new Map<number, string>();
@@ -300,6 +351,7 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 	// stats keep ticking for a slot whose user has quit (see lib/gameEnd.ts),
 	// so this is what a player's own time in the game is measured by.
 	const leaves = new Map<number, number>();
+	const leaveReasons = new Map<number, number>();
 
 	// One pass over the whole of game.events. It used to be a slice: the bank
 	// preload is replayed at gameloop 0 and the mode vote closes inside the
@@ -322,7 +374,10 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 			if (loop > VOTE_SCAN_LOOPS) headEnd ??= loop;
 			if (t.endsWith('SGameUserLeaveEvent')) {
 				const uid = ev._userid.m_userId as number;
-				if (!leaves.has(uid)) leaves.set(uid, loop);
+				if (!leaves.has(uid)) {
+					leaves.set(uid, loop);
+					leaveReasons.set(uid, ev.m_leaveReason as number);
+				}
 				continue;
 			}
 			if (t.endsWith('STriggerDialogControlEvent')) {
@@ -383,6 +438,11 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 	let wipeLoop: number | null = null;
 	/** playerId -> last loop that player was still receiving stats */
 	const lastStats = new Map<number, number>();
+	/** marker tag -> the loop it was born, for time spent dead */
+	const markerBorn = new Map<string, number>();
+	/** playerId -> deaths, and loops spent down, over finished markers */
+	const deaths = new Map<number, number>();
+	const deadLoops = new Map<number, number>();
 	for (const ev of decodeReplayTrackerEvents(protocol, archive.readFile('replay.tracker.events')!)) {
 		const t = ev._event as string;
 		const loop = ev._gameloop as number;
@@ -404,8 +464,11 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 				winLoop ??= loop;
 			}
 			if (unit.startsWith(DEAD_HERO)) {
-				markers.set(`${ev.m_unitTagIndex}/${ev.m_unitTagRecycle}`, pid);
+				const tag = `${ev.m_unitTagIndex}/${ev.m_unitTagRecycle}`;
+				markers.set(tag, pid);
+				markerBorn.set(tag, loop);
 				markedPlayers.add(pid);
+				deaths.set(pid, (deaths.get(pid) ?? 0) + 1);
 			}
 			if (mosIds.has(unit) && uid !== undefined) {
 				heroOwners.add(pid);
@@ -418,6 +481,8 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 			const pid = markers.get(tag);
 			if (pid !== undefined) {
 				markers.delete(tag);
+				deadLoops.set(pid, (deadLoops.get(pid) ?? 0) + (loop - (markerBorn.get(tag) ?? loop)));
+				markerBorn.delete(tag);
 				// revived: this player is only still down if another of their
 				// markers is standing (heroes with more than one body)
 				if (![...markers.values()].includes(pid)) markedPlayers.delete(pid);
@@ -453,6 +518,26 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 		players: humanEnds
 	});
 
+	// Standing dead-hero markers at the end — a hero nobody revived, or a
+	// leaver's purple marker. Time down runs to the moment the player left or
+	// the game ended, whichever came first: the marker outliving both is not
+	// time anyone spent dead.
+	for (const [tag, pid] of markers) {
+		const uid = playerToUser.get(pid);
+		const until = Math.min(gameLoops, uid !== undefined ? (leaves.get(uid) ?? gameLoops) : gameLoops);
+		const since = markerBorn.get(tag) ?? until;
+		if (until > since) deadLoops.set(pid, (deadLoops.get(pid) ?? 0) + (until - since));
+	}
+	// each user's facts from the tracker are keyed by player id; more than one
+	// player id for a user does not happen in a UAR lobby, but summing is the
+	// safe reading if it ever did
+	const userDeaths = new Map<number, number>();
+	const userDeadLoops = new Map<number, number>();
+	for (const [pid, uid] of playerToUser) {
+		if (deaths.has(pid)) userDeaths.set(uid, (userDeaths.get(uid) ?? 0) + deaths.get(pid)!);
+		if (deadLoops.has(pid)) userDeadLoops.set(uid, (userDeadLoops.get(uid) ?? 0) + deadLoops.get(pid)!);
+	}
+
 	const sightings: ReplaySighting[] = [];
 	for (const [uid, bank] of banks) {
 		const u = users[uid];
@@ -475,7 +560,13 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 			mos: mosPlayed.get(uid) ?? [],
 			// only when the recording saw this client go; whoever was still in
 			// when it stopped has no leave event
-			...(leaves.has(uid) ? { leftLoop: leaves.get(uid)! } : {}),
+			...(leaves.has(uid) ? { leftLoop: leaves.get(uid)!, leftReason: leaveReasons.get(uid)! } : {}),
+			// the rest only when there is something to say, so a sighting's
+			// bytes are paid for what it records — see the type for each
+			...(results.has(uid) ? { result: results.get(uid)! } : {}),
+			...(hostUser === uid ? { host: true as const } : {}),
+			...(userDeaths.has(uid) ? { deaths: userDeaths.get(uid)! } : {}),
+			...(userDeadLoops.get(uid) ? { deadLoops: userDeadLoops.get(uid)! } : {}),
 			playedAt,
 			file
 		});
@@ -544,6 +635,7 @@ export function parseReplay(file: string, data: Uint8Array, mosIds: Set<string>)
 		mode,
 		modifiers,
 		modifiersRead,
+		mapChecksum,
 		sightings
 	};
 }

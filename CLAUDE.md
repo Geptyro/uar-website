@@ -19,6 +19,10 @@ a Tigris bucket.
   rig, not uar.cedricdessalles.dev.
 - `src/lib/data/*.json` is generated (extractor in `../` for game data,
   `scripts/` for players/protocol). Never hand-edit; regenerate.
+- The app assumes one machine: the ready/chat event buses (`$lib/server/events`,
+  `$lib/server/chat`), who-is-typing, and every rate limiter live in process
+  memory. `fly.toml` keeps one machine up and never auto-stops it; scaling to
+  two would silently split live delivery. Put a shared channel in first.
 - Never import `$lib/server/*` from client-reachable code. Keep logic under
   test in dependency-free modules (pattern: `$lib/xp.ts`) so plain node:test
   can load it without Vite's import chain.

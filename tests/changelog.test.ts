@@ -3,8 +3,11 @@ import assert from 'node:assert/strict';
 import {
 	buildChangelog,
 	compareVersions,
+	frontMonths,
+	groupByMonth,
 	latestVersion,
 	latestVersionInfo,
+	monthLabel,
 	parseEntry,
 	renderMarkdown
 } from '../src/lib/changelog.ts';
@@ -124,4 +127,28 @@ test('latestVersionInfo: notable count gates the dot, absent count is notable', 
 		notable: true
 	});
 	assert.deepEqual(latestVersionInfo({}), { version: null, notable: false });
+});
+
+test('the month cut reaches this site through the façade', () => {
+	const releases = buildChangelog(
+		{
+			'/changelog/v0.2.0/b.md': '---\ntitle: B\ntype: fix\narea: site\n---\nx',
+			'/changelog/v0.1.0/a.md': '---\ntitle: A\ntype: feature\narea: wiki\n---\nx'
+		},
+		{
+			'/changelog/v0.2.0/release.json': { date: '2026-08-27' },
+			'/changelog/v0.1.0/release.json': { date: '2026-07-24' }
+		}
+	);
+	const months = groupByMonth(releases);
+	assert.deepEqual(
+		months.map((m) => [m.month, m.releases.map((r) => r.version)]),
+		[
+			['2026-08', ['v0.2.0']],
+			['2026-07', ['v0.1.0']]
+		]
+	);
+	// a lone release is not a front page: the month before comes along
+	assert.deepEqual(frontMonths(months, 2).shown.map((m) => m.month), ['2026-08', '2026-07']);
+	assert.equal(monthLabel('2026-07'), 'July 2026');
 });

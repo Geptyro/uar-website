@@ -47,7 +47,7 @@ export function awardView(a: Award): AwardView {
 				label: m?.name ?? `Medal #${a.id}`,
 				kind: 'Medal',
 				icon: m?.icon ?? null,
-				href: '/medals',
+				href: '/career/medals',
 				text: lines(
 					m?.desc,
 					!!m?.xp.length && `Awards ${m.xp.map((x) => x.toLocaleString('en')).join(' / ')} XP.`
@@ -62,7 +62,7 @@ export function awardView(a: Award): AwardView {
 				label: decalName(a.id),
 				kind: 'Decal',
 				icon: d?.icon ?? null,
-				href: '/medals',
+				href: '/career/medals',
 				text: lines(d?.req),
 				linkText: 'All medals & decals',
 				tone: 'wear'
@@ -74,7 +74,7 @@ export function awardView(a: Award): AwardView {
 				label: camoName(a.id),
 				kind: 'Camouflage',
 				icon: c?.swatch ?? null,
-				href: '/camos',
+				href: '/career/camos',
 				text: lines(
 					c?.req,
 					c?.adaptive && 'Adaptive: cycles terrain textures instead of a fixed pattern.',
@@ -90,7 +90,7 @@ export function awardView(a: Award): AwardView {
 				label: s?.name ?? `SI #${a.id}`,
 				kind: 'Skill Identifier',
 				icon: s?.icon ?? null,
-				href: '/si',
+				href: '/career/si',
 				text: lines(
 					s?.desc,
 					s && (siXpLabel(s) ? `Unlocks at ${siXpLabel(s)} XP` : s.special && 'Special achievement unlock')
@@ -122,7 +122,7 @@ export function awardView(a: Award): AwardView {
 				label: rank?.name ?? a.label ?? `Rank #${a.id}`,
 				kind: track?.name ?? 'Rank',
 				icon: rank?.icon ?? null,
-				href: '/ranks',
+				href: '/career',
 				text: lines(
 					rank && `${rank.prefix} — reached at ${rank.xp.toLocaleString('en')} XP`,
 					track && `${track.name} track`
@@ -136,7 +136,7 @@ export function awardView(a: Award): AwardView {
 				label: `Prestige ${a.id}`,
 				kind: 'Prestige',
 				icon: null,
-				href: '/ranks',
+				href: '/career',
 				text: lines(
 					'Prestige resets all three tracks to 50,000 XP and keeps everything already unlocked.',
 					'Requires 250,000 XP on each of the three tracks.'

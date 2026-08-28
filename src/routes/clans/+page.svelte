@@ -1,84 +1,110 @@
 <script lang="ts">
-	import type { ClanSummary } from '$lib/clans';
+	import Pager from '$lib/components/Pager.svelte';
 	import Seo from '$lib/components/Seo.svelte';
+	import { goto } from '$app/navigation';
+	import { page as currentPage } from '$app/state';
 	import { Page } from 'sveltekit-commons';
 
 	let { data } = $props();
 	const clans = $derived(data.clans);
-	const inClans = $derived(clans.reduce((sum, c) => sum + c.members, 0));
 
-	type Col = {
-		key: string;
-		label: string;
-		num?: boolean;
-		value: (c: ClanSummary) => number | string;
-	};
+	type Col = { key: string; label: string; num?: boolean; hint?: string };
 
 	const columns: Col[] = [
-		{ key: 'tag', label: 'Clan', value: (c) => c.tag.toLowerCase() },
-		{ key: 'members', label: 'Members', num: true, value: (c) => c.members },
-		{ key: 'career', label: 'Career XP', num: true, value: (c) => c.careerXp },
-		{ key: 'games', label: 'Games', num: true, value: (c) => c.games },
-		{ key: 'wins', label: 'Wins', num: true, value: (c) => c.wins },
-		{ key: 'revives', label: 'Revives', num: true, value: (c) => c.revives },
-		{ key: 'top', label: 'Top player', value: (c) => c.top.name.toLowerCase() },
-		{ key: 'seen', label: 'Last seen', value: (c) => c.lastSeen }
+		{
+			key: 'tag',
+			label: 'Clan',
+			hint: 'The tag each member wore in their newest ingested replay. A player who left or switched clans counts toward that tag only.'
+		},
+		{ key: 'members', label: 'Members', num: true },
+		{ key: 'career', label: 'Career XP', num: true, hint: 'Career XP of every member, summed' },
+		{ key: 'games', label: 'Games', num: true },
+		{ key: 'wins', label: 'Wins', num: true },
+		{ key: 'revives', label: 'Revives', num: true },
+		{ key: 'top', label: 'Top player', hint: 'The member with the most career XP' },
+		{ key: 'seen', label: 'Last seen', hint: 'The newest replay any member was seen in' }
 	];
 
-	let sortKey = $state('career');
-	let sortDir = $state(-1);
-
-	function setSort(key: string) {
-		if (sortKey === key) sortDir *= -1;
-		else {
-			sortKey = key;
-			sortDir = key === 'tag' || key === 'top' ? 1 : -1;
-		}
+	// search as you type, once typing pauses — the surrounding <form> keeps
+	// working when JavaScript does not
+	let searchTimer: ReturnType<typeof setTimeout>;
+	function searchInput(event: Event) {
+		clearTimeout(searchTimer);
+		const value = (event.currentTarget as HTMLInputElement).value;
+		searchTimer = setTimeout(() => {
+			const params = new URLSearchParams(currentPage.url.search);
+			if (value.trim()) params.set('q', value.trim());
+			else params.delete('q');
+			params.delete('page'); // a new search starts from the first page
+			const query = params.toString();
+			goto(query ? `?${query}` : currentPage.url.pathname, {
+				keepFocus: true,
+				replaceState: true,
+				noScroll: true
+			});
+		}, 300);
 	}
 
-	const sorted = $derived.by(() => {
-		const col = columns.find((c) => c.key === sortKey);
-		const value = col?.value ?? ((c: ClanSummary) => c.careerXp);
-		const out = [...clans];
-		out.sort((a, b) => {
-			const x = value(a);
-			const y = value(b);
-			const cmp = typeof x === 'number' ? x - (y as number) : String(x).localeCompare(String(y));
-			return cmp * sortDir || b.careerXp - a.careerXp;
-		});
-		return out;
-	});
+	// sorting is a link, not local state, same as /players: the server holds
+	// the whole list and sends one page of it
+	function sortHref(key: string): string {
+		const flip = data.sort === key && data.dir === 'desc';
+		const text = key === 'tag' || key === 'top';
+		const dir = flip ? 'asc' : text && data.sort !== key ? 'asc' : 'desc';
+		return `?sort=${key}&dir=${dir}`;
+	}
 </script>
 
-<Page>
+<Page fill>
 	<Seo
 		title="Clans"
 		description="Clans seen in ingested Undead Assault Reborn replays, with their combined career XP, games, wins and top player."
 	/>
 
-	<p class="note">
-		Clans seen in ingested replays, grouped by the clan tag each player carried in their newest
-		sighting. {inClans} of {data.playerCount} known <a href="/players">players</a> wear a clan tag.
-	</p>
+	<div class="datapage">
+	<div class="dtools">
+		<form method="GET" data-sveltekit-keepfocus>
+			<input
+				type="search"
+				name="q"
+				value={data.q}
+				placeholder="Search clan or top player…"
+				oninput={searchInput}
+				aria-label="Search clans"
+			/>
+			{#if data.sort !== 'career'}<input type="hidden" name="sort" value={data.sort} />{/if}
+			{#if data.dir !== 'desc'}<input type="hidden" name="dir" value={data.dir} />{/if}
+		</form>
+		<span class="rowcount">
+			{data.inClans} of {data.playerCount} <a href="/players">players</a> wear a tag
+		</span>
+		<div class="right">
+			<Pager page={data.page} pages={data.pages} total={data.total} label="clans" shortcuts />
+		</div>
+	</div>
 
-	<div class="tablewrap">
+	<div class="tablewrap rows">
 		<table class="data" style="min-width: 720px">
 			<thead>
 				<tr>
 					<th class="num">#</th>
 					{#each columns as col (col.key)}
-						<th class:num={col.num} class="sortable" onclick={() => setSort(col.key)}>
-							{col.label}
-							<span class="dir">{sortKey === col.key ? (sortDir > 0 ? '↑' : '↓') : ''}</span>
+						<th class:num={col.num} class="sortable">
+							<a href={sortHref(col.key)} data-sveltekit-noscroll title={col.hint}>
+								{col.label}
+								<span class="dir">
+									{data.sort === col.key ? (data.dir === 'asc' ? '↑' : '↓') : ''}
+								</span>
+							</a>
 						</th>
 					{/each}
 				</tr>
 			</thead>
 			<tbody>
-				{#each sorted as c, i (c.tag)}
+				{#each clans as c, i (c.tag)}
 					<tr>
-						<td class="num rank-pos">{i + 1}</td>
-						<td>
+						<td class="num rownum">{(data.page - 1) * data.perPage + i + 1}</td>
+						<td class="namecell">
 							<a class="cname" href="/clans/{encodeURIComponent(c.tag)}">&lt;{c.tag}&gt;</a>
 						</td>
 						<td class="num">{c.members}</td>
@@ -95,36 +121,23 @@
 			</tbody>
 		</table>
 	</div>
-
-	<p class="note">
-		Clan membership is whatever the game lobby reported when the replay was recorded — a player who
-		left or switched clans counts toward their most recently seen tag only.
-	</p>
+	</div>
 </Page>
 
 <style>
-	th.sortable {
-		cursor: pointer;
-		user-select: none;
-	}
-	th.sortable:hover {
-		color: var(--text);
-	}
-	.dir {
-		color: var(--accent);
-		font-size: 11px;
-	}
-	.rank-pos {
-		color: var(--text-faint);
-	}
+	/* the page shape — toolbar put, rows scrolling, full-bleed table — is
+	   .datapage in the layout, shared with /players and /entities */
 	.career {
 		font-weight: 650;
 	}
-	.cname {
-		font-weight: 650;
-		white-space: nowrap;
-	}
+	.namecell,
 	.topcell {
 		white-space: nowrap;
+	}
+	.cname {
+		font-weight: 650;
+	}
+	.rowcount a {
+		color: inherit;
 	}
 </style>

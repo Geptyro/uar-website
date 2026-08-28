@@ -73,6 +73,7 @@ for (const file of files) {
 			...(parsed.mode ? { mode: parsed.mode } : {}),
 			...(parsed.modifiersRead ? { modifiers: parsed.modifiers } : {}),
 			parser: PARSER_GENERATION,
+			mapChecksum: parsed.mapChecksum,
 			sightings: parsed.sightings
 		});
 		console.log(`  doc     ${name} inserted (${parsed.sightings.length} profiles)`);

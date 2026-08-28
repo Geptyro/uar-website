@@ -11,6 +11,7 @@
 	"mode": null,
 	"modifiers": [],
 	"modifiersRead": false,
+	"mapChecksum": 2939007262,
 	"sightings": [
 		{
 			"name": "KanaxStratz",
@@ -137,6 +138,8 @@
 			},
 			"mos": [],
 			"leftLoop": 408,
+			"leftReason": 0,
+			"host": true,
 			"playedAt": "2026-07-23T18:08:14Z",
 			"file": "20260723-1808.SC2Replay"
 		}

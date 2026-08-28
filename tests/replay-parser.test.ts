@@ -175,6 +175,7 @@ function fakeReplay(file: string, playedAt: string, sightings: ReplaySighting[])
 			mode: null,
 			modifiers: [],
 			modifiersRead: false,
+			mapChecksum: 0,
 			sightings
 		},
 		size: 1000

@@ -9,8 +9,7 @@
  * canonical page stops carrying four item tables a reader looking for a skill
  * tree scrolls straight past.
  *
- * Unlike a profile, not every class has every tab. A guide is written by hand
- * and only exists once someone has written it, and only one class brings a
+ * Unlike a profile, not every class has every tab: only one class brings a
  * vehicle along. So the list is a capability table, the way STALZONE's entity
  * page decides its tabs: `needs` names what a class must have for the tab to
  * appear, and the layout and the routes both read the same table, so a tab
@@ -44,8 +43,6 @@ export function vehicleSlug(name: string): string {
 
 /** What a class has, as far as the tab bar is concerned. */
 export interface MosCapabilities {
-	/** Someone has written a guide for it — see $lib/guides. */
-	guide: boolean;
 	/** It brings a vehicle it pilots (the Assault Engineer's Predator). */
 	vehicle: boolean;
 }
@@ -102,13 +99,25 @@ export const MOS_TABS: readonly MosTab[] = [
 		),
 		needs: []
 	},
+	/* Always there: the guides players have written for the class (see
+	   $lib/builds), and where there is nothing yet, the invitation to write the
+	   first one. Server-rendered, like the players tab: the list moves without
+	   a deploy. */
 	{
-		segment: 'guide',
-		label: 'Guide',
+		segment: 'guides',
+		label: 'Guides',
 		icon: icon(
 			'<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>'
 		),
-		needs: ['guide']
+		needs: []
+	},
+	/* Always there: what players say about the class itself, a thread like a
+	   guide's (see $lib/server/comments). Server-rendered, for the same reason. */
+	{
+		segment: 'comments',
+		label: 'Comments',
+		icon: icon('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'),
+		needs: []
 	}
 ];
 
@@ -187,6 +196,31 @@ export function tabSegment(
 	const rest = routeId.slice(MOS_ROUTE.length);
 	if (rest === '') return '';
 	if (!rest.startsWith('/')) return null;
-	const seg = rest.slice(1);
+	// a page below a tab (a guide under /guides) is still on that tab
+	const seg = rest.slice(1).split('/')[0];
 	return seg === VEHICLE_SLOT ? (params?.vehicle ?? seg) : seg;
+}
+
+/**
+ * The URL of another class's page that matches the tab open now: a reader on
+ * the Gear tab who picks a different class in the sidebar wants that class's
+ * gear, not its overview. A tab the other class does not have — a vehicle no
+ * one has written, a vehicle it does not bring — falls back to its overview,
+ * since the bar cannot offer it. The vehicle tab matches by kind, not by
+ * segment: Predator to the other class's own vehicle, not to "/predator".
+ *
+ * `routeId` is the page being left (`page.route.id`), so a route that is not
+ * under a class page at all — the comparison, the guide index — just yields
+ * the class's overview.
+ */
+export function sameTabHref(
+	id: string,
+	c: MosCapabilities,
+	routeId: string | null | undefined,
+	vehicle?: { name: string } | null
+): string {
+	const seg = tabSegment(routeId);
+	if (!seg) return mosTabHref(id);
+	if (seg === VEHICLE_SLOT) return vehicle ? mosTabHref(id, vehicleSlug(vehicle.name)) : mosTabHref(id);
+	return hasTab(c, seg) ? mosTabHref(id, seg) : mosTabHref(id);
 }

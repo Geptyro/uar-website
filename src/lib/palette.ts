@@ -19,7 +19,7 @@ import type { PaletteRow } from 'sveltekit-commons/palette';
 import { playerHref } from './playerTabs.ts';
 import { mosTabHref, vehicleSlug } from './mosTabs.ts';
 
-export type PaletteKind = 'page' | 'mos' | 'si' | 'entity' | 'player';
+export type PaletteKind = 'page' | 'mos' | 'si' | 'trigger' | 'entity' | 'player';
 
 /**
  * A tie-break, not a filter: two rows that match equally well are ordered by
@@ -28,7 +28,7 @@ export type PaletteKind = 'page' | 'mos' | 'si' | 'entity' | 'player';
  * same unit, so both outrank a bare entity. `rankRows` reads this off
  * `row.weight`.
  */
-const KIND_WEIGHT: Record<PaletteKind, number> = { page: 0, mos: 1, si: 2, entity: 3, player: 4 };
+const KIND_WEIGHT: Record<PaletteKind, number> = { page: 0, mos: 1, si: 2, trigger: 2, entity: 3, player: 4 };
 
 /**
  * The entity index shipped at /search.json. Field names are short because
@@ -43,6 +43,45 @@ export interface EntityIndexRow {
 	c: string;
 	/** icon path, absent when the entity has none */
 	p?: string;
+}
+
+/**
+ * A trigger group in the same index: a mission, a mechanic, an event by the
+ * name the extractor gave it, found also by its outcomes and its triggers'
+ * names, since "Abdul rescued" or "Activate the MULE" is what a reader may
+ * type. Rides along in /search.json, told apart by its `g`.
+ */
+export interface TriggerIndexRow {
+	/** the group's slug — the /triggers/<id> segment */
+	g: string;
+	n: string;
+	/** mission | mechanic | event | world */
+	t: string;
+	/** how many triggers it is */
+	k: number;
+	/** other names it answers to: outcomes, its triggers */
+	a: string[];
+}
+
+export type IndexRow = EntityIndexRow | TriggerIndexRow;
+export const isTriggerRow = (r: IndexRow): r is TriggerIndexRow => 'g' in r;
+
+/**
+ * Trigger group rows. `glyph` is the sidebar's mark for the Triggers section,
+ * so the rows carry the same sign as the page they lead to.
+ */
+export function triggerRows(index: TriggerIndexRow[], glyph?: string): PaletteRow[] {
+	return index.map((g) => ({
+		kind: 'trigger',
+		id: g.g,
+		href: `/triggers/${encodeURIComponent(g.g)}`,
+		label: g.n,
+		note: `${g.t} · ${g.k} trigger${g.k === 1 ? '' : 's'}`,
+		icon: null,
+		glyph,
+		alias: g.a,
+		weight: KIND_WEIGHT.trigger
+	}));
 }
 
 /** `undead / hostile` → `hostile`: what fits the palette's right-hand column. */
@@ -137,7 +176,7 @@ export function siRows(
 	return list.map((s) => ({
 		kind: 'si',
 		id: String(s.num),
-		href: `/si#si-${s.num}`,
+		href: `/career/si#si-${s.num}`,
 		label: s.name,
 		note: s.code || 'SI',
 		icon: s.icon,

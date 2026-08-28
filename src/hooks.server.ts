@@ -11,6 +11,12 @@ import {
 } from '$lib/server/db';
 import { warmReplayWorker } from '$lib/server/replay/offthread';
 import { startPushNotifier } from '$lib/server/notify';
+import { ensureBuildIndexes, sweepBuildImages } from '$lib/server/builds';
+import { ensureNotificationIndexes } from '$lib/server/notifications';
+import { ensureChatIndexes, sweepChat } from '$lib/server/chat';
+import { sweepNotifications } from '$lib/server/notifications';
+import { ensureReactionIndexes } from '$lib/server/reactions';
+import { bucketConfigured } from '$lib/server/replay/s3';
 
 // one parsing worker for the lifetime of the server, started before the
 // first upload rather than inside it
@@ -22,6 +28,10 @@ warmReplayWorker();
 // serving at all (a fresh deploy against an unreachable database would
 // otherwise never come up).
 void ensureIndexes().catch((e) => console.error('index setup failed:', e));
+void ensureBuildIndexes().catch((e) => console.error('build index setup failed:', e));
+void ensureNotificationIndexes().catch((e) => console.error('notification index setup failed:', e));
+void ensureChatIndexes().catch((e) => console.error('chat index setup failed:', e));
+void ensureReactionIndexes().catch((e) => console.error('reaction index setup failed:', e));
 
 // The cache lives in this process's memory, so a deploy empties it. Fill it
 // before anyone asks, rather than charging the first visitor after a release
@@ -58,6 +68,38 @@ if (!dev && dbConfigured() && pruneEnabled()) {
 	// let the machine finish coming up first
 	setTimeout(sweep, SWEEP_AFTER_BOOT_MS).unref();
 	setInterval(sweep, SWEEP_EVERY_MS).unref();
+}
+
+// The chat's keep and the read notifications' age (see server/chat.ts and
+// server/notifications.ts): a daily pass, small deletes, nothing on most days.
+// Out of dev for the same reason as the other sweeps.
+const RETENTION_SWEEP_EVERY_MS = 24 * 60 * 60_000;
+const RETENTION_SWEEP_AFTER_BOOT_MS = 10 * 60_000;
+if (!dev && dbConfigured()) {
+	const sweep = () =>
+		void Promise.all([sweepChat(), sweepNotifications()])
+			.then(([chat, notes]) => {
+				if (chat || notes) console.log(`retention sweep dropped ${chat} chat messages, ${notes} notifications`);
+			})
+			.catch((e) => console.error('retention sweep failed:', e));
+	setTimeout(sweep, RETENTION_SWEEP_AFTER_BOOT_MS).unref();
+	setInterval(sweep, RETENTION_SWEEP_EVERY_MS).unref();
+}
+
+// Pictures uploaded for community builds that no build shows (see
+// server/builds.ts). Same clock, same reason to keep it out of dev: the
+// bucket the local .env points at is the live one.
+const IMAGE_SWEEP_EVERY_MS = 6 * 60 * 60_000;
+const IMAGE_SWEEP_AFTER_BOOT_MS = 5 * 60_000;
+if (!dev && dbConfigured() && bucketConfigured()) {
+	const sweep = () =>
+		void sweepBuildImages()
+			.then((n) => {
+				if (n) console.log(`build image sweep dropped ${n}`);
+			})
+			.catch((e) => console.error('build image sweep failed:', e));
+	setTimeout(sweep, IMAGE_SWEEP_AFTER_BOOT_MS).unref();
+	setInterval(sweep, IMAGE_SWEEP_EVERY_MS).unref();
 }
 
 // Browser notifications for lobby/ready changes. Listens on the same channel

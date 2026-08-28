@@ -25,6 +25,7 @@ import {
 	getReadyPlayers
 } from './db';
 import { getActivePresence } from './presenceStore';
+import { siteAdmins } from './admins';
 import { subscribeReady } from './events';
 import { sendPush, type VapidKeys } from './webpush';
 import {
@@ -215,6 +216,32 @@ export async function sendTestPush(
 		sent: results.filter((r) => r === 'sent').length,
 		failed: results.filter((r) => r !== 'sent').length
 	};
+}
+
+/**
+ * A notification to the maintainer's devices, off the roster entirely: what
+ * the site says when a community build is published, so a new one is looked
+ * at the same day rather than found weeks later. Best effort, never throws.
+ * Held back in dev like the notifier, for the same reason.
+ */
+export async function pushToAdmins(payload: { title: string; body: string; url: string }): Promise<void> {
+	if (!pushConfigured() || !dbConfigured()) return;
+	if (dev && !process.env.PUSH_IN_DEV) return;
+	const admins = siteAdmins();
+	if (!admins.length) return;
+	const subs = (await getPushSubs()).filter(
+		(s) => admins.includes(s.sub) || admins.includes(s.battletag)
+	);
+	await Promise.all(
+		subs.map(async (s) => {
+			const result = await sendPush(
+				{ endpoint: s._id, p256dh: s.p256dh, auth: s.auth },
+				{ ...payload, tag: 'builds' },
+				vapidKeys()
+			);
+			if (result === 'gone') await deletePushSub(s._id).catch(() => {});
+		})
+	);
 }
 
 function schedule(): void {

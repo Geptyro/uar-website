@@ -1,4 +1,10 @@
+/* flow.json is the mission-relevant subgraph. The Mission flow page that
+   drew it is gone (folded into /triggers), but the entity pages still read
+   `flowById` to know which of a unit's triggers has a page, so the data and
+   these exports stay until they move to $lib/groups. */
 import rawFlow from '$lib/data/flow.json';
+
+export { triggerRole, type TriggerRole } from './triggerRole';
 
 export interface FlowEvent {
 	type: string;
@@ -6,8 +12,51 @@ export interface FlowEvent {
 }
 
 export interface FlowOutcome {
+	/** The outcome string's id in the script (`EF9EAC5D`): one text can stand for several ids. */
+	id: string;
 	xp: number;
 	name: string;
+}
+
+/** Something a trigger puts in front of the player, and the call that does. */
+export interface TriggerShow {
+	kind: 'mission' | 'message' | 'objective' | 'tag' | 'ping';
+	text: string;
+}
+
+export interface MapPlace {
+	x: number;
+	y: number;
+	name: string;
+}
+
+/**
+ * What a trigger references in its own block. Only the full graph
+ * (triggers.json, server-side) carries these; flow.json does not.
+ */
+export interface TriggerRefs {
+	/** Region ids in map.json. */
+	regions: number[];
+	points: { id: number; name: string; x: number; y: number }[];
+	/** Pre-placed units from the map's Objects file. */
+	units: { id: number; type: string; x: number; y: number }[];
+	/** Units (and props: an actor with no unit under it) the trigger creates, with where when the call names a place. */
+	spawns: { type: string; kind: 'unit' | 'prop'; point?: number; region?: number }[];
+	/** The named unit variables it works on: what the author calls them, and the unit they hold when the script says. */
+	actors: { var: string; name: string; type: string | null }[];
+	/** A stretch something may appear along: a random point between two places. */
+	segments: { a: MapPlace; b: MapPlace; }[];
+	/** A route: points in the order the script fills them or orders a unit along them. */
+	paths: { var: string; name: string; points: { id: number; name: string; x: number; y: number }[] }[];
+	/** Items it spawns through gf_SpawnItem. */
+	items: string[];
+	shows: TriggerShow[];
+	pings: number;
+	/** Unit-typed globals it works on (gv_mULE). */
+	entities: string[];
+	/** Boolean flags it sets / its conditions test, as `gv_x=true`. */
+	sets: string[];
+	tests: string[];
 }
 
 export interface FlowNode {
@@ -24,6 +73,7 @@ export interface FlowNode {
 	timers: { var: string; dur: string }[];
 	succeed: FlowOutcome[];
 	fail: FlowOutcome[];
+	refs?: TriggerRefs;
 }
 
 export const flowNodes: FlowNode[] = rawFlow as FlowNode[];
@@ -50,6 +100,9 @@ export function fmtDuration(expr: string): string {
 	return expr;
 }
 
+/** `ChooseCombatEngineer` → `Choose Combat Engineer`: an id read as words. */
+const prettify = (id: string) => id.replace(/(?<=[a-z0-9])(?=[A-Z])/g, ' ');
+
 export function eventLabel(e: FlowEvent): string {
 	switch (e.type) {
 		case 'TimeElapsed':
@@ -61,7 +114,9 @@ export function eventLabel(e: FlowEvent): string {
 		case 'UnitDied':
 			return 'a unit dies';
 		case 'UnitAbility':
-			return 'an ability is used';
+			return e.arg ? `${prettify(String(e.arg))} is used` : 'an ability is used';
+		case 'UnitSelected':
+			return e.arg === 'deselected' ? 'the unit is deselected' : 'the unit is selected';
 		case 'UnitBehaviorChange':
 			return 'a behavior changes';
 		case 'DialogControl':
@@ -76,8 +131,13 @@ export function eventLabel(e: FlowEvent): string {
 			return 'inventory changes';
 		case 'UnitDamaged':
 			return 'a unit is damaged';
-		case 'UnitCreated':
-			return 'a unit is created';
+		case 'UnitCreated': {
+			/* the class picks are dummy units named Choose<Class>, made when a
+			   player takes the class: say that, not the unit's id */
+			const pick = /^Choose(\w+)$/.exec(String(e.arg ?? ''));
+			if (pick) return `a ${prettify(pick[1])} is picked`;
+			return e.arg ? `${prettify(String(e.arg))} is created` : 'a unit is created';
+		}
 		case 'MapInit':
 			return 'map start';
 		case 'UnitGainLevel':

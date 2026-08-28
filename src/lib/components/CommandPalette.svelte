@@ -20,14 +20,18 @@
 	import { page } from '$app/state';
 	import { extraDestinations, navItems } from '$lib/nav';
 	import { tabSegment } from '$lib/playerTabs';
+	import { fetchPlayers } from '$lib/mentions';
 	import {
 		browseRows,
 		entityRows,
 		mosRows,
+		isTriggerRow,
 		pageRows,
 		playerRows,
 		siRows,
-		type EntityIndexRow
+		triggerRows,
+		type EntityIndexRow,
+		type IndexRow
 	} from '$lib/palette';
 
 	/** Rows of the static half shown at once — a keyboard target, not a page. */
@@ -38,6 +42,8 @@
 	let dialog = $state<ReturnType<typeof SearchDialog> | null>(null);
 	let q = $state('');
 	let entities = $state<PaletteRow[]>([]);
+	let triggers = $state<PaletteRow[]>([]);
+	const triggerGlyph = navItems.find((n) => n.href === '/triggers')?.icon;
 	let players = $state<PaletteRow[]>([]);
 	/** True from the keystroke until the answer lands — the debounce included. */
 	let searching = $state(false);
@@ -51,6 +57,7 @@
 			}))
 		),
 		...siRows(skillIdentifiers),
+		...triggers,
 		...entities
 	]);
 
@@ -76,7 +83,9 @@
 		try {
 			const res = await fetch('/search.json');
 			if (!res.ok) throw new Error(`search index: ${res.status}`);
-			entities = entityRows((await res.json()) as EntityIndexRow[]);
+			const index = (await res.json()) as IndexRow[];
+			entities = entityRows(index.filter((r): r is EntityIndexRow => !isTriggerRow(r)));
+			triggers = triggerRows(index.filter(isTriggerRow), triggerGlyph);
 		} catch {
 			indexRequested = false;
 		}
@@ -103,14 +112,11 @@
 		const mine = ++seq;
 		const timer = setTimeout(async () => {
 			try {
-				const res = await fetch(`/api/search/players?q=${encodeURIComponent(term)}`);
-				if (!res.ok) return;
-				const body = (await res.json()) as { players: Parameters<typeof playerRows>[0] };
+				// the same call the @ search in a box makes (see $lib/mentions)
+				const found = await fetchPlayers(term);
 				// keep the profile tab the reader searched from, so comparing two
 				// players' collections does not land on the second one's overview
-				if (mine === seq) players = playerRows(body.players, tabSegment(page.route.id) ?? '');
-			} catch {
-				// transient — the static half of the palette still answers
+				if (mine === seq) players = playerRows(found, tabSegment(page.route.id) ?? '');
 			} finally {
 				// only the newest query may clear the flag: an older reply landing
 				// late would otherwise call off a search that is still running
@@ -129,7 +135,7 @@
 	bind:this={dialog}
 	bind:query={q}
 	{groups}
-	placeholder="Search units, classes, players…"
+	placeholder="Search units, classes, triggers, players…"
 	onopen={() => {
 		players = [];
 		searching = false;

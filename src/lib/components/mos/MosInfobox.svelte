@@ -22,10 +22,10 @@
 	import ModelCard from '$lib/components/ModelCard.svelte';
 	import DescCard from '$lib/components/DescCard.svelte';
 	import MechanicsGrid from '$lib/components/MechanicsGrid.svelte';
-	import AbilityTiles from '$lib/components/mos/AbilityTiles.svelte';
+	import AbilityTiles from '$lib/components/AbilityTiles.svelte';
 	import { mechanicsFor } from '$lib/mechanics';
 	import { mosTabHref, vehicleSlug } from '$lib/mosTabs';
-	import models from '$lib/data/models.json';
+	import { modelVariants } from '$lib/models';
 
 	let {
 		mos,
@@ -44,7 +44,7 @@
 		handling?: boolean;
 	} = $props();
 
-	const modelUrl = $derived((models as Record<string, string>)[mos.id] ?? null);
+	const modelUrl = $derived(modelVariants(mos.id)[0]?.src ?? null);
 	const mechanics = $derived(mechanicsFor(mos.id));
 
 	const facts = $derived([
@@ -218,7 +218,7 @@
 				<p class="unlock-note">Needs the XP on all three rank tracks at once.</p>
 			{/if}
 			{#if unlock.medals}
-				<p class="unlock-alt">…and earn <a href="/medals">{unlock.medals} medals</a></p>
+				<p class="unlock-alt">…and earn <a href="/career/medals">{unlock.medals} medals</a></p>
 			{/if}
 			{#if unlock.modes}
 				<p class="unlock-note">Only in {unlock.modes.join(', ')}</p>
@@ -226,7 +226,7 @@
 			<p class="unlock-note">
 				Max picks per game: {unlock.charges}. Any prestige unlocks all rank requirements.
 			</p>
-			<a class="si-all" href="/ranks">All ranks and track bonuses →</a>
+			<a class="si-all" href="/career">All ranks and track bonuses →</a>
 		</DescCard>
 	{/if}
 	{#if progressionGear}
@@ -273,7 +273,7 @@
 				</div>
 				{#if s.desc}<p class="si-desc">{s.desc}</p>{/if}
 			{/each}
-			<a class="si-all" href="/si">All Skill Identifiers →</a>
+			<a class="si-all" href="/career/si">All Skill Identifiers →</a>
 		</DescCard>
 	{/if}
 </aside>

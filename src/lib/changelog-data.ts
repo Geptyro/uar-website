@@ -5,7 +5,7 @@
  * route's server load and the overview page. The layout badge reads version
  * folder names through its own cheap release.json glob instead.
  */
-import { buildChangelog } from './changelog';
+import { buildChangelog, groupByMonth } from './changelog';
 
 const entryFiles = import.meta.glob('/changelog/v*/*.md', {
 	eager: true,
@@ -20,3 +20,5 @@ const releaseFiles = import.meta.glob('/changelog/v*/release.json', {
 
 export const releases = buildChangelog(entryFiles, releaseFiles);
 export const latestRelease = releases[0] ?? null;
+/** The same releases cut by the month they shipped — what /changelog pages by. */
+export const months = groupByMonth(releases);

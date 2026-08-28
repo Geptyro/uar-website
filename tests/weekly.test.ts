@@ -2,7 +2,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { weeklyBoards, type WeeklyXpReplay } from '../src/lib/server/weekly.ts';
+import { longestGame, weeklyBoards, type WeeklyXpReplay } from '../src/lib/server/weekly.ts';
 
 // window starts 2026-07-19T12:00:00Z; nothing older than that ever counts
 const NOW = new Date('2026-07-26T12:00:00Z');
@@ -90,7 +90,9 @@ test('careerXp carries gains across a prestige reset, and the honor roll records
 	];
 	const boards = weeklyBoards(replays, NOW);
 	assert.deepEqual(boards.xp, [{ name: 'Alice', clan: '', toon: 't1', xpGained: 3000, games: 1 }]);
-	assert.deepEqual(boards.prestiged, [{ name: 'Alice', clan: '', toon: 't1', from: 0, to: 1 }]);
+	assert.deepEqual(boards.prestiged, [
+		{ name: 'Alice', clan: '', toon: 't1', from: 0, to: 1, prestigedAt: '2026-07-20T10:00:00.000Z' }
+	]);
 });
 
 test('excludes players not seen this week and zero-gain players', () => {
@@ -124,7 +126,7 @@ test('sorts by gain (ties: games) and applies the limit', () => {
 	assert.equal(weeklyBoards(replays, NOW, 3).xp.length, 3);
 });
 
-test('prestiged: honor roll sorts by new level, no XP-gain requirement', () => {
+test('prestiged: same-day prestiges sort by new level, no XP-gain requirement', () => {
 	const replays = [
 		replay('2026-07-20T10:00:00Z', [
 			sighting('t1', 'Alice', 250000, 10, { prestige: 2 }),
@@ -148,6 +150,44 @@ test('prestiged: honor roll sorts by new level, no XP-gain requirement', () => {
 	assert.equal(boards.xp.length, 2);
 });
 
+test('prestiged: dated to the game taken in (last seen at the old level), newest first', () => {
+	const replays = [
+		// out of order on purpose: the dating must not lean on replay order
+		replay('2026-07-25T10:00:00Z', [
+			sighting('t1', 'Alice', 50000, 12, { prestige: 3 }),
+			sighting('t2', 'Bob', 50000, 21, { prestige: 1 })
+		]),
+		replay('2026-07-20T10:00:00Z', [
+			sighting('t1', 'Alice', 250000, 10, { prestige: 2 }),
+			sighting('t2', 'Bob', 250000, 20, { prestige: 0 })
+		]),
+		// Alice's bank still reads P2 going into this game: this is the one she prestiged in
+		replay('2026-07-22T10:00:00Z', [sighting('t1', 'Alice', 250000, 11, { prestige: 2 })]),
+		// same for Bob, two days later
+		replay('2026-07-24T10:00:00Z', [sighting('t2', 'Bob', 250000, 20, { prestige: 0 })])
+	];
+	assert.deepEqual(
+		weeklyBoards(replays, NOW).prestiged.map((p) => [p.name, p.to, p.prestigedAt]),
+		[
+			// Bob's is the more recent prestige, though Alice reached the higher level
+			['Bob', 1, '2026-07-24T10:00:00.000Z'],
+			['Alice', 3, '2026-07-22T10:00:00.000Z']
+		]
+	);
+});
+
+test('prestiged: a double prestige is dated by its last step', () => {
+	const replays = [
+		replay('2026-07-20T10:00:00Z', [sighting('t1', 'Alice', 250000, 10, { prestige: 2 })]),
+		replay('2026-07-22T10:00:00Z', [sighting('t1', 'Alice', 250000, 11, { prestige: 3 })]),
+		replay('2026-07-25T10:00:00Z', [sighting('t1', 'Alice', 50000, 12, { prestige: 4 })])
+	];
+	assert.deepEqual(
+		weeklyBoards(replays, NOW).prestiged.map((p) => [p.from, p.to, p.prestigedAt]),
+		[[2, 4, '2026-07-22T10:00:00.000Z']]
+	);
+});
+
 test('classPicks: counts per-game picks inside the window only', () => {
 	const replays = [
 		replay('2026-07-10T10:00:00Z', [sighting('t1', 'Alice', 0, 1, { mos: ['Ghost'] })]),
@@ -161,4 +201,59 @@ test('classPicks: counts per-game picks inside the window only', () => {
 		{ mos: 'Ghost', picks: 3 },
 		{ mos: 'Reaper', picks: 1 }
 	]);
+});
+
+test('games: counts the window, settles wins and losses, names the top mode', () => {
+	const game = (playedAt: string, extra: Partial<WeeklyXpReplay>) => ({
+		...replay(playedAt, [sighting('t1', 'Alice', 1000, 10)]),
+		...extra
+	});
+	const replays = [
+		game('2026-07-17T10:00:00Z', { outcome: 'win', mode: 3 }), // pre-window
+		game('2026-07-20T10:00:00Z', { outcome: 'win', mode: 3 }),
+		game('2026-07-21T10:00:00Z', { outcome: 'loss', mode: 2 }),
+		game('2026-07-22T10:00:00Z', { outcome: 'win', mode: 2 }),
+		game('2026-07-23T10:00:00Z', {}), // unsettled, mode unknown
+		game('2026-07-24T10:00:00Z', { players: 0, outcome: 'win', mode: 2 }) // empty recording
+	];
+	assert.deepEqual(weeklyBoards(replays, NOW).games, { played: 4, won: 2, lost: 1, topMode: 2 });
+});
+
+test('games: a tie on mode goes to the harder one, and no mode known means none named', () => {
+	const game = (playedAt: string, mode?: number) => ({
+		...replay(playedAt, [sighting('t1', 'Alice', 1000, 10)]),
+		...(mode ? { mode } : {})
+	});
+	assert.equal(
+		weeklyBoards([game('2026-07-20T10:00:00Z', 2), game('2026-07-21T10:00:00Z', 4)], NOW).games
+			.topMode,
+		4
+	);
+	assert.deepEqual(weeklyBoards([game('2026-07-20T10:00:00Z')], NOW).games, {
+		played: 1,
+		won: 0,
+		lost: 0
+	});
+});
+
+test('longestGame: the longest in-window game with a length, or null', () => {
+	const g = (file: string, startedAt: string, gameLoops?: number) => ({
+		file,
+		startedAt,
+		players: 4,
+		...(gameLoops ? { gameLoops } : {})
+	});
+	assert.equal(
+		longestGame(
+			[
+				g('a.SC2Replay', '2026-07-18T10:00:00Z', 90000), // pre-window, longest of all
+				g('b.SC2Replay', '2026-07-20T10:00:00Z', 50000),
+				g('c.SC2Replay', '2026-07-24T10:00:00Z', 70000),
+				g('d.SC2Replay', '2026-07-25T10:00:00Z') // no length
+			],
+			NOW
+		)?.file,
+		'c.SC2Replay'
+	);
+	assert.equal(longestGame([g('d.SC2Replay', '2026-07-25T10:00:00Z')], NOW), null);
 });

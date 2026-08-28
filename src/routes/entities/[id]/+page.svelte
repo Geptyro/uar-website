@@ -1,8 +1,10 @@
 <script lang="ts">
-	import { unitById, tagClass, applyText } from '$lib/units';
+	import { unitById, tagClass, applyText, damageNotes } from '$lib/units';
 	import { mosById, mosHref, items, allowedLabel } from '$lib/mos';
+	import { roleLabel, type RefRole } from '$lib/refs';
 	import FactsCard, { type Fact } from '$lib/components/FactsCard.svelte';
 	import ModelCard from '$lib/components/ModelCard.svelte';
+	import AbilityTiles from '$lib/components/AbilityTiles.svelte';
 	import DescCard from '$lib/components/DescCard.svelte';
 	import Seo from '$lib/components/Seo.svelte';
 	import { entityCardUrl, unitDescription } from '$lib/seo';
@@ -13,10 +15,22 @@
 
 	const unit = $derived(data.unit);
 	const children = $derived(data.children);
-	const modelUrl = $derived(data.modelUrl);
+	const models = $derived(data.models);
+	const abilities = $derived(data.abilities);
+	const refs = $derived(data.refs);
 
-	/** The item this unit represents, when it's a pickup's world object. */
-	const item = $derived(items.find((i) => (i.unit ?? i.id) === unit.id));
+	const ROLE_CLASS: Record<RefRole, string> = {
+		spawns: 't-item',
+		event: 't-mos',
+		removes: 't-hostile',
+		uses: 't-other'
+	};
+
+	/** The item behind this unit: the pickup's own item, or the one that deploys into it. */
+	const item = $derived(
+		items.find((i) => (i.unit ?? i.id) === unit.id) ?? items.find((i) => i.deploys === unit.id)
+	);
+	const pickups = $derived(data.pickups);
 
 	const facts = $derived([
 		...(unit.role ? [{ icon: 'role', label: 'Role', value: unit.role } as Fact] : []),
@@ -39,7 +53,17 @@
 						value: typeof value === 'number' ? value.toLocaleString('en') : (value ?? '')
 					}) as Fact
 			),
-		{ icon: 'type', label: 'Source', value: unit.src.replace('+', ' + '), mono: true } as Fact
+		{ icon: 'type', label: 'Source', value: unit.src.replace('+', ' + '), mono: true } as Fact,
+		...(pickups.length
+			? [
+					{
+						icon: 'type',
+						label: 'Carried as',
+						value: pickups.map((p) => p.id).join(', '),
+						mono: true
+					} as Fact
+				]
+			: [])
 	]);
 </script>
 
@@ -49,10 +73,6 @@
 		description={unitDescription(unit)}
 		image={entityCardUrl(unit.id)}
 	/>
-
-	<nav class="crumbs">
-		<a href="/entities">← All entities</a>
-	</nav>
 
 	<div class="layout">
 		<div class="main">
@@ -79,6 +99,11 @@
 				</div>
 			{/if}
 
+			{#if abilities.length}
+				<h2 class="section">Abilities</h2>
+				<AbilityTiles {abilities} size="large" />
+			{/if}
+
 			{#if unit.weapons.length}
 				<h2 class="section">Weapons</h2>
 				<div class="tablewrap">
@@ -90,7 +115,7 @@
 								<th class="num">Range</th>
 								<th class="num">Period (s)</th>
 								<th class="num">DPS</th>
-								<th>On hit</th>
+								<th>Notes</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -101,15 +126,19 @@
 									<td class="num">{w.range ?? '?'}</td>
 									<td class="num">{w.period ?? '?'}</td>
 									<td class="num">{w.dmg && w.period ? Math.round(w.dmg / w.period) : '?'}</td>
-									<td class="mono applies">{(w.applies ?? []).map(applyText).join(' · ')}</td>
+									<td class="mono applies">
+										{[...damageNotes(w), ...(w.applies ?? []).map(applyText)].join(' · ')}
+									</td>
 								</tr>
 							{/each}
 						</tbody>
 					</table>
 				</div>
 				<p class="note footnote">
-					“?” means the weapon fires a multi-stage effect (pellets, splash chains) whose damage lives
-					deeper in the effect tree.
+					Damage is the direct hit, before the roll on top and the target's armor. The notes
+					column carries what else the shot does, read from its effect tree: the roll, armor it
+					bypasses, splash rings as a share of the damage within a radius, and damage on other
+					branches such as an upgrade's rounds.
 				</p>
 			{/if}
 
@@ -135,6 +164,42 @@
 					</p>
 				{/if}
 			</div>
+
+			{#if refs.length}
+				<h2 class="section">In the script</h2>
+				<p class="note">
+					Every trigger of the map's script that names this unit, read from the Galaxy source:
+					what makes the trigger fire and what it does with the unit. Names link to the mission
+					flow graph when the trigger is part of it.
+				</p>
+				<div class="tablewrap">
+					<table class="data" style="min-width: 560px">
+						<thead>
+							<tr>
+								<th>Trigger</th>
+								<th>Fires when</th>
+								<th>Does</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each refs as r (r.id)}
+								<tr>
+									<td>
+										{#if r.flow}<a href="/flow?t={r.id}">{r.name}</a>{:else}{r.name}{/if}
+										{#if r.via}<span class="via">via <code>{r.via}</code></span>{/if}
+									</td>
+									<td class="when">
+										{#each r.when as w, i (w)}{#if i > 0}<br />{/if}{w}{/each}
+									</td>
+									<td class="roles">
+										{#each r.roles as role (role)}<span class="tag {ROLE_CLASS[role]}">{roleLabel[role]}</span>{/each}
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			{/if}
 		</div>
 
 		<aside class="infobox">
@@ -149,8 +214,8 @@
 					<span class="tag {tagClass(unit.category)}">{unit.category}</span>
 				{/snippet}
 			</FactsCard>
-			{#if modelUrl}
-				<ModelCard src={modelUrl} alt="3D model of {unit.name || unit.id}" />
+			{#if models.length}
+				<ModelCard variants={models} alt="3D model of {unit.name || unit.id}" />
 			{/if}
 			{#if unit.tooltip}
 				<DescCard label="In-game description" text={unit.tooltip} />
@@ -191,6 +256,24 @@
 	}
 
 	/* ---------- main column ---------- */
+	.via {
+		display: block;
+		font-size: 11px;
+		color: var(--text-faint);
+	}
+	.via code {
+		font-size: 10.5px;
+	}
+	.when {
+		font-size: 12px;
+		color: var(--text-dim);
+	}
+	.roles {
+		white-space: nowrap;
+	}
+	.roles .tag + .tag {
+		margin-left: 4px;
+	}
 	.applies {
 		font-size: 11px;
 		color: var(--text-dim);
@@ -219,23 +302,6 @@
 	.mods .scope {
 		color: var(--text-faint);
 		margin-left: 0.4em;
-	}
-	.crumbs {
-		display: flex;
-		gap: 18px;
-		margin-bottom: 18px;
-	}
-	.crumbs a {
-		font-family: var(--font-mono);
-		font-size: 11px;
-		letter-spacing: 0.07em;
-		text-transform: uppercase;
-		text-decoration: none;
-		color: var(--text-faint);
-		transition: color 120ms ease;
-	}
-	.crumbs a:hover {
-		color: var(--accent);
 	}
 
 	.footnote {

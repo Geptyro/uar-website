@@ -128,6 +128,8 @@ export interface ReplayDoc {
 	 * are re-read from the bucket for whatever the newer parser adds.
 	 */
 	parser?: number;
+	/** Which version of the map was played — see ParsedReplay.mapChecksum. */
+	mapChecksum?: number;
 	sightings: ReplaySighting[];
 }
 
@@ -227,7 +229,9 @@ export async function ensureIndexes(): Promise<void> {
 		d.collection('players').createIndex({ clan: 1 }, { name: 'clan' }),
 		// the sweep's under-lock question, asked once per file it means to
 		// delete: "is this somebody's restore point?" (multikey over the array)
-		d.collection('players').createIndex({ restoreFiles: 1 }, { name: 'restoreFiles' })
+		d.collection('players').createIndex({ restoreFiles: 1 }, { name: 'restoreFiles' }),
+		// an account by one of its handles: who a ping names, who may publish (multikey over the array)
+		d.collection('accounts').createIndex({ toons: 1 }, { name: 'toons' })
 	]);
 }
 
@@ -403,7 +407,7 @@ function refresh<T>(key: string, load: () => Promise<T>): Promise<T> {
 	return entry.promise as Promise<T>;
 }
 
-async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
+export async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
 	const hit = cache.get(key);
 	if (hit) {
 		const state = cacheState(Date.now() - hit.at, ttlFor(key), STALE_WINDOW_MS);
@@ -894,17 +898,28 @@ export async function getActivityReplays(days: number): Promise<ActivityGame[]> 
 						startedAt: 1,
 						players: 1,
 						durationLoops: 1,
-						gameLoops: 1
+						gameLoops: 1,
+						outcome: 1,
+						settledOutcome: 1,
+						mode: 1,
+						settledMode: 1
 					}
 				}
 			)
 			.sort({ playedAt: 1 })
 			.toArray();
-		return docs.map((r) => ({
-			startedAt: r.startedAt ?? startedAtOf(r.playedAt, r.durationLoops),
-			players: r.players,
-			gameLoops: gameLoopsOf(r)
-		}));
+		return docs.map((r) => {
+			const outcome = replayOutcomeOf(r);
+			const mode = replayModeOf(r);
+			return {
+				file: r._id,
+				startedAt: r.startedAt ?? startedAtOf(r.playedAt, r.durationLoops),
+				players: r.players,
+				gameLoops: gameLoopsOf(r),
+				...(outcome ? { outcome } : {}),
+				...(mode ? { mode } : {})
+			};
+		});
 	});
 }
 
@@ -1173,6 +1188,11 @@ export async function getWeeklyBoards(): Promise<WeeklyBoards> {
 				{
 					projection: {
 						playedAt: 1,
+						players: 1,
+						outcome: 1,
+						settledOutcome: 1,
+						mode: 1,
+						settledMode: 1,
 						'sightings.toon': 1,
 						'sightings.name': 1,
 						'sightings.clan': 1,
@@ -1186,7 +1206,10 @@ export async function getWeeklyBoards(): Promise<WeeklyBoards> {
 				}
 			)
 			.toArray();
-		return weeklyBoards(docs, now);
+		return weeklyBoards(
+			docs.map((r) => ({ ...r, outcome: replayOutcomeOf(r), mode: replayModeOf(r) })),
+			now
+		);
 	});
 }
 
@@ -1853,6 +1876,7 @@ export async function rebuildPlayersFor(toons: string[]): Promise<number> {
 					mode: r.mode ?? null,
 					modifiers: r.modifiers ?? [],
 					modifiersRead: Boolean(r.modifiers),
+					mapChecksum: r.mapChecksum ?? 0,
 					sightings: r.sightings
 				},
 				size: r.size
@@ -1901,6 +1925,7 @@ export async function rebuildPlayers(): Promise<number> {
 				mode: r.mode ?? null,
 				modifiers: r.modifiers ?? [],
 				modifiersRead: Boolean(r.modifiers),
+				mapChecksum: r.mapChecksum ?? 0,
 				sightings: r.sightings
 			},
 			size: r.size

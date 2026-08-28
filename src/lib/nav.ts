@@ -11,6 +11,8 @@
  * account cog.
  */
 
+import { CAREER_TABS, careerHref } from './careerTabs';
+
 const icon = (paths: string) =>
 	`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
 
@@ -51,32 +53,12 @@ export const navItems: NavItemDef[] = [
 		)
 	},
 	{
-		href: '/si',
-		label: 'Skill IDs',
-		alias: ['skill identifiers', 'si', 'perks', 'bonuses'],
+		href: '/career',
+		label: 'Career',
+		alias: ['progression', 'unlocks', 'ranks', 'rank tracks', 'rank sets', 'xp'],
 		icon: icon(
-			'<line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/>'
+			'<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>'
 		)
-	},
-	{
-		href: '/ranks',
-		label: 'Ranks',
-		alias: ['rank tracks', 'enlisted', 'warrant officer', 'commissioned', 'xp'],
-		icon: icon('<polyline points="17 11 12 6 7 11"/><polyline points="17 18 12 13 7 18"/>')
-	},
-	{
-		href: '/medals',
-		label: 'Medals & decals',
-		alias: ['awards', 'achievements'],
-		icon: icon(
-			'<circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>'
-		)
-	},
-	{
-		href: '/camos',
-		label: 'Camouflages',
-		alias: ['skins', 'camo'],
-		icon: icon('<path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>')
 	},
 	{
 		href: '/players',
@@ -99,19 +81,19 @@ export const navItems: NavItemDef[] = [
 		icon: icon('<circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/>')
 	},
 	{
-		href: '/map',
-		label: 'Map & missions',
-		alias: ['regions', 'objectives'],
+		href: '/triggers',
+		label: 'Triggers',
+		alias: ['missions', 'mechanics', 'mule', 'objectives', 'script', 'mission flow', 'mission order'],
 		icon: icon(
-			'<polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>'
+			'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>'
 		)
 	},
 	{
-		href: '/flow',
-		label: 'Mission flow',
-		alias: ['mission order', 'triggers'],
+		href: '/map',
+		label: 'Map',
+		alias: ['regions', 'ao thalim', 'minimap', 'places'],
 		icon: icon(
-			'<line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>'
+			'<polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>'
 		)
 	},
 	{
@@ -131,6 +113,14 @@ export const navItems: NavItemDef[] = [
 		)
 	},
 	{
+		href: '/chat',
+		label: 'Chat',
+		alias: ['talk', 'messages', 'room', 'lfg'],
+		icon: icon(
+			'<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>'
+		)
+	},
+	{
 		href: '/feedback',
 		label: 'Feedback',
 		alias: ['bug report', 'suggestion', 'contact'],
@@ -145,6 +135,13 @@ export const navItems: NavItemDef[] = [
  */
 export const extraDestinations: NavDestination[] = [
 	{ href: '/mos', label: 'Compare all classes', alias: ['mos', 'classes', 'compare'] },
+	/* The career tabs past the first: one sidebar line, but four things someone
+	   types for. The ranks share the section's own URL, so they ride on it. */
+	...CAREER_TABS.filter((t) => t.segment).map((t) => ({
+		href: careerHref(t.segment),
+		label: t.label,
+		alias: t.alias
+	})),
 	{ href: '/changelog', label: 'Changelog', alias: ['releases', 'what is new', 'updates'] },
 	{ href: '/account', label: 'Account', alias: ['settings', 'battle.net', 'sign in', 'theme'] }
 ];

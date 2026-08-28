@@ -12,11 +12,13 @@
 	import { MadeBy } from 'cedricdessalles-commons';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
-	import { mosList, mosById } from '$lib/mos';
+	import { mosList, mosById, mosHrefSameTab } from '$lib/mos';
 	import { displayName } from '$lib/ogcard';
-	import { latestVersionInfo } from '$lib/changelog';
+	import { latestVersionInfo, monthLabel } from '$lib/changelog';
 	import { rememberUmamiId } from '$lib/analytics';
 	import { changelogIcon, navItems } from '$lib/nav';
+	import { onSiteEvent } from '$lib/siteEvents';
+	import { chat, chatMoved, chatSeen, chatSeenBefore } from '$lib/chatUnread.svelte';
 	import CommandPalette from '$lib/components/CommandPalette.svelte';
 	import ReadyToPlay from '$lib/components/ReadyToPlay.svelte';
 	import SyncChip from '$lib/components/SyncChip.svelte';
@@ -32,10 +34,10 @@
 
 	let palette = $state<ReturnType<typeof CommandPalette> | null>(null);
 
-	/* Ctrl/Cmd+F, Ctrl/Cmd+K and "/" — the binding set lives in commons so this
-	   site and STALZONE cannot drift on which keys open search, and the chip in
-	   the bar names the first of them. Esc closes, which is the <dialog>
-	   element's own doing. */
+	/* F, Ctrl/Cmd+K and "/" — the binding set lives in commons so this site
+	   and STALZONE cannot drift on which keys open search, and the chip in the
+	   bar names the first of them. Ctrl/Cmd+F is the browser's find-in-page
+	   again. Esc closes, which is the <dialog> element's own doing. */
 	function onWindowKeydown(e: KeyboardEvent) {
 		if (!isSearchShortcut(e)) return;
 		e.preventDefault();
@@ -57,46 +59,71 @@
 			// (SiegeTank) where the name is what the game calls it (AMX S-880),
 			// and this heading is the page's <h1>
 			const u = page.data.unit as { name?: string } | undefined;
-			const id = decodeURIComponent(p.slice('/entities/'.length));
-			return { section: 'Entities', title: displayName(u?.name ?? '') || id };
+			// the first segment is the entity; a tab (comments) is under it
+			const id = decodeURIComponent(p.slice('/entities/'.length).split('/')[0]);
+			return { section: 'Entities', sectionHref: '/entities', title: displayName(u?.name ?? '') || id };
 		}
 		if (p === '/guide') return { section: '', title: 'Quick guide' };
-		if (p === '/si') return { section: '', title: 'Skill Identifiers' };
-		if (p === '/ranks') return { section: '', title: 'Rank sets' };
-		if (p === '/medals') return { section: '', title: 'Medals & decals' };
-		if (p === '/camos') return { section: '', title: 'Camouflages' };
+		if (p === '/triggers') return { section: '', title: 'Triggers' };
+		if (p.startsWith('/triggers/')) {
+			// the group's name, not its slug
+			const g = page.data.group as { name?: string } | undefined;
+			return { section: 'Triggers', sectionHref: '/triggers', title: g?.name ?? p.slice('/triggers/'.length) };
+		}
+		// the section, whichever of its tabs is open — the tab bar names the tab
+		if (p === '/career' || p.startsWith('/career/')) return { section: '', title: 'Career' };
 		if (p === '/players') return { section: '', title: 'Players' };
 		if (p === '/clans') return { section: '', title: 'Clans' };
 		if (p.startsWith('/clans/')) {
-			return { section: 'Clans', title: `<${decodeURIComponent(p.slice(7))}>` };
+			return { section: 'Clans', sectionHref: '/clans', title: `<${decodeURIComponent(p.slice(7))}>` };
 		}
 		if (p === '/replays') return { section: '', title: 'Replays' };
 		if (p.startsWith('/replays/')) {
 			const id = p.slice(9);
 			const m = id.match(/^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})/);
-			return { section: 'Replays', title: m ? `${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]}` : id };
+			return { section: 'Replays', sectionHref: '/replays', title: m ? `${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]}` : id };
 		}
 		if (p.startsWith('/players/')) {
 			const pl = page.data.player as { name?: string } | undefined;
 			return {
 				section: 'Players',
+				sectionHref: '/players',
 				title: pl?.name ?? p.slice(9),
 				icon: (page.data.avatarUrl as string | null) ?? undefined,
 				round: true
 			};
 		}
-		if (p === '/map') return { section: '', title: 'Map & missions' };
-		if (p === '/flow') return { section: '', title: 'Mission flow' };
+		if (p === '/map') return { section: '', title: 'Map' };
 		if (p === '/changelog') return { section: '', title: 'Changelog' };
+		if (p.startsWith('/changelog/')) {
+			// one month of releases, a page below the changelog
+			return { section: 'Changelog', sectionHref: '/changelog', title: monthLabel(p.slice(11)) };
+		}
 		if (p === '/feedback') return { section: '', title: 'Feedback' };
 		if (p === '/companion') return { section: '', title: 'UAR Companion' };
 		if (p === '/account') return { section: '', title: 'Account' };
+		if (p === '/activity') return { section: '', title: 'Activity' };
+		if (p === '/chat') return { section: '', title: 'Chat' };
 		if (p === '/mos') return { section: 'MOS', title: 'Classes compared' };
 		if (p.startsWith('/mos/')) {
 			// the class, whichever of its tabs is open — the tab bar names the tab
 			const id = decodeURIComponent(p.slice(5).split('/')[0]);
 			const m = mosById.get(id);
-			return { section: 'MOS', title: m?.name ?? id, icon: m?.icon };
+			const rest = p.slice(5).split('/').slice(1);
+			// a guide is a page below the class: the class becomes one step of
+			// trail (its portrait, linked), the guide's own title the heading. The
+			// bar has no room for more, and the class's Guides tab, lit under it,
+			// says the rest.
+			if (rest[0] === 'guides' && rest.length >= 2) {
+				const b = page.data.build as { title?: string } | undefined;
+				const title = rest[1] === 'new' ? 'New guide' : (b?.title ?? decodeURIComponent(rest[1]));
+				return {
+					section: '',
+					trail: [{ label: m?.name ?? id, href: `/mos/${id}/guides`, icon: m?.icon }],
+					title
+				};
+			}
+			return { section: 'MOS', sectionHref: '/mos', title: m?.name ?? id, icon: m?.icon };
 		}
 		return { section: '', title: '' };
 	});
@@ -104,12 +131,27 @@
 	// Battle.net login state for the top-bar buttons; fetched client-side
 	// because most pages (and this layout) are prerendered. undefined = not
 	// yet known — the buttons stay hidden rather than flashing a wrong state.
-	const signedOut = { battletag: null, avatar: null, toon: null };
-	let me = $state<{ battletag: string | null; avatar: string | null; toon: string | null } | undefined>();
+	const signedOut = { battletag: null, avatar: null, toon: null, unread: 0, chatAt: null };
+	let me = $state<{ battletag: string | null; avatar: string | null; toon: string | null; unread: number; chatAt: string | null } | undefined>();
+	onMount(() => {
+		// the site's stream says when the chat moved; on the chat page that is already seen
+		const off = onSiteEvent('chat', (d) => {
+			const at = (d as { at?: string } | null)?.at;
+			if (page.url.pathname === '/chat') chatSeen(at);
+			else chatMoved(at);
+		});
+		return off;
+	});
+
 	onMount(async () => {
 		try {
 			const res = await fetch('/api/me');
 			me = res.ok ? await res.json() : signedOut;
+			// the chat's newest message against what this browser has seen: the sidebar's
+			// dot. A browser that has never seen the chat starts level with it, the way
+			// a thread's first visit marks nothing new: the dot is for what comes after.
+			if (!chatSeenBefore()) chatSeen(me?.chatAt ?? undefined);
+			else chatMoved(me?.chatAt);
 			// Cached for app.html, which stamps it on the landing pageview of
 			// the next load — identify() below always arrives too late for that
 			// one. A fetch that threw leaves the cache alone rather than
@@ -139,11 +181,16 @@
 		>
 	);
 	const siteVersion = badge.version;
+	// the front page and its month pages are one section: opening any of them
+	// is reading the changelog, and the latest release is at most a click away
+	const inChangelog = $derived(
+		page.url.pathname === '/changelog' || page.url.pathname.startsWith('/changelog/')
+	);
 	let newChanges = $state(false);
 	$effect(() => {
 		if (!siteVersion) return;
 		const seen = localStorage.getItem('uar:seen-version');
-		if (page.url.pathname === '/changelog' || seen === null) {
+		if (inChangelog || seen === null) {
 			localStorage.setItem('uar:seen-version', siteVersion);
 			newChanges = false;
 		} else {
@@ -171,7 +218,23 @@
 		<NavProgress />
 		<!-- the page heading lives here, and it is the page's <h1>: one heading,
 		     in the one place the design shows it -->
-		{#if pageTitle.section}<span class="crumb-section">{pageTitle.section} /</span>{/if}
+		<!-- the section crumb is the way back to its index, when it has one -->
+		{#if pageTitle.section && pageTitle.sectionHref}
+			<a class="crumb-section crumb-link" href={pageTitle.sectionHref}>{pageTitle.section}</a>
+			<span class="crumb-section crumb-sep">/</span>
+		{:else if pageTitle.section}<span class="crumb-section">{pageTitle.section} /</span>{/if}
+		{#if pageTitle.trail}
+			<!-- the pages above this one, each a link; folded away on a phone, where
+			     the heading alone is what fits -->
+			{#each pageTitle.trail as t (t.href)}
+				<!-- a step with a picture is the picture alone: the bar is narrow, and
+				     the class's portrait says which class as well as its name would -->
+				<a class="crumb-link" href={t.href} title={t.label} aria-label={t.label}>
+					{#if t.icon}<img class="crumb-icon small" src={t.icon} alt="" />{:else}{t.label}{/if}
+				</a>
+				<span class="crumb-section crumb-sep">/</span>
+			{/each}
+		{/if}
 		{#if pageTitle.icon}
 			<img
 				class="crumb-icon"
@@ -205,6 +268,20 @@
 			/>
 			<div class="acct-group">
 				{#if me.battletag}
+					<!-- the bell: what the player was told, with the count of what they have not read -->
+					<a
+						class="bell"
+						class:on={page.url.pathname === '/activity'}
+						class:has={me.unread > 0}
+						href="/activity"
+						title={me.unread ? `${me.unread} unread notification${me.unread === 1 ? '' : 's'}` : 'Activity and notifications'}
+						aria-label={me.unread ? `Activity, ${me.unread} unread notifications` : 'Activity and notifications'}
+					>
+						<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" />
+						</svg>
+						{#if me.unread}<span class="bell-n">{me.unread > 9 ? '9+' : me.unread}</span>{/if}
+					</a>
 					<div class="acct-chip">
 						<a
 							class="acct-main"
@@ -281,7 +358,15 @@
 				active={isActive(item.href)}
 				onclick={close}
 			>
-				{#snippet icon()}{@html item.icon}{/snippet}
+				{#snippet icon()}
+					{@html item.icon}
+					{#if item.href === '/chat' && chat.unread}<span
+							class="ver-dot"
+							class:inverted={isActive('/chat')}
+							aria-hidden="true"
+							title="New messages in the chat"
+						></span>{/if}
+				{/snippet}
 			</NavItem>
 		{/each}
 
@@ -292,7 +377,7 @@
 			<NavItem
 				href="/changelog"
 				label="Changelog"
-				active={page.url.pathname === '/changelog'}
+				active={inChangelog}
 				onclick={close}
 				title={newChanges
 					? `Changelog — ${siteVersion} is new`
@@ -302,7 +387,7 @@
 					{@html changelogIcon}
 					{#if newChanges}<span
 							class="ver-dot"
-							class:inverted={page.url.pathname === '/changelog'}
+							class:inverted={inChangelog}
 							aria-hidden="true"
 						></span>{/if}
 				{/snippet}
@@ -327,8 +412,11 @@
 			{/snippet}
 		</NavItem>
 		{#each mosList as m (m.id)}
+			<!-- the tab stays open across classes: Gear to Gear, Players to
+			     Players — a reader comparing two classes' gear should not have
+			     to reopen the tab on every switch -->
 			<NavItem
-				href="/mos/{m.id}"
+				href={mosHrefSameTab(m.id, page.route.id)}
 				label={m.name}
 				active={page.url.pathname === `/mos/${m.id}` ||
 					page.url.pathname.startsWith(`/mos/${m.id}/`)}
@@ -949,6 +1037,14 @@
 		color: var(--text-dim);
 		white-space: nowrap;
 	}
+	a.crumb-link {
+		text-decoration: none;
+		border-bottom: 1px solid transparent;
+	}
+	a.crumb-link:hover {
+		color: var(--text);
+		border-bottom-color: var(--text-dim);
+	}
 	/* the subject's portrait, level with the heading rather than its baseline */
 	.crumb-icon {
 		width: 24px;
@@ -958,6 +1054,31 @@
 		object-fit: cover;
 		border-radius: var(--radius-2);
 		border: var(--border-width) solid var(--border);
+	}
+	.crumb-link {
+		display: inline-flex;
+		align-items: center;
+		flex: none;
+		color: var(--text-dim);
+		text-decoration: none;
+		font-family: var(--font-mono);
+		font-size: 11px;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		white-space: nowrap;
+	}
+	.crumb-link:hover {
+		color: var(--text);
+	}
+	.crumb-icon.small {
+		width: 20px;
+		height: 20px;
+	}
+	@media (max-width: 760px) {
+		.crumb-link,
+		.crumb-sep {
+			display: none;
+		}
 	}
 	.crumb-icon.round {
 		border-radius: 50%;
@@ -1028,6 +1149,44 @@
 		background: color-mix(in srgb, currentColor 12%, transparent);
 	}
 	/* cog = darker circular end-cap overlapping the chip, like the ready chip */
+	/* the bell: a ring like the cog's, lit when there is something in it */
+	.bell {
+		position: relative;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 30px;
+		height: 30px;
+		flex: none;
+		border-radius: 50%;
+		border: 1px solid var(--border-strong);
+		background: var(--surface-raised);
+		color: var(--text-dim);
+		text-decoration: none;
+		transition: all 120ms ease;
+	}
+	.bell:hover,
+	.bell.on {
+		color: var(--text);
+		border-color: var(--text-faint);
+	}
+	.bell.has {
+		color: var(--accent);
+		border-color: var(--accent);
+	}
+	.bell-n {
+		position: absolute;
+		top: -5px;
+		right: -6px;
+		min-width: 16px;
+		height: 16px;
+		padding: 0 4px;
+		border-radius: 99px;
+		background: var(--accent);
+		color: var(--accent-contrast);
+		font: 700 9.5px/16px var(--font-mono);
+		text-align: center;
+	}
 	.acct-cog {
 		display: flex;
 		align-items: center;

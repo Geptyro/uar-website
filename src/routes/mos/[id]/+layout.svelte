@@ -22,6 +22,8 @@
 	import { mosTabHref, tabSegment } from '$lib/mosTabs';
 	import MosInfobox from '$lib/components/mos/MosInfobox.svelte';
 	import ClassFrame from '$lib/components/mos/ClassFrame.svelte';
+	import BuildBar from '$lib/components/builds/BuildBar.svelte';
+	import type { BuildStatus } from '$lib/builds';
 
 	let { data, children } = $props();
 
@@ -31,6 +33,17 @@
 
 	const active = $derived(tabSegment(page.route.id, page.params) ?? '');
 	const onOverview = $derived(active === '');
+
+	/* A guide page is below the class: its own bar (a way back, View, Edit,
+	   the actions) stands in for the class's tabs there. The guide itself is
+	   the guide layout's data, which this layout sees through the page. */
+	const onBuild = $derived(page.route.id?.startsWith('/mos/[id]/guides/[slug]') ?? false);
+	const buildData = $derived(
+		page.data as {
+			build?: { slug: string; title: string; status: BuildStatus; comments?: number };
+			viewer?: { isAuthor: boolean; admin: boolean };
+		}
+	);
 
 	const barTabs = $derived(
 		data.tabs.map((t) => ({
@@ -47,23 +60,32 @@
 	player profile's layout for the reasoning; the settings match it so the two
 	frames feel like one.
 -->
-<TabSwipe
-	tabs={barTabs}
-	{active}
-	onnavigate={(to) => void goto(to, { noScroll: true })}
-	preload={preloadData}
-	middle
-/>
+{#if onBuild && buildData.build && buildData.viewer}
+	<BuildBar
+		{mos}
+		build={buildData.build}
+		viewer={buildData.viewer}
+		active={page.route.id?.endsWith('/edit') ? 'edit' : page.route.id?.endsWith('/comments') ? 'comments' : ''}
+	/>
+{:else}
+	<TabSwipe
+		tabs={barTabs}
+		{active}
+		onnavigate={(to) => void goto(to, { noScroll: true })}
+		preload={preloadData}
+		middle
+	/>
 
-<TabBar
-	docked
-	tabs={barTabs}
-	{active}
-	label="{mos.name} sections"
-	shortcuts
-	gestures="both"
-	onnavigate={(to) => void goto(to, { noScroll: true })}
-/>
+	<TabBar
+		docked
+		tabs={barTabs}
+		{active}
+		label="{mos.name} sections"
+		shortcuts
+		gestures="both"
+		onnavigate={(to) => void goto(to, { noScroll: true })}
+	/>
+{/if}
 
 {#if onOverview}
 	<Page>

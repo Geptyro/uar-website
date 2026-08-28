@@ -4,7 +4,8 @@ One markdown file per user-visible change, committed in the same commit as the
 change itself. `npm run release vX.Y.Z` moves the entries here into
 `changelog/vX.Y.Z/`, stamps the release date, commits (changelog/ only), tags
 and pushes — the deploy workflow re-runs CI on the tag and deploys only if it
-passes. The site renders everything at `/changelog`.
+passes. The site renders the newest months at `/changelog` and every month
+under `/changelog/YYYY-MM`.
 
 Format — all frontmatter fields required, body written for players, not
 developers:

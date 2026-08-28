@@ -1,10 +1,11 @@
-import { units } from '$lib/units';
+import { listedUnits as units } from '$lib/units';
 import { mosById, mosList } from '$lib/mos';
-import { hasGuide } from '$lib/guides';
+import { groupHref, groupIds } from '$lib/groups';
 import { mosTabHref, vehicleSlug } from '$lib/mosTabs';
 import { dbConfigured, getClanMembers, getPlayerSitemap } from '$lib/server/db';
 import { SITE_URL } from '$lib/seo';
 import { sitemapDate, sitemapXml, type SitemapUrl } from 'sveltekit-commons/sitemap';
+import { releaseMonths } from '$lib/changelog';
 import { buildClans, type ClanMember } from '$lib/clans';
 import type { RequestHandler } from './$types';
 
@@ -26,16 +27,25 @@ const STATIC: SitemapUrl[] = [
 	{ path: '/players', priority: 0.8 },
 	{ path: '/clans', priority: 0.7 },
 	{ path: '/replays', priority: 0.6 },
+	{ path: '/triggers', priority: 0.7 },
 	{ path: '/map', priority: 0.7 },
-	{ path: '/flow', priority: 0.6 },
-	{ path: '/si', priority: 0.7 },
-	{ path: '/ranks', priority: 0.7 },
-	{ path: '/medals', priority: 0.7 },
-	{ path: '/camos', priority: 0.6 },
+	{ path: '/career', priority: 0.7 },
+	{ path: '/career/si', priority: 0.7 },
+	{ path: '/career/medals', priority: 0.7 },
+	{ path: '/career/camos', priority: 0.6 },
 	{ path: '/companion', priority: 0.8 },
 	{ path: '/changelog', priority: 0.4 },
 	{ path: '/feedback', priority: 0.3 }
 ];
+
+/* One page per month of releases, read off the release.json files: the cheap
+   glob, so listing them does not pull every entry's prose into this chunk. */
+const changelogMonths: SitemapUrl[] = releaseMonths(
+	import.meta.glob('/changelog/v*/release.json', { eager: true, import: 'default' }) as Record<
+		string,
+		{ date?: string }
+	>
+).map((month) => ({ path: `/changelog/${month}`, priority: 0.3 }));
 
 export const GET: RequestHandler = async ({ setHeaders }) => {
 	/* The wiki half carries no lastmod on purpose. Its pages change when the
@@ -53,11 +63,16 @@ export const GET: RequestHandler = async ({ setHeaders }) => {
 		...(m.vehicle && mosById.get(m.vehicle)
 			? [{ path: mosTabHref(m.id, vehicleSlug(mosById.get(m.vehicle)!.name)), priority: 0.6 }]
 			: []),
-		...(hasGuide(m.id) ? [{ path: mosTabHref(m.id, 'guide'), priority: 0.7 }] : [])
+		{ path: mosTabHref(m.id, 'guides'), priority: 0.6 }
 	]);
 	const urls: SitemapUrl[] = [
 		...STATIC,
+		...changelogMonths,
 		...classPages,
+		...groupIds.flatMap((id) => [
+			{ path: groupHref(id), priority: 0.7 },
+			{ path: `${groupHref(id)}/flow`, priority: 0.5 }
+		]),
 		...units.map((u) => ({ path: `/entities/${encodeURIComponent(u.id)}`, priority: 0.5 }))
 	];
 

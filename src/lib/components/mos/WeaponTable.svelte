@@ -9,7 +9,7 @@
 	 * their own (mission props) are named but not linked.
 	 */
 	import { allowedLabel, modsFor, type Item } from '$lib/mos';
-	import { applyText, type Weapon } from '$lib/units';
+	import { applyText, damageNotes, type Weapon } from '$lib/units';
 
 	let {
 		mosId,
@@ -85,7 +85,9 @@
 					<td class="num">{w.range ?? '?'}</td>
 					<td class="num">{w.period ?? '?'}</td>
 					<td class="num">{dps(w.dmg, w.period)}</td>
-					<td class="mono notes">{(w.applies ?? []).map(applyText).join(' · ')}</td>
+					<td class="mono notes"
+						>{[...damageNotes(w), ...(w.applies ?? []).map(applyText)].join(' · ')}</td
+					>
 				</tr>
 			{/each}
 			{#each items as item (item.id)}
@@ -99,7 +101,7 @@
 							<td class="num">{g.period ?? '?'}</td>
 							<td class="num">{dps(g.dmg, g.period)}</td>
 							<td class="mono notes"
-								>{[itemNote(item), ...(g.applies ?? []).map(applyText)]
+								>{[itemNote(item), ...damageNotes(g), ...(g.applies ?? []).map(applyText)]
 									.filter(Boolean)
 									.join(' · ')}</td
 							>

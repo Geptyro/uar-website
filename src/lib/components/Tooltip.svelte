@@ -39,6 +39,8 @@
 		tip,
 		label = '',
 		text = '',
+		/** The thing's picture, in the card's corner beside the label. */
+		icon = null,
 		/** the thing's own page — rendered as a link at the foot of the card */
 		href = '',
 		linkText = '',
@@ -54,6 +56,7 @@
 		tip?: Snippet;
 		label?: string;
 		text?: string;
+		icon?: string | null;
 		href?: string;
 		linkText?: string;
 		placement?: Placement | 'entry';
@@ -279,7 +282,12 @@
 		{#if tip}
 			{@render tip()}
 		{:else}
-			{#if label}<b class="tt-label">{label}</b>{/if}
+			{#if icon || label}
+				<div class="tt-head">
+					{#if icon}<img class="tt-icon" src={icon} alt="" />{/if}
+					{#if label}<b class="tt-label">{label}</b>{/if}
+				</div>
+			{/if}
 			{#if text}<span class="tt-text">{text}</span>{/if}
 		{/if}
 		{#if href}
@@ -350,6 +358,21 @@
 	.tt-link:hover {
 		text-decoration: underline;
 		text-underline-offset: 3px;
+	}
+	/* the thing's picture in the corner, its name beside it, level with it */
+	.tt-head {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+	}
+	.tt-icon {
+		width: 75px;
+		height: 75px;
+		flex: none;
+		border-radius: var(--radius-2);
+		object-fit: cover;
+		background: var(--surface-sunken);
+		border: 1px solid var(--border);
 	}
 	.tt-label {
 		font-size: 13px;

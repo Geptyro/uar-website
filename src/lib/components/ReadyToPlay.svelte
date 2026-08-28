@@ -7,6 +7,7 @@
 	 * the count (linking to sign-in) whenever someone is ready.
 	 * Client-side fetch + polling because the layout is prerendered.
 	 */
+	import { onSiteEvent } from '$lib/siteEvents';
 	import { onMount } from 'svelte';
 	import { HoverPop } from 'sveltekit-commons';
 	import { PresenceChips, ReadyPlayers, ReadyChip } from 'uar-shared';
@@ -92,12 +93,12 @@
 		refresh();
 		// live sync: the server announces roster changes over SSE and we
 		// refetch; the slow poll is only a fallback, the tick drives countdowns
-		const events = new EventSource('/api/ready/events');
-		events.addEventListener('change', refresh);
+		// one stream per tab, shared with the chat's unread dot (see $lib/siteEvents)
+		const off = onSiteEvent('change', refresh);
 		const poll = setInterval(refresh, 60_000);
 		const tick = setInterval(() => (now = Date.now()), 15_000);
 		return () => {
-			events.close();
+			off();
 			clearInterval(poll);
 			clearInterval(tick);
 			if (noticeTimer) clearTimeout(noticeTimer);

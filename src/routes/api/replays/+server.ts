@@ -224,6 +224,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 			// so a later backfill knows which readable docs a newer parser has
 			// not seen (see PARSER_GENERATION)
 			parser: PARSER_GENERATION,
+			mapChecksum: parsed.mapChecksum,
 			sightings: parsed.sightings
 		};
 		// replaceReplayDoc writes the doc whole, so blobPrunedAt is whatever was

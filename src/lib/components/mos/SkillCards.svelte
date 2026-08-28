@@ -7,7 +7,7 @@
 
 <div class="cards">
 	{#each skills as s (s.id)}
-		<article class="card">
+		<article class="card" id="skill-{s.id}">
 			<h3>
 				{#if s.icon}
 					<img class="skill-icon" src={s.icon} alt="" loading="lazy" />

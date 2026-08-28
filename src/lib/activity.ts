@@ -13,6 +13,7 @@
  */
 
 import { LOOPS_PER_SECOND } from './gameEnd.ts';
+import type { Outcome } from './outcome.ts';
 
 export const SLOT_MINUTES = 30;
 
@@ -35,6 +36,11 @@ export interface ActivityGame {
 	players: number;
 	/** The game's own length in loops (16 per game-second, see gameEnd.ts). */
 	gameLoops?: number;
+	/** The replay file, so the longest game of the week can link to its page. */
+	file?: string;
+	/** The settled result and mode where known — not read by the chart itself. */
+	outcome?: Outcome;
+	mode?: number;
 }
 
 const SLOT_MS = SLOT_MINUTES * 60 * 1000;

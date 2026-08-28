@@ -68,3 +68,51 @@ export function buildClans(players: ClanMember[]): ClanSummary[] {
 	clans.sort((a, b) => b.careerXp - a.careerXp);
 	return clans;
 }
+
+/** The `?sort=` values the clan list answers to, matching its table headers. */
+export const CLAN_SORTS = [
+	'tag',
+	'members',
+	'career',
+	'games',
+	'wins',
+	'revives',
+	'top',
+	'seen'
+] as const;
+export type ClanSort = (typeof CLAN_SORTS)[number];
+
+const CLAN_SORT_VALUE: Record<ClanSort, (c: ClanSummary) => number | string> = {
+	tag: (c) => c.tag.toLowerCase(),
+	members: (c) => c.members,
+	career: (c) => c.careerXp,
+	games: (c) => c.games,
+	wins: (c) => c.wins,
+	revives: (c) => c.revives,
+	top: (c) => c.top.name.toLowerCase(),
+	seen: (c) => c.lastSeen
+};
+
+/**
+ * A copy of `clans` in the order a `?sort=` asks for. Ties fall back to career
+ * XP and then to the tag, so the order is total: once the list is paged, a
+ * clan cannot land on two pages or on none.
+ */
+export function sortClans(clans: ClanSummary[], sort: ClanSort, dir: 1 | -1): ClanSummary[] {
+	const value = CLAN_SORT_VALUE[sort];
+	return [...clans].sort((a, b) => {
+		const x = value(a);
+		const y = value(b);
+		const cmp = typeof x === 'number' ? x - (y as number) : String(x).localeCompare(String(y));
+		return cmp * dir || b.careerXp - a.careerXp || a.tag.localeCompare(b.tag);
+	});
+}
+
+/** The clans whose tag or top player matches `q`, case-insensitively. */
+export function searchClans(clans: ClanSummary[], q: string): ClanSummary[] {
+	const needle = q.trim().toLowerCase();
+	if (!needle) return clans;
+	return clans.filter(
+		(c) => c.tag.toLowerCase().includes(needle) || c.top.name.toLowerCase().includes(needle)
+	);
+}

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { units, categories, categoryCount, weaponLabel } from '$lib/units';
+	import { units, categories, categoryCount } from '$lib/units';
 	import StatIcon from '$lib/components/StatIcon.svelte';
 	// the widget itself drops `minor` entries — "a player would not notice
 	// unless told" is what that field means, not a call each site re-makes
@@ -8,9 +8,14 @@
 	import DescCard from '$lib/components/DescCard.svelte';
 	import ActivityChart from '$lib/components/ActivityChart.svelte';
 	import RecentGames from '$lib/components/RecentGames.svelte';
+	import RecentActivity from '$lib/components/RecentActivity.svelte';
 	import Seo from '$lib/components/Seo.svelte';
+	import ModeMark from '$lib/components/ModeMark.svelte';
+	import { fmtDuration } from '$lib/outcome';
+	import { modeName } from '$lib/players';
 	import anonPortrait from '$lib/assets/anon-portrait.svg';
 	import { portraitFallback } from '$lib/portrait';
+	import { timeAgo } from 'sveltekit-commons/time';
 
 	import { mosById, mosHref } from '$lib/mos';
 
@@ -24,6 +29,26 @@
 
 	const COMPANION_REPO = 'https://github.com/Geptyro/uar-companion';
 
+	// how long ago each prestige was, the way the Last games widget dates its
+	// rows: the server's clock on SSR, the viewer's after hydration, and the
+	// exact date kept as the row's title
+	const now = Date.now();
+	const fmtWhen = new Intl.DateTimeFormat('en', {
+		weekday: 'short',
+		month: 'short',
+		day: 'numeric',
+		hour: '2-digit',
+		minute: '2-digit',
+		hour12: false
+	});
+	const prestiged = $derived(
+		data.weekly.prestiged.map((p) => ({
+			...p,
+			ago: timeAgo(p.prestigedAt, now) ?? fmtWhen.format(new Date(p.prestigedAt)),
+			exact: fmtWhen.format(new Date(p.prestigedAt))
+		}))
+	);
+
 	const unitById = new Map(units.map((u) => [u.id, u]));
 
 	const mosUnits = units
@@ -35,9 +60,34 @@
 		)
 		.sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id));
 
-	const bosses = units
-		.filter((u) => u.category === 'undead / hostile' && (u.life ?? 0) >= 10000)
-		.sort((a, b) => (b.life ?? 0) - (a.life ?? 0));
+	// the "new here" strip: the server shows it once and has already set the
+	// cookie that keeps it off the next load (see +page.server.ts), so the
+	// cross only folds it for the rest of this view
+	let hidden = $state(false);
+	const welcome = $derived(data.welcome && !hidden);
+
+	const games = $derived(data.weekly.games);
+	// won and lost do not add up to played: a game stays unsettled until
+	// somebody plays a follow-up (see lib/outcome.ts), so the rate is over the
+	// ones with a result
+	const settled = $derived(games.won + games.lost);
+	const winRate = $derived(settled ? Math.round((games.won / settled) * 100) : null);
+
+	const longest = $derived.by(() => {
+		const g = data.longest;
+		if (!g?.file || !g.gameLoops) return null;
+		const facts = [
+			`${g.players} player${g.players === 1 ? '' : 's'}`,
+			g.mode ? modeName(g.mode) : '',
+			g.outcome ?? ''
+		].filter(Boolean);
+		return {
+			id: g.file.replace(/\.SC2Replay$/, ''),
+			duration: fmtDuration(g.gameLoops),
+			outcome: g.outcome,
+			title: `${facts.join(' · ')} · ${fmtWhen.format(new Date(g.startedAt))}`
+		};
+	});
 </script>
 
 <Page>
@@ -46,10 +96,59 @@
 		description="Undead Assault Reborn, the StarCraft II arcade map: every player class, undead, item and weapon, plus player profiles, clans, replays and a companion app."
 	/>
 
+	{#if welcome}
+		<div class="welcome card">
+			<p class="welcome-text">
+				<strong>New here?</strong> Undead Assault Reborn is a StarCraft II arcade map. This site
+				documents the game and keeps track of who plays it.
+			</p>
+			<nav class="welcome-links" aria-label="Start here">
+				<a href="/guide">Quick guide</a>
+				<a href="/mos">Classes</a>
+				<a href="/map">Map</a>
+			</nav>
+			<button class="welcome-hide" type="button" onclick={() => (hidden = true)} aria-label="Hide">×</button>
+		</div>
+	{/if}
+
 	<div class="layout">
 	<div class="main">
-	{#if data.weekly.xp.length || classPicks.length}
+	{#if data.weekly.xp.length || classPicks.length || games.played}
 		<h2 class="section">This week · last 7 days</h2>
+		{#if games.played}
+			<div class="strip week">
+				<div class="tile">
+					<b>{games.played.toLocaleString('en')}</b>
+					<span>games</span>
+				</div>
+				<div class="tile">
+					<b>{games.won.toLocaleString('en')}</b>
+					<span>won</span>
+				</div>
+				<div class="tile">
+					<b>{games.lost.toLocaleString('en')}</b>
+					<span>lost</span>
+				</div>
+				{#if winRate !== null}
+					<div class="tile" title="Over the {settled} game{settled === 1 ? '' : 's'} with a known result">
+						<b>{winRate}%</b>
+						<span>win rate</span>
+					</div>
+				{/if}
+				{#if games.topMode}
+					<div class="tile">
+						<b class="mode-b"><ModeMark mode={games.topMode} iconOnly />{modeName(games.topMode)}</b>
+						<span>most played</span>
+					</div>
+				{/if}
+				{#if longest}
+					<a class="tile" href="/replays/{longest.id}" title={longest.title}>
+						<b>{longest.duration}</b>
+						<span>longest game{longest.outcome ? ` · ${longest.outcome}` : ''}</span>
+					</a>
+				{/if}
+			</div>
+		{/if}
 		<div class="boards">
 			{#if data.weekly.xp.length}
 				<div class="tablewrap">
@@ -168,32 +267,6 @@
 			</a>
 		{/each}
 	</div>
-
-	<h2 class="section">Heavy hostiles · 10,000+ HP</h2>
-	<div class="tablewrap">
-		<table class="data" style="min-width: 640px">
-			<thead>
-				<tr>
-					<th>Name</th>
-					<th class="num">Life</th>
-					<th class="num">Armor</th>
-					<th class="num">Speed</th>
-					<th>Weapons</th>
-				</tr>
-			</thead>
-			<tbody>
-				{#each bosses as u (u.id)}
-					<tr>
-						<td><a href="/entities/{u.id}">{u.name || u.id}</a></td>
-						<td class="num">{u.life?.toLocaleString('en')}</td>
-						<td class="num">{u.armor ?? ''}</td>
-						<td class="num">{u.speed ?? ''}</td>
-						<td class="mono">{u.weapons.map(weaponLabel).join('; ')}</td>
-					</tr>
-				{/each}
-			</tbody>
-		</table>
-	</div>
 	</div>
 
 	<aside class="infobox">
@@ -301,7 +374,7 @@
 					<span class="pr-when">· last 7 days</span>
 				</div>
 				<ul class="pr-list">
-					{#each data.weekly.prestiged as p (p.toon || p.name)}
+					{#each prestiged as p (p.toon || p.name)}
 						<li class="pr-item">
 							<img
 								class="pr-portrait"
@@ -311,12 +384,15 @@
 								use:portraitFallback={anonPortrait}
 							/>
 							<span class="pr-who">
-								{#if p.clan}<span class="pclan">&lt;{p.clan}&gt;</span>{/if}
-								{#if p.toon}
-									<a class="pname" href="/players/{p.toon}">{p.name}</a>
-								{:else}
-									<span class="pname">{p.name}</span>
-								{/if}
+								<span class="pr-name">
+									{#if p.clan}<span class="pclan">&lt;{p.clan}&gt;</span>{/if}
+									{#if p.toon}
+										<a class="pname" href="/players/{p.toon}">{p.name}</a>
+									{:else}
+										<span class="pname">{p.name}</span>
+									{/if}
+								</span>
+								<span class="pr-ago" title={p.exact}>{p.ago}</span>
 							</span>
 							<span class="pr-jump">P{p.from} <span class="pr-arrow">→</span></span>
 							<b class="pr-level">P{p.to}</b>
@@ -328,6 +404,10 @@
 
 		{#if data.recent.length}
 			<RecentGames games={data.recent} />
+		{/if}
+
+		{#if data.community.length}
+			<RecentActivity items={data.community} />
 		{/if}
 
 		<WhatsNew release={latestRelease} />
@@ -597,10 +677,25 @@
 	}
 	.pr-who {
 		display: flex;
+		flex-direction: column;
+		gap: 1px;
+		min-width: 0;
+		overflow: hidden;
+	}
+	.pr-name {
+		display: flex;
 		align-items: baseline;
 		gap: 5px;
 		min-width: 0;
 		overflow: hidden;
+	}
+	/* under the name: the roll runs newest first, and this is what says so.
+	   dim, not faint — on the gold wash faint sinks out of reach */
+	.pr-ago {
+		font-family: var(--font-mono);
+		font-size: 11px;
+		color: var(--text-dim);
+		white-space: nowrap;
 	}
 	/* name left, the jump right, whatever the column width */
 	.pr-jump {
@@ -645,6 +740,10 @@
 		border-radius: var(--radius-2);
 		padding: 2px 7px;
 		white-space: nowrap;
+		/* one box for P4 and P10 alike, so the jumps beside them line up.
+		   border-box, so the padding is part of the width */
+		min-width: calc(3ch + 2 * 7px);
+		text-align: center;
 	}
 
 	.cards {
@@ -735,5 +834,76 @@
 		margin: 10px 0 0;
 		font-size: 11px;
 		color: var(--text-faint);
+	}
+
+	/* The first-visit strip, full width above the two columns so it is the
+	   first thing on any screen: one line of what this is, and three ways in. */
+	.welcome {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 10px 16px;
+		margin: 4px 0 18px;
+		padding: 10px 14px;
+	}
+	.welcome-text {
+		flex: 1 1 280px;
+		margin: 0;
+		font-size: 13px;
+		color: var(--text-dim);
+	}
+	.welcome-text strong {
+		color: var(--text);
+	}
+	.welcome-links {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+	.welcome-links a {
+		font-family: var(--font-mono);
+		font-size: 10.5px;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		text-decoration: none;
+		color: var(--text);
+		padding: 5px 10px;
+		border: 1px solid var(--border);
+		border-radius: 999px;
+		background: var(--surface-raised);
+		transition: border-color 140ms ease;
+	}
+	.welcome-links a:hover {
+		border-color: var(--border-strong);
+	}
+	.welcome-hide {
+		background: none;
+		border: 0;
+		padding: 0 2px;
+		font-size: 20px;
+		line-height: 1;
+		color: var(--text-faint);
+		cursor: pointer;
+	}
+	.welcome-hide:hover {
+		color: var(--text);
+	}
+
+	/* the week's counts under its heading: the rail's category tiles, as a row */
+	.strip {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 10px;
+	}
+	.strip.week {
+		margin-bottom: 12px;
+	}
+	.strip .tile {
+		flex: 1 1 auto;
+	}
+	.mode-b {
+		display: flex !important;
+		align-items: center;
+		gap: 6px;
 	}
 </style>

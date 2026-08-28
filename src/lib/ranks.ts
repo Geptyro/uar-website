@@ -106,3 +106,35 @@ function round(v: number, places: number): number {
 	const f = 10 ** places;
 	return Math.round(v * f) / f;
 }
+
+/* ---------- the three tracks, by key ---------- */
+
+/** The rank tracks as the data keys them: Enlisted, Warrant Officer, Commissioned Officer. */
+export type RankKey = 'en' | 'wo' | 'co';
+export const RANK_KEYS: readonly RankKey[] = ['en', 'wo', 'co'];
+export const RANK_TRACK_NAMES: Record<RankKey, string> = {
+	en: 'Enlisted',
+	wo: 'Warrant Officer',
+	co: 'Commissioned Officer'
+};
+export const RANK_TRACK_SHORT: Record<RankKey, string> = { en: 'EN', wo: 'WO', co: 'CO' };
+/** ranks.json numbers its tracks 1..3 in the same order. */
+export const RANK_KEY_OF_TRACK: Record<number, RankKey> = { 1: 'en', 2: 'wo', 3: 'co' };
+
+export function isRankKey(v: unknown): v is RankKey {
+	return v === 'en' || v === 'wo' || v === 'co';
+}
+
+/**
+ * The tracks an SI is sold on: its XP threshold per track, where 0 means the
+ * track never offers it (1 is "free", -1 an achievement unlock, both offered).
+ */
+export function siTracks(xp: Record<RankKey, number>): RankKey[] {
+	return RANK_KEYS.filter((k) => xp[k] !== 0);
+}
+
+/** The tracks a class can be played on: those its unlock names; a class with no unlock is open to all. */
+export function mosTracks(unlock: Partial<Record<RankKey, unknown>> | null | undefined): RankKey[] {
+	if (!unlock) return [...RANK_KEYS];
+	return RANK_KEYS.filter((k) => unlock[k] != null);
+}

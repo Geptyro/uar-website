@@ -17,7 +17,8 @@ import {
 	pageRows,
 	playerRows,
 	shortCategory,
-	siRows
+	siRows,
+	triggerRows
 } from '../src/lib/palette.ts';
 
 const labels = (rows: PaletteRow[]) => rows.map((r) => r.label);
@@ -97,7 +98,7 @@ test('a class with a vehicle gets a row for it, pointing at its vehicle tab', ()
 
 test('an SI deep-links to its card and matches on its code', () => {
 	const rows = siRows([{ num: 1, name: 'Reactive Fire', code: 'RF', icon: null }]);
-	assert.equal(rows[0].href, '/si#si-1');
+	assert.equal(rows[0].href, '/career/si#si-1');
 	assert.equal(rankRows(rows, 'rf').length, 1);
 });
 
@@ -138,4 +139,14 @@ test('the browse rows carry the typed term through to the list pages', () => {
 
 test('nothing typed is nothing to browse', () => {
 	assert.deepEqual(browseRows('   '), []);
+});
+
+test('trigger group rows link to the group and answer to their outcomes and triggers', () => {
+	const rows = triggerRows(
+		[{ g: 'mule', n: 'MULE', t: 'mechanic', k: 4, a: ['EngineersActivatetheMULE'] }],
+		'<svg/>'
+	);
+	assert.equal(rows[0].href, '/triggers/mule');
+	assert.equal(rows[0].note, 'mechanic · 4 triggers');
+	assert.deepEqual(labels(rankRows(rows, 'activate', 5)), ['MULE']);
 });

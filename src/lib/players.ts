@@ -135,6 +135,8 @@ export interface WeeklyPrestige {
 	/** Prestige level at the baseline sighting / at the newest one. */
 	from: number;
 	to: number;
+	/** When `to` was reached, ISO — see `weeklyBoards` for how that is dated. */
+	prestigedAt: string;
 }
 
 /** One row of the overview's class-picks widget. */
@@ -145,11 +147,23 @@ export interface WeeklyClassPick {
 	picks: number;
 }
 
+/** The overview's games-this-week strip: how the week went, as a whole. */
+export interface WeeklyGames {
+	/** Ingested games that ended inside the window. */
+	played: number;
+	/** Of those, the ones with a known result — the rest are still unsettled. */
+	won: number;
+	lost: number;
+	/** The mode played most this week (1..12), absent while no game's mode is known. */
+	topMode?: number;
+}
+
 /** The overview page's 7-day widgets, computed in one pass (see server/weekly.ts). */
 export interface WeeklyBoards {
 	xp: WeeklyXpEntry[];
 	prestiged: WeeklyPrestige[];
 	classPicks: WeeklyClassPick[];
+	games: WeeklyGames;
 }
 
 const progression = rawProgression as { modes: string[] };

@@ -158,7 +158,7 @@
 					<Tooltip
 						label="{s.name} · {s.code}"
 						text={siTip(s)}
-						href="/si"
+						href="/career/si"
 						linkText="All Skill Identifiers"
 						placement="entry"
 					>
@@ -174,7 +174,7 @@
 					</Tooltip>
 				{/each}
 			</div>
-			<p class="note"><a href="/si">All Skill Identifiers →</a></p>
+			<p class="note"><a href="/career/si">All Skill Identifiers →</a></p>
 		</section>
 	</div>
 
@@ -188,7 +188,7 @@
 					<Tooltip
 						label={m.name}
 						text={medalTip(m)}
-						href="/medals"
+						href="/career/medals"
 						linkText="All medals & decals"
 						placement="entry"
 					>
@@ -214,7 +214,7 @@
 					<Tooltip
 						label={decalName(d.num)}
 						text={decalTip(d)}
-						href="/medals"
+						href="/career/medals"
 						linkText="All medals & decals"
 						placement="entry"
 					>
@@ -236,14 +236,14 @@
 		</section>
 	</div>
 	<!-- both halves above land on the same page, so they share one way out -->
-	<p class="note"><a href="/medals">All medals & decals →</a></p>
+	<p class="note"><a href="/career/medals">All medals & decals →</a></p>
 
 	<h2 class="section">
 		Camouflages <span class="counthint">{p.unlocks.camos.length} / {camos.length}</span>
 	</h2>
 	<div class="ugrid">
 		{#each camos as c (c.num)}
-			<Tooltip label={c.name} text={camoTip(c)} href="/camos" linkText="All camouflages">
+			<Tooltip label={c.name} text={camoTip(c)} href="/career/camos" linkText="All camouflages">
 				<span class="utile" class:locked={!camosUnlocked.has(c.num)} class:worn={p.camo === c.num}>
 					{#if c.swatch}
 						<img class="uimg swatch" src={c.swatch} alt="" loading="lazy" />
@@ -255,7 +255,7 @@
 			</Tooltip>
 		{/each}
 	</div>
-	<p class="note"><a href="/camos">All camouflages →</a></p>
+	<p class="note"><a href="/career/camos">All camouflages →</a></p>
 
 	<!-- The gear ladders were in the aside, where they were the one unlock set
 	     that did not sit with the others. They are lists rather than grids

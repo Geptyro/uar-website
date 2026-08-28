@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { units, categories, tagClass, weaponLabel, type Unit } from '$lib/units';
+	import { listedUnits as units, categories, tagClass, weaponLabel, type Unit } from '$lib/units';
 	import Seo from '$lib/components/Seo.svelte';
 	import { Page } from 'sveltekit-commons';
 

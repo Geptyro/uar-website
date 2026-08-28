@@ -56,6 +56,8 @@ export interface MechanicGroup {
 }
 
 export interface Rules {
+	/** The highest hero level, and the skill points each level gives (see $lib/builds). */
+	levels: { max: number; pointsPerLevel: number };
 	jam: {
 		gateHit: number;
 		defaultOdds: number;
@@ -82,6 +84,9 @@ export interface Rules {
 const raw = rawMechanics as { rules: Rules; mos: MosMechanics[] };
 
 export const rules: Rules = raw.rules;
+
+/** The most skill points a hero can spend: one per level, the first at level 1, up to the cap. */
+export const skillPoints: number = rules.levels.max * rules.levels.pointsPerLevel;
 export const allMechanics: MosMechanics[] = raw.mos;
 export const mechanicsById = new Map(allMechanics.map((m) => [m.id, m]));
 

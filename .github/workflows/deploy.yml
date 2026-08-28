@@ -43,6 +43,7 @@ jobs:
         VAPID_PUBLIC_KEY
         VAPID_PRIVATE_KEY
         VAPID_SUBJECT
+        SITE_ADMINS
     # required by app-secrets: a reusable workflow cannot read a secret it was
     # not told the name of. It hands the template every secret in this repo,
     # and the allowlist above governs which of them reach Fly.

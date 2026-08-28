@@ -1,7 +1,6 @@
 import { error, redirect } from '@sveltejs/kit';
-import { mosById, usableItemsFor, siFor } from '$lib/mos';
-import { hasGuide } from '$lib/guides';
-import { mosTabHref, tabsFor, vehicleSlug, type MosCapabilities } from '$lib/mosTabs';
+import { mosById, mosCapabilities, usableItemsFor, siFor } from '$lib/mos';
+import { mosTabHref, tabsFor, vehicleSlug } from '$lib/mosTabs';
 import type { LayoutLoad } from './$types';
 
 /**
@@ -18,10 +17,7 @@ export const load: LayoutLoad = ({ params }) => {
 	if (mos.pilotedBy) redirect(308, mosTabHref(mos.pilotedBy, vehicleSlug(mos.name)));
 
 	const vehicle = mos.vehicle ? (mosById.get(mos.vehicle) ?? null) : null;
-	const capabilities: MosCapabilities = {
-		guide: hasGuide(mos.id),
-		vehicle: vehicle !== null
-	};
+	const capabilities = mosCapabilities(mos.id);
 	return {
 		mos,
 		vehicle,

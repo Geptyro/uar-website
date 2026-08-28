@@ -17,11 +17,18 @@
  */
 export {
 	ENTRY_IMPACTS,
+	FRONT_MIN_RELEASES,
 	compareVersions,
+	frontMonths,
+	groupByMonth,
 	latestVersion,
 	latestVersionInfo,
+	monthLabel,
+	monthOf,
+	releaseMonths,
 	renderMarkdown,
 	type ChangelogEntry,
+	type ChangelogMonth,
 	type ChangelogProblem,
 	type ChangelogRelease,
 	type EntryImpact,
@@ -32,6 +39,7 @@ import {
 	buildChangelog as build,
 	lintEntry as lint,
 	parseEntry as parse,
+	type ChangelogMonth,
 	type ChangelogProblem,
 	type ChangelogRelease,
 	type ChangelogSchema,
@@ -52,6 +60,7 @@ export const ENTRY_AREAS = CHANGELOG_SCHEMA.areas;
 export type EntryType = (typeof CHANGELOG_SCHEMA.types)[number];
 export type EntryArea = (typeof CHANGELOG_SCHEMA.areas)[number];
 export type Release = ChangelogRelease<EntryType, EntryArea>;
+export type Month = ChangelogMonth<EntryType, EntryArea>;
 
 /** This site's schema, applied — the two wrappers every call site already used. */
 export function parseEntry(raw: string): ParsedEntry<EntryType, EntryArea> {
