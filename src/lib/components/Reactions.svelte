@@ -4,7 +4,14 @@
 	 * the reader's own lit, and a button that opens the palette. Clicking a
 	 * pill or a face in the palette is one call to `onreact`; the page it
 	 * sits on does the rest (a fetch for the chat, an action for a thread).
+	 *
+	 * Hovering a pill names who is behind it, with their portraits — the
+	 * server sends the first few with each face (see $lib/server/reactions),
+	 * and the count carries the rest.
 	 */
+	import Tooltip from '$lib/components/Tooltip.svelte';
+	import anonPortrait from '$lib/assets/anon-portrait.svg';
+	import { portraitFallback } from '$lib/portrait';
 	import { REACTIONS, type ReactionView } from '$lib/reactions';
 
 	let {
@@ -31,26 +38,50 @@
 	function away(e: PointerEvent) {
 		if (open && box && !box.contains(e.target as Node)) open = false;
 	}
+
+	/** "Kanax, Bob and 3 more" — the card read out for a screen reader. */
+	function named(r: ReactionView): string {
+		const names = r.who.map((p) => p.name);
+		const rest = r.n - names.length;
+		if (rest > 0) names.push(`${rest} more`);
+		if (!names.length) return `${r.n}`;
+		if (names.length === 1) return names[0];
+		return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+	}
 </script>
 
 <svelte:window onpointerdown={away} />
 
 <span class="reactions" bind:this={box}>
 	{#each reactions as r (r.emoji)}
-		{#if can}
-			<button
-				type="button"
-				class="pill"
-				class:mine={r.mine}
-				onclick={() => pick(r.emoji)}
-				title={r.mine ? 'Take yours back' : `React with ${r.emoji}`}
-				aria-pressed={r.mine}
-			>
-				<span class="face">{r.emoji}</span><span class="n">{r.n}</span>
-			</button>
-		{:else}
-			<span class="pill off" title={why}><span class="face">{r.emoji}</span><span class="n">{r.n}</span></span>
-		{/if}
+		<Tooltip focusable={false} disabled={!r.who.length}>
+			{#snippet tip()}
+				<span class="who-head"><span class="face">{r.emoji}</span> {r.n}</span>
+				{#each r.who as p, i (i)}
+					<span class="who-row">
+						<img src={p.avatar ?? anonPortrait} alt="" loading="lazy" use:portraitFallback={anonPortrait} />
+						<span class="who-name">{p.name}</span>
+					</span>
+				{/each}
+				{#if r.n > r.who.length}<span class="who-more">and {r.n - r.who.length} more</span>{/if}
+				{#if can}<span class="who-hint">{r.mine ? 'Click to take yours back' : 'Click to add yours'}</span>{/if}
+			{/snippet}
+			{#if can}
+				<button
+					type="button"
+					class="pill"
+					class:mine={r.mine}
+					onclick={() => pick(r.emoji)}
+					title={r.who.length ? undefined : r.mine ? 'Take yours back' : `React with ${r.emoji}`}
+					aria-label="{r.emoji} {named(r)}"
+					aria-pressed={r.mine}
+				>
+					<span class="face">{r.emoji}</span><span class="n">{r.n}</span>
+				</button>
+			{:else}
+				<span class="pill off" title={r.who.length ? undefined : why}><span class="face">{r.emoji}</span><span class="n">{r.n}</span></span>
+			{/if}
+		</Tooltip>
 	{/each}
 	{#if can}
 		<button type="button" class="add" class:on={open} onclick={() => (open = !open)} title="React" aria-label="React" aria-expanded={open}>
@@ -105,6 +136,47 @@
 	.face {
 		font-size: 13px;
 		line-height: 1;
+	}
+	/* the card behind a pill: the face and its count, then a row per player */
+	.who-head {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding-bottom: 5px;
+		border-bottom: 1px solid var(--border);
+		color: var(--text-dim);
+		font: 600 11px var(--font-mono);
+	}
+	.who-row {
+		display: flex;
+		align-items: center;
+		gap: 7px;
+	}
+	.who-row img {
+		width: 20px;
+		height: 20px;
+		flex: none;
+		border-radius: 50%;
+		object-fit: cover;
+		background: var(--surface-sunken);
+		border: 1px solid var(--border);
+	}
+	.who-name {
+		font-size: 12.5px;
+		font-weight: 550;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.who-more,
+	.who-hint {
+		color: var(--text-faint);
+		font-size: 11.5px;
+	}
+	.who-hint {
+		margin-top: 2px;
+		padding-top: 5px;
+		border-top: 1px solid var(--border);
 	}
 	.add {
 		display: inline-flex;

@@ -1,11 +1,12 @@
 /**
  * Who put which face on what. One doc per person, target and face, in
  * `reactions`; the counts are written onto the target (a chat message, a
- * comment) so a page reads them with the thing itself, and only the
- * reader's own faces are a second, narrow query.
+ * comment) so a page reads them with the thing itself, and who is behind
+ * them — the names a pill shows on hover, the reader's own among them — is
+ * one narrow query over the targets that carry a count at all.
  */
-import { db } from './db.ts';
-import { isReaction, type ReactionEmoji } from '../reactions.ts';
+import { db, getFacesBySub } from './db.ts';
+import { isReaction, type ReactionEmoji, type Reactor } from '../reactions.ts';
 
 export type ReactionKind = 'chat' | 'comment';
 
@@ -52,20 +53,57 @@ export async function toggleReaction(
 	return counts;
 }
 
-/** The reader's own faces on each of these targets. */
-export async function myReactions(kind: ReactionKind, ids: string[], sub: string): Promise<Map<string, string[]>> {
-	const out = new Map<string, string[]>();
+/** Who is behind each face on a target, and which of them are the reader's own. */
+export interface TargetReactors {
+	/** The faces the reader put on, so their pills light up. */
+	mine: string[];
+	/** Face -> who put it there, oldest first. */
+	who: Record<string, Reactor[]>;
+}
+
+/**
+ * Who reacted to each of these targets. One read of the faces themselves —
+ * the counts on the target say *how many*, this says *who*, and the reader's
+ * own fall out of the same rows rather than costing a second query.
+ *
+ * Pass only the ids that carry counts: on a page of chat most messages have
+ * no faces at all, and asking about them is bytes for nothing (see the M0
+ * notes in db.ts).
+ */
+export async function reactorsOn(
+	kind: ReactionKind,
+	ids: string[],
+	viewer: string | null
+): Promise<Map<string, TargetReactors>> {
+	const out = new Map<string, TargetReactors>();
 	if (!ids.length) return out;
 	const d = await db();
-	const rows = await d
-		.collection<ReactionDoc>('reactions')
-		.find({ sub, target: { $in: ids.map((i) => target(kind, i)) } }, { projection: { target: 1, emoji: 1 } })
-		.toArray();
+	const [rows, faces] = await Promise.all([
+		d
+			.collection<ReactionDoc>('reactions')
+			.find(
+				{ target: { $in: ids.map((i) => target(kind, i)) } },
+				{ projection: { _id: 0, target: 1, emoji: 1, sub: 1, at: 1 } }
+			)
+			.toArray(),
+		getFacesBySub()
+	]);
+	rows.sort((a, b) => (a.at ?? '').localeCompare(b.at ?? ''));
 	for (const r of rows) {
 		const id = r.target.slice(kind.length + 1);
-		out.set(id, [...(out.get(id) ?? []), r.emoji]);
+		let t = out.get(id);
+		if (!t) out.set(id, (t = { mine: [], who: {} }));
+		if (viewer !== null && r.sub === viewer) t.mine.push(r.emoji);
+		(t.who[r.emoji] ??= []).push(faces[r.sub] ?? { name: 'Someone', toon: null, avatar: null });
 	}
 	return out;
+}
+
+/** The ids among these that have a face on them at all — what reactorsOn wants asked about. */
+export function reactedIds<T extends { _id: string; reactions?: Record<string, number> }>(
+	docs: T[]
+): string[] {
+	return docs.filter((d) => Object.keys(d.reactions ?? {}).length > 0).map((d) => d._id);
 }
 
 /** The target is gone: its faces go with it. */

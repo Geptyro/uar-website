@@ -29,7 +29,7 @@ import {
 import { authorOf } from './buildForm';
 import type { Session } from './session';
 import { notify, pingedAccounts, threadSeenAt, touchThreadSeen, type CommentSubject } from './notifications';
-import { myReactions, toggleReaction } from './reactions';
+import { reactedIds, reactorsOn, toggleReaction } from './reactions';
 import { playerCards } from './playerCards';
 import { isReaction, reactionViews } from '$lib/reactions';
 import { renderBuildMarkdown } from '$lib/buildMarkdown';
@@ -81,12 +81,12 @@ export interface ThreadData {
 export async function loadThread(scope: ThreadScope, url: URL): Promise<ThreadData> {
 	const { host, session, admin } = scope;
 	const all = await listComments(host.id);
-	const [names, avatars, mine, seen, own, players] = await Promise.all([
+	const [names, avatars, mine, seen, faces, players] = await Promise.all([
 		getNamesByToon(),
 		getAvatarsByToon(),
 		session ? commentVotesFor(host.id, session.sub) : Promise.resolve({} as Record<string, 1 | -1>),
 		session ? threadSeenAt(session.sub, host.id) : Promise.resolve(null),
-		session ? myReactions('comment', all.map((c) => c._id), session.sub) : Promise.resolve(new Map<string, string[]>()),
+		reactorsOn('comment', reactedIds(all), session?.sub ?? null),
 		playerCards(all.flatMap((c) => playerRefsIn(c.text)))
 	]);
 	const resolve = refResolver(scope.mos, { avatars, players });
@@ -109,7 +109,7 @@ export async function loadThread(scope: ThreadScope, url: URL): Promise<ThreadDa
 			html: deleted ? '' : renderBuildMarkdown(c.text, resolve),
 			// new since the reader was last here; a first visit marks nothing
 			unseen: seen !== null && !deleted && c.author.sub !== session?.sub && c.createdAt > seen,
-			reactions: deleted ? [] : reactionViews(c.reactions, own.get(c._id) ?? [])
+			reactions: deleted ? [] : reactionViews(c.reactions, faces.get(c._id)?.mine, faces.get(c._id)?.who)
 		};
 	});
 	// the reader has the thread in front of them now: written when there was

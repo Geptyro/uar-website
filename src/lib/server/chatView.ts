@@ -8,7 +8,7 @@ import { getAvatarsByToon, getNamesByToon } from './db';
 import type { ChatDoc } from './chat';
 import { renderBuildMarkdown } from '$lib/buildMarkdown';
 import { refResolver } from '$lib/buildRefs';
-import { myReactions } from './reactions';
+import { reactedIds, reactorsOn } from './reactions';
 import { playerCards } from './playerCards';
 import { playerRefsIn } from '$lib/builds';
 import { reactionViews, type ReactionView } from '$lib/reactions';
@@ -30,10 +30,10 @@ export interface ChatView {
 
 export async function chatViews(docs: ChatDoc[], viewer: string | null): Promise<ChatView[]> {
 	if (!docs.length) return [];
-	const [names, avatars, own, players] = await Promise.all([
+	const [names, avatars, faces, players] = await Promise.all([
 		getNamesByToon(),
 		getAvatarsByToon(),
-		viewer ? myReactions('chat', docs.map((m) => m._id), viewer) : Promise.resolve(new Map<string, string[]>()),
+		reactorsOn('chat', reactedIds(docs), viewer),
 		playerCards(docs.flatMap((m) => playerRefsIn(m.text)))
 	]);
 	const resolve = refResolver(null, { avatars, players });
@@ -47,6 +47,6 @@ export async function chatViews(docs: ChatDoc[], viewer: string | null): Promise
 		createdAt: m.createdAt,
 		editedAt: m.editedAt ?? null,
 		mine: viewer !== null && m.author.sub === viewer,
-		reactions: reactionViews(m.reactions, own.get(m._id) ?? [])
+		reactions: reactionViews(m.reactions, faces.get(m._id)?.mine, faces.get(m._id)?.who)
 	}));
 }

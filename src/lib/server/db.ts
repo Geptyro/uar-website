@@ -20,6 +20,7 @@ import { MongoClient, type Db } from 'mongodb';
 import type { Sc2Profile } from './bnet.ts';
 import { buildPlayersData, type ReplaySighting } from './replay/extract.ts';
 import { outcomeChanges, type Outcome } from '../outcome.ts';
+import type { Reactor } from '../reactions.ts';
 import { modeChanges } from '../mode.ts';
 import { PER_PAGE, pageNumber, type Paged } from 'sveltekit-commons/paging';
 import { cacheKeyMatches, cacheState } from 'sveltekit-commons/cache';
@@ -1413,7 +1414,7 @@ export async function upsertAccount(
 	await d
 		.collection<AccountDoc>('accounts')
 		.updateOne({ _id: sub }, { $set: set, $setOnInsert: { linkedAt: iso } }, { upsert: true });
-	invalidateCache('avatars', 'names', 'playerDirectory', 'accountByToon');
+	invalidateCache('avatars', 'names', 'facesBySub', 'playerDirectory', 'accountByToon');
 }
 
 /** The account's primary profile: first seen in UAR replays, else the first. */
@@ -1516,6 +1517,34 @@ export async function getNamesByToon(): Promise<Record<string, string>> {
 	});
 }
 
+/**
+ * Battle.net account id -> the name and picture the site shows that player
+ * under. A reaction records only who put it there (`sub`), so this is what
+ * turns a face on a message into somebody. Same read as the names and
+ * avatars maps, cached and dropped alongside them; the account's first
+ * named profile stands for it, and an account with no profile linked falls
+ * back to its battletag, the way an unlinked author's message does.
+ */
+export async function getFacesBySub(): Promise<Record<string, Reactor>> {
+	return cached('facesBySub', async () => {
+		const d = await db();
+		const docs = await d
+			.collection<AccountDoc>('accounts')
+			.find({}, { projection: { battletag: 1, profiles: 1 } })
+			.toArray();
+		const map: Record<string, Reactor> = {};
+		for (const a of docs) {
+			const named = a.profiles?.find((p) => p.name) ?? a.profiles?.[0];
+			map[a._id] = {
+				name: named?.name || (a.battletag ?? '').replace(/#\d+$/, '') || 'Someone',
+				toon: named?.toon ?? null,
+				avatar: a.profiles?.find((p) => p.avatarUrl)?.avatarUrl ?? null
+			};
+		}
+		return map;
+	});
+}
+
 export async function getAccount(sub: string): Promise<AccountDoc | null> {
 	const d = await db();
 	return d.collection<AccountDoc>('accounts').findOne({ _id: sub });
@@ -1536,7 +1565,7 @@ export async function getAccountByToon(toon: string): Promise<AccountDoc | null>
 export async function deleteAccount(sub: string): Promise<void> {
 	const d = await db();
 	await d.collection<AccountDoc>('accounts').deleteOne({ _id: sub });
-	invalidateCache('avatars', 'names', 'playerDirectory', 'accountByToon');
+	invalidateCache('avatars', 'names', 'facesBySub', 'playerDirectory', 'accountByToon');
 }
 
 /**
