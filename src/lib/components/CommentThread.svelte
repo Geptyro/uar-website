@@ -9,7 +9,7 @@
 	 * markdown (chips, key caps, pictures) through the same field and the
 	 * same renderer. The same thread hangs under a guide and on a class page;
 	 * the page it sits on gives it the subject's actions (`?/post`, `?/vote`,
-	 * `?/delete`, `?/hide` — see $lib/server/comments).
+	 * `?/edit`, `?/delete`, `?/hide` — see $lib/server/comments).
 	 *
 	 * Every form here is enhanced: a comment, a vote or a delete goes out over
 	 * fetch and the thread redraws in place, no page load, and the same forms
@@ -53,7 +53,7 @@
 		/** The comment whose answer box starts open (from `?reply=`). */
 		replyTo?: string | null;
 		/** The page's form result, for an error and the words to keep. */
-		form: { error?: string; text?: string; parent?: string | null } | null | undefined;
+		form: { error?: string; text?: string; parent?: string | null; editing?: string } | null | undefined;
 		placeholder?: string;
 		opTitle?: string;
 	} = $props();
@@ -68,9 +68,16 @@
 	let replyTo = $state<string | null>(null);
 	let topText = $state('');
 	let replyText = $state('');
+	/** The comment being reworded, and the words in its box. */
+	let editing = $state<string | null>(null);
+	let editText = $state('');
 	$effect(() => {
 		replyTo = form?.parent ?? opened ?? null;
-		if (form?.text !== undefined) {
+		// a rewording that came back refused reopens its box with what was typed
+		if (form?.editing) {
+			editing = form.editing;
+			if (form.text !== undefined) editText = form.text;
+		} else if (form?.text !== undefined) {
 			if (form.parent) replyText = form.text;
 			else topText = form.text;
 		}
@@ -86,6 +93,11 @@
 			replyText = '';
 			replyTo = null;
 		}
+	};
+	/** A rewording went out: the thread reloads in place and the box shuts. */
+	const edited: SubmitFunction = () => async ({ result, update }) => {
+		await update();
+		if (result.type === 'success') editing = null;
 	};
 	/** A delete asks first; No cancels the submit before anything is sent. */
 	const deleting: SubmitFunction = async ({ cancel }) => {
@@ -179,6 +191,7 @@
 				{#if c.op}<span class="op" title={opTitle}>OP</span>{/if}
 				{#if c.unseen}<span class="new" title="Since you were last here">new</span>{/if}
 				<span class="when">· {timeAgo(c.createdAt, now)}</span>
+				{#if c.editedAt}<span class="when" title="Edited {timeAgo(c.editedAt, now)}">· edited</span>{/if}
 				{#if c.hidden}<span class="tag t-hostile">hidden</span>{/if}
 				{#if shut && t.replies.length}
 					<span class="when">· {countThreads(t.replies)} {countThreads(t.replies) === 1 ? 'answer' : 'answers'}</span>
@@ -186,7 +199,19 @@
 			</header>
 			{#if !shut}
 				{#if !c.deleted}
-					<div class="md">{@html c.html}</div>
+					{#if editing === c.id}
+						<form method="POST" action="?/edit" class="post" use:enhance={edited}>
+							<input type="hidden" name="id" value={c.id} />
+							<MarkdownField bind:value={editText} {mos} name="text" rows={3} maxlength={BUILD_LIMITS.comment.max} required chips>
+								{#snippet footer()}
+									<Button type="button" variant="ghost" onclick={() => (editing = null)}>Cancel</Button>
+									<Button>Save</Button>
+								{/snippet}
+							</MarkdownField>
+						</form>
+					{:else}
+						<div class="md">{@html c.html}</div>
+					{/if}
 					<div class="acts">
 						<VoteArrows
 							action="?/vote"
@@ -213,6 +238,16 @@
 								<input type="hidden" name="id" value={c.id} />
 								<button class="act">{c.hidden ? 'Unhide' : 'Hide'}</button>
 							</form>
+						{/if}
+						{#if c.mine && live && editing !== c.id}
+							<button
+								type="button"
+								class="act"
+								onclick={() => {
+									editing = c.id;
+									editText = c.text;
+								}}>Edit</button
+							>
 						{/if}
 						{#if c.mine || admin}
 							<form method="POST" action="?/delete" use:enhance={deleting}>

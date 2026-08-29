@@ -71,6 +71,8 @@ export interface BuildCommentDoc {
 	/** Up minus down, written with each vote (see voteComment), never counted on read. */
 	score: number;
 	createdAt: string;
+	/** Reworded by its author since; the thread says so under the name. */
+	editedAt?: string;
 	/** Set by the maintainer; a hidden comment stays for its author and the maintainer. */
 	hiddenAt?: string;
 	/** Faces by count, written with every reaction (see $lib/server/reactions). */
@@ -504,6 +506,29 @@ export async function addComment(
 export async function getComment(id: string): Promise<BuildCommentDoc | null> {
 	const d = await db();
 	return d.collection<BuildCommentDoc>('buildComments').findOne({ _id: id });
+}
+
+/**
+ * Reword a comment. Its author's only, and only while it stands: a stump has
+ * no words to change and no author to change them. The pictures it shows are
+ * rewritten with the words, so one dropped from the text stops being one this
+ * comment holds on to (see the image sweep).
+ */
+export async function editComment(
+	host: CommentHost,
+	id: string,
+	text: string,
+	images: string[],
+	now: Date = new Date()
+): Promise<string> {
+	const d = await db();
+	const editedAt = now.toISOString();
+	await d
+		.collection<BuildCommentDoc>('buildComments')
+		.updateOne({ _id: id, build: host.id }, { $set: { text, images, editedAt } });
+	invalidateCache(`comments:${host.id}`, 'comments:recent', 'activity:recent');
+	await host.touched();
+	return editedAt;
 }
 
 /**

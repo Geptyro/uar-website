@@ -19,6 +19,7 @@ import {
 	addComment,
 	commentVotesFor,
 	deleteComment,
+	editComment,
 	getComment,
 	hideComment,
 	imagesOwnedBy,
@@ -68,6 +69,8 @@ const posts = rateLimiter({ limit: 20, windowMs: 60 * 60 * 1000 });
 const votes = rateLimiter({ limit: 200, windowMs: 60 * 60 * 1000 });
 /** Faces per account and minute. */
 const reacts = rateLimiter({ limit: 60, windowMs: 60 * 1000 });
+/** Rewordings per account and hour: fixing what you wrote, not rewriting it all day. */
+const edits = rateLimiter({ limit: 60, windowMs: 60 * 60 * 1000 });
 /** How often a reader's "last seen" on a thread is rewritten while they keep reading it. */
 const SEEN_EVERY_MS = 60 * 1000;
 
@@ -107,6 +110,10 @@ export async function loadThread(scope: ThreadScope, url: URL): Promise<ThreadDa
 			avatar: (!deleted && c.author.toon && avatars[c.author.toon]) || null,
 			vote: mine[c._id] ?? 0,
 			html: deleted ? '' : renderBuildMarkdown(c.text, resolve),
+			// only its own author ever needs the raw markdown, and shipping every
+			// comment twice over is a page of bytes nobody reads
+			text: !deleted && session !== null && c.author.sub === session.sub ? c.text : '',
+			editedAt: deleted ? null : (c.editedAt ?? null),
 			// new since the reader was last here; a first visit marks nothing
 			unseen: seen !== null && !deleted && c.author.sub !== session?.sub && c.createdAt > seen,
 			reactions: deleted ? [] : reactionViews(c.reactions, faces.get(c._id)?.mine, faces.get(c._id)?.who)
@@ -200,6 +207,30 @@ export function threadActions<E extends Pick<RequestEvent, 'request'>>(scopeOf: 
 			const counts = await toggleReaction('comment', id, session.sub, emoji);
 			invalidateCache(`comments:${host.id}`);
 			return { reacted: id, counts };
+		},
+
+		edit: async (event: E) => {
+			const { host, session, open } = await scopeOf(event);
+			if (!session) return fail(401, { error: 'Sign in with Battle.net to comment.' });
+			if (!open) return fail(400, { error: 'Not open for comments.' });
+			const form = await event.request.formData();
+			const id = String(form.get('id') ?? '');
+			const raw = String(form.get('text') ?? '');
+			const c = await getComment(id);
+			if (!c || c.build !== host.id || c.deletedAt) return fail(404, { error: 'No such comment.' });
+			// the maintainer may hide a comment or take it back, never put words in it
+			if (c.author.sub !== session.sub) return fail(403, { error: 'Not yours.' });
+			const v = validateComment(raw);
+			if (!v.ok) return fail(400, { error: v.error, editing: id, text: raw });
+			if (v.images.length) {
+				const mine = await imagesOwnedBy(session.sub, v.images);
+				if (v.images.some((i) => !mine.has(i)))
+					return fail(400, { error: 'One of the pictures is not one you uploaded.', editing: id, text: raw });
+			}
+			if (!edits.hit(session.sub))
+				return fail(429, { error: 'That is a lot of rewording for one hour.', editing: id, text: raw });
+			const editedAt = await editComment(host, id, v.text, v.images);
+			return { edited: id, editedAt };
 		},
 
 		delete: async (event: E) => {

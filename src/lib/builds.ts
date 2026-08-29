@@ -749,6 +749,10 @@ export interface CommentView extends ThreadItem {
 	avatar: string | null;
 	vote: 1 | -1 | 0;
 	html: string;
+	/** The words as written, for rewording one's own; empty on everybody else's. */
+	text: string;
+	/** When its author last reworded it, if they have. */
+	editedAt: string | null;
 	/** Arrived since the reader last opened the thread (never on their own). */
 	unseen: boolean;
 	/** The faces on it, with the reader's own lit. */
