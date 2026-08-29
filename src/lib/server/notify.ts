@@ -224,7 +224,14 @@ export async function sendTestPush(
  * at the same day rather than found weeks later. Best effort, never throws.
  * Held back in dev like the notifier, for the same reason.
  */
-export async function pushToAdmins(payload: { title: string; body: string; url: string }): Promise<void> {
+export async function pushToAdmins(payload: {
+	title: string;
+	body: string;
+	url: string;
+	/** groups notifications on the device: a new one REPLACES the one it shares
+	 * a tag with, so kinds that are read separately need tags of their own */
+	tag?: string;
+}): Promise<void> {
 	if (!pushConfigured() || !dbConfigured()) return;
 	if (dev && !process.env.PUSH_IN_DEV) return;
 	const admins = siteAdmins();
@@ -232,11 +239,12 @@ export async function pushToAdmins(payload: { title: string; body: string; url: 
 	const subs = (await getPushSubs()).filter(
 		(s) => admins.includes(s.sub) || admins.includes(s.battletag)
 	);
+	const { tag = 'builds', ...rest } = payload;
 	await Promise.all(
 		subs.map(async (s) => {
 			const result = await sendPush(
 				{ endpoint: s._id, p256dh: s.p256dh, auth: s.auth },
-				{ ...payload, tag: 'builds' },
+				{ ...rest, tag },
 				vapidKeys()
 			);
 			if (result === 'gone') await deletePushSub(s._id).catch(() => {});

@@ -19,7 +19,9 @@ MPORT=$((20000 + RANDOM % 10000))
 SPORT=$((30000 + RANDOM % 10000))
 APPPORT=$((40000 + RANDOM % 10000))
 SUFFIX=$$
+TMP=$(mktemp -d)
 CLEANUP() {
+	rm -rf "$TMP"
 	docker rm -f "uar-it-mongo-$SUFFIX" "uar-it-minio-$SUFFIX" >/dev/null 2>&1 || true
 	# SIGKILL, not TERM: adapter-node shuts down gracefully and lingers on
 	# open connections, which leaves an orphan holding the script's stdout
@@ -173,6 +175,73 @@ check "unstored replay download -> 410, not 404" "410" "$R"
 # the game is on record even though the file never was
 R=$(curl -s "http://localhost:$APPPORT/replays/20260723-1808")
 check "unstored replay keeps its page" 'KanaxStratz' "$R"
+
+# --- Companion reports (POST /api/report) ---------------------------------
+# Last, because the flood guard spends the endpoint's budget for the rest of
+# the run: five ACCEPTED reports per address per hour, held in process memory
+# (CLAUDE.md), so nothing after this could post another one.
+report() { # json body -> response
+	curl -s -X POST -H "Origin: http://localhost:$APPPORT" \
+		-H 'content-type: application/json' \
+		-d "$1" "http://localhost:$APPPORT/api/report"
+}
+status() { # json body -> http status only
+	curl -s -o /dev/null -w '%{http_code}' -X POST -H "Origin: http://localhost:$APPPORT" \
+		-H 'content-type: application/json' -d "$1" "http://localhost:$APPPORT/api/report"
+}
+stored() { # id -> one JSON line about the stored document
+	node -e "
+const {MongoClient,ObjectId}=require('mongodb');
+(async()=>{const c=new MongoClient(process.env.MONGODB_URI);await c.connect();
+const d=await c.db(process.env.MONGODB_DB).collection('feedback')
+  .findOne({_id:new ObjectId(process.argv[1])});
+console.log(JSON.stringify({source:d.source,message:d.message,app:d.app,
+  anonymous:!d.account,invented:'note' in (d.app||{}),
+  // whole thing when it is short enough to read back, so a check can assert
+  // on what was actually sent rather than on its length
+  log:d.log.length<=200?d.log:undefined,
+  logLength:d.log.length,logHead:d.log.slice(0,23),logTail:d.log.slice(-9)}));
+await c.close();})()" "$1"
+}
+idOf() { printf '%s' "$1" | sed -n 's/.*\"id\":\"\([a-f0-9]*\)\".*/\1/p'; }
+
+R=$(report '{"message":"an error box appeared when I turned the PC off","log":"2026-01-01T00:00:00.000Z uncaught exception: boom","app":{"version":"0.11.0","platform":"win32","note":"invented"}}')
+check "report accepted, id returned" '"id"' "$R"
+D=$(stored "$(idOf "$R")")
+check "filed as a companion report" '"source":"companion"' "$D"
+check "the log is stored" 'uncaught exception: boom' "$D"
+check "the app's own version kept" '"version":"0.11.0"' "$D"
+check "a field the site does not keep is dropped" '"invented":false' "$D"
+check "accepted with no session" '"anonymous":true' "$D"
+
+# An over-long log is trimmed, not refused: the app that sends one is an old
+# build, and an old build's report is exactly the one worth having.
+node -e "
+const lines=Array.from({length:3000},(_,i)=>'2026-01-01T00:00:00.000Z line '+i);
+process.stdout.write(JSON.stringify({log:lines.join('\\n')}))" > "$TMP/big.json"
+R=$(curl -s -X POST -H "Origin: http://localhost:$APPPORT" -H 'content-type: application/json' \
+	--data-binary "@$TMP/big.json" "http://localhost:$APPPORT/api/report")
+check "over-long log accepted" '"id"' "$R"
+D=$(stored "$(idOf "$R")")
+check "log trimmed to the 64 KB cap" '"logLength":6[0-4][0-9][0-9][0-9]' "$D"
+check "the trim says so" '"logHead":"\[earlier lines trimmed\]"' "$D"
+check "the trim keeps the END of the log" '"logTail":"line 2999"' "$D"
+
+# Bigger than any trimmed log can be: refused on the way in, before the body
+# is read at all.
+node -e "process.stdout.write(JSON.stringify({log:'x'.repeat(400000)}))" > "$TMP/huge.json"
+R=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "Origin: http://localhost:$APPPORT" \
+	-H 'content-type: application/json' --data-binary "@$TMP/huge.json" \
+	"http://localhost:$APPPORT/api/report")
+check "a body over the cap -> 413" '413' "$R"
+
+check "a report saying nothing -> 400" '400' "$(status '{}')"
+check "a report of only whitespace -> 400" '400' "$(status '{"message":"  ","log":"\n"}')"
+
+# Two accepted so far, and the refusals above must not have been charged: the
+# next three fill the budget and the one after is the first refusal.
+for i in 1 2 3; do report '{"log":"filling the budget"}' >/dev/null; done
+check "sixth accepted report in an hour -> 429" '429' "$(status '{"log":"one too many"}')"
 
 echo
 if [ "$FAILS" -gt 0 ]; then echo "FAILED: $FAILS check(s)"; exit 1; fi

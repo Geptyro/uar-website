@@ -6,7 +6,9 @@
  *   Holds the full parsed sightings, so player docs can always be rebuilt
  *   from scratch with the exact same merge logic as the old static pipeline.
  * - players: one doc per toon handle (_id = toon), the merged profile.
- * - feedback: visitor-submitted feedback from the /feedback page, append-only.
+ * - feedback: visitor-submitted feedback from the /feedback page and reports
+ *   sent by the Companion app (those carry `source: 'companion'` and a log),
+ *   append-only.
  * - accounts: one doc per Battle.net login (_id = OAuth sub), linking the
  *   account's SC2 profiles (toons) to player pages. Written by /auth/bnet.
  *
@@ -22,6 +24,7 @@ import { modeChanges } from '../mode.ts';
 import { PER_PAGE, pageNumber, type Paged } from 'sveltekit-commons/paging';
 import { cacheKeyMatches, cacheState } from 'sveltekit-commons/cache';
 import { escapeRegex } from 'sveltekit-commons/text';
+import type { ReportApp } from '../report.ts';
 import { careerXp, totalWins } from '../xp.ts';
 import { restorePins, type CutEntry } from '../progressionCuts.ts';
 import { BANNED_TOONS } from '../banned.ts';
@@ -135,9 +138,22 @@ export interface ReplayDoc {
 
 export interface FeedbackDoc {
 	createdAt: string; // ISO timestamp
-	message: string;
+	/** absent only on a Companion report sent with no note — the log is the report */
+	message?: string;
 	name?: string;
 	contact?: string;
+	/**
+	 * Set on reports the Companion app sends (POST /api/report): same inbox as
+	 * the /feedback form, because triage is one job and splitting it means one
+	 * of the two lists stops being read.
+	 */
+	source?: 'companion';
+	/** tail of the app's own log, trimmed to REPORT_LOG_MAX — reports only */
+	log?: string;
+	/** what the app said about itself (version, platform, …) — reports only */
+	app?: ReportApp;
+	/** the account behind it, when the app had a session; reports may be anonymous */
+	account?: { sub: string; battletag: string };
 	/** Triage flags — written by the maintainer's admin.sveld tool, not the site. */
 	done?: boolean;
 	doneAt?: string; // ISO timestamp, set when flagged done
@@ -1289,9 +1305,11 @@ export async function insertReplayDoc(doc: ReplayDoc): Promise<void> {
 	invalidateCache();
 }
 
-export async function insertFeedback(doc: FeedbackDoc): Promise<void> {
+/** Returns the new document's id — a Companion report shows it as a reference. */
+export async function insertFeedback(doc: FeedbackDoc): Promise<string> {
 	const d = await db();
-	await d.collection<FeedbackDoc>('feedback').insertOne(doc);
+	const r = await d.collection<FeedbackDoc>('feedback').insertOne(doc);
+	return String(r.insertedId);
 }
 
 /** Currently active "ready to play" flags, oldest first. */
