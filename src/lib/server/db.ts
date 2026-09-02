@@ -34,8 +34,9 @@ import { pinnedOnArrival, prunableReplays } from '../replayRetention.ts';
 import { withLock } from '../mutex.ts';
 import { classBoardsByMos, type MosBoard } from './playtime.ts';
 import { topTeammates } from './teammates.ts';
-import { startedAtOf } from '../gameEnd.ts';
+import { LOOPS_PER_SECOND, startedAtOf } from '../gameEnd.ts';
 import type { ActivityGame } from '../activity.ts';
+import { YEAR_DAYS, type ActivityDay } from '../yearActivity.ts';
 import { WINDOW_MS, weeklyBoards } from './weekly.ts';
 import type {
 	MosTopPlayer,
@@ -271,6 +272,7 @@ export async function warmCache(): Promise<void> {
 		['clans', () => getClanMembers()],
 		['overview', () => getWeeklyBoards()],
 		['overview:recent', () => getRecentReplays(5)],
+		['overview:year', () => getActivityDays(YEAR_DAYS)],
 		['overview:stats', () => getReplayStats()],
 		['avatars', () => getAvatarsByToon()]
 	];
@@ -314,10 +316,20 @@ const TTL_MS = 10 * 60_000;
 /** Keys whose value ages on its own, and so cannot rely on invalidation. */
 const SHORT_TTL_KEYS = new Set(['ready', 'weeklyBoards']);
 const SHORT_TTL_MS = 30_000;
+/**
+ * The year chart's daily buckets. Its window slides by one day, not by one
+ * upload, and it is the priciest read the overview makes per byte it puts on
+ * screen — so left to the clock it is refetched four times a day rather than
+ * every ten minutes. An upload still clears it like everything else; this
+ * only governs the quiet stretches in between.
+ */
+const LONG_TTL_MS = 6 * 3600_000;
 const ttlFor = (key: string) =>
 	SHORT_TTL_KEYS.has(key) || key.startsWith('replays:activity') || key.startsWith('mosWeek:')
 		? SHORT_TTL_MS
-		: TTL_MS;
+		: key.startsWith('replays:days')
+			? LONG_TTL_MS
+			: TTL_MS;
 /**
  * How long past its TTL an entry may still be served while its refresh runs.
  * Past the TTL the value is refetched, but nobody is made to *wait* for that
@@ -937,6 +949,66 @@ export async function getActivityReplays(days: number): Promise<ActivityGame[]> 
 				...(mode ? { mode } : {})
 			};
 		});
+	});
+}
+
+/**
+ * One row per day of the trailing `days`-day window, for the year chart.
+ *
+ * Grouped in the database, not here. A year of replays is ~2 400 documents and
+ * the chart wants three numbers a day out of them — on a cluster whose only
+ * lever is bytes returned (see the note on `cached`), pulling those documents
+ * back to reduce them in this process would be the whole read for a hundredth
+ * of the answer. `$group` returns ~365 small rows, measured at 55 ms / ~20 KB
+ * against prod.
+ *
+ * The match is on `playedAt` (when the recording stopped, the field every doc
+ * has and the one whose fixed-width shape makes the range lexical) while the
+ * grouping key is `startedAt` — a game belongs to the day it began on. The
+ * window is asked for a day wider than the chart draws so a game that started
+ * before the boundary and ended after it is still grouped correctly;
+ * `yearTimeline` drops whatever falls outside.
+ */
+export async function getActivityDays(days: number): Promise<ActivityDay[]> {
+	const DEFAULT_LOOPS = 30 * 60 * LOOPS_PER_SECOND; // matches activity.ts
+	return cached(`replays:days:${days}`, async () => {
+		const d = await db();
+		const since =
+			new Date(Date.now() - (days + 1) * 24 * 3600 * 1000).toISOString().slice(0, 10) +
+			'T00:00:00Z';
+		const rows = await d
+			.collection<ReplayDoc>('replays')
+			.aggregate([
+				{ $match: { playedAt: { $gte: since } } },
+				{
+					$group: {
+						_id: { $substrBytes: [{ $ifNull: ['$startedAt', '$playedAt'] }, 0, 10] },
+						games: { $sum: 1 },
+						playerSeconds: {
+							$sum: {
+								$divide: [
+									{
+										$multiply: [
+											{ $ifNull: ['$players', 0] },
+											{ $ifNull: ['$gameLoops', '$durationLoops', DEFAULT_LOOPS] }
+										]
+									},
+									LOOPS_PER_SECOND
+								]
+							}
+						}
+					}
+				},
+				{ $sort: { _id: 1 } }
+			])
+			.toArray();
+		return rows.map((r) => ({
+			day: r._id as string,
+			games: r.games as number,
+			// rounded here rather than in the chart: it is the last place that
+			// knows these are seconds, and it keeps the SSR payload short
+			playerSeconds: Math.round(r.playerSeconds as number)
+		}));
 	});
 }
 

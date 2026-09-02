@@ -1,6 +1,7 @@
 import { recentActivity, type ActivityItem } from '$lib/server/activity';
 import {
 	dbConfigured,
+	getActivityDays,
 	getActivityReplays,
 	getAvatarsByToon,
 	getRecentReplays,
@@ -8,6 +9,7 @@ import {
 } from '$lib/server/db';
 import { longestGame } from '$lib/server/weekly';
 import { activityTimeline, type ActivityGame, type ActivityTimeline } from '$lib/activity';
+import { YEAR_DAYS, yearTimeline, type YearTimeline } from '$lib/yearActivity';
 import { bnetConfigured } from '$lib/server/bnet';
 import type { ReplayMeta, WeeklyBoards } from '$lib/players';
 import type { PageServerLoad } from './$types';
@@ -55,16 +57,20 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 			weekly: EMPTY,
 			avatars: {} as Record<string, string>,
 			activity: { start: 0, values: [] } as ActivityTimeline,
+			year: { start: 0, players: [], games: [] } as YearTimeline,
 			longest: null as ActivityGame | null,
 			recent: [] as ReplayMeta[],
 			community: [] as ActivityItem[]
 		};
 	// two narrow reads rather than the whole archive: the chart only looks at a
 	// trailing window, and the widget only at the newest handful
-	const [weekly, avatars, activity, recent, community] = await Promise.all([
+	const [weekly, avatars, activity, days, recent, community] = await Promise.all([
 		getWeeklyBoards(),
 		getAvatarsByToon(),
 		getActivityReplays(ACTIVITY_DAYS),
+		// the year chart's own read: ~365 rows grouped in the database, not the
+		// archive — it cannot be sliced out of the window above
+		getActivityDays(YEAR_DAYS),
 		getRecentReplays(RECENT),
 		recentActivity(RECENT_ACTIVITY)
 	]);
@@ -75,6 +81,7 @@ export const load: PageServerLoad = async ({ locals, cookies }) => {
 		weekly,
 		avatars,
 		activity: activityTimeline(activity, now, ACTIVITY_DAYS),
+		year: yearTimeline(days, now, YEAR_DAYS),
 		// the week's longest game, off the list the chart already reads
 		longest: longestGame(activity, now),
 		// getRecentReplays already sorts newest first, as the widget shows them

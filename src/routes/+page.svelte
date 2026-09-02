@@ -7,6 +7,7 @@
 	import { latestRelease } from '$lib/changelog-data';
 	import DescCard from '$lib/components/DescCard.svelte';
 	import ActivityChart from '$lib/components/ActivityChart.svelte';
+	import YearActivity from '$lib/components/YearActivity.svelte';
 	import RecentGames from '$lib/components/RecentGames.svelte';
 	import RecentActivity from '$lib/components/RecentActivity.svelte';
 	import Seo from '$lib/components/Seo.svelte';
@@ -243,6 +244,25 @@
 		<p class="top-note">
 			Average players in game per half hour, from ingested replays · times shown in your local
 			timezone.
+		</p>
+	{/if}
+
+	<!-- The note's second sentence is load-bearing, not boilerplate. Only
+	     uploaded games are on this chart, and the site is younger than the
+	     window it draws: everything before late July 2026 arrived as backfill
+	     from players' own replay folders. November 2025 is one player's folder
+	     and nothing else (93 of 93 games have him in them), against 38% for
+	     August 2026. So the climb across the year is largely the archive
+	     filling up, and a reader who is not told that will read growth into
+	     it. Do not quietly drop the sentence to tidy the page. -->
+	{#if data.year.games.some((v) => v > 0)}
+		<h2 class="section">Activity · last 12 months</h2>
+		<DescCard label="The year on record">
+			<YearActivity year={data.year} />
+		</DescCard>
+		<p class="top-note">
+			One bar per day under a seven-day average, from ingested replays · days are UTC. Plenty of
+			games are missing from the older months.
 		</p>
 	{/if}
 
