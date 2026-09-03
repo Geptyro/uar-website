@@ -12,6 +12,8 @@ export interface Skill {
 	levels: number | null;
 	icon: string | null;
 	tooltip: string;
+	/** Ids and names the tree also answers to: the per-level commands folded into it. */
+	aliases?: string[];
 }
 
 export interface CommonAbility {
@@ -21,6 +23,8 @@ export interface CommonAbility {
 	tooltip: string;
 	/** Set when the command has more than one level in the data. */
 	levels?: number;
+	/** Ids and names of the per-level copies folded into this command. */
+	aliases?: string[];
 }
 
 /** Requirement to pick a class while playing one rank track. */

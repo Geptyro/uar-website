@@ -584,9 +584,10 @@ export function footNotes(rows: LevelStats[], treeNames: Record<string, string> 
 	}
 	const tree = rows.find((r) => r.tree);
 	if (tree) {
+		const lvls = rows.filter((r) => r.tree).map((r) => r.treeLevel);
 		out.push({
 			lead: 'Columns',
-			text: `the base numbers, then with ${treeNames[tree.tree!] ?? tree.tree} at each level.`
+			text: `the base numbers, then with ${treeNames[tree.tree!] ?? tree.tree} at level${lvls.length > 1 ? 's' : ''} ${lvls.join(', ')}.`
 		});
 	}
 	if (rows.some((r) => r.viaScript)) {

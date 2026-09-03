@@ -31,7 +31,7 @@ interface SkillOwner {
 const skillsByKey = new Map<string, SkillOwner[]>();
 for (const m of allMos) {
 	for (const skill of m.skills) {
-		for (const key of new Set([fold(skill.id), fold(skill.name)])) {
+		for (const key of new Set([skill.id, skill.name, ...(skill.aliases ?? [])].map(fold))) {
 			const list = skillsByKey.get(key) ?? [];
 			list.push({ mos: m.id, skill });
 			skillsByKey.set(key, list);
@@ -49,7 +49,7 @@ interface AbilityOwner {
 const abilitiesByKey = new Map<string, AbilityOwner[]>();
 for (const m of allMos) {
 	for (const ability of m.common) {
-		for (const key of new Set([fold(ability.id), fold(ability.name)])) {
+		for (const key of new Set([ability.id, ability.name, ...(ability.aliases ?? [])].map(fold))) {
 			const list = abilitiesByKey.get(key) ?? [];
 			list.push({ mos: m.id, ability });
 			abilitiesByKey.set(key, list);
@@ -90,9 +90,11 @@ function skillFinder(prefer: string | null): Finder {
 
 function abilityFinder(prefer: string | null): Finder {
 	const vehicle = prefer ? (mosById.get(prefer)?.vehicle ?? null) : null;
+	const asSkill = skillFinder(prefer);
 	return (ref) => {
 		const owners = abilitiesByKey.get(fold(ref));
-		if (!owners?.length) return null;
+		// a command folded into its tree (the APC's Deploy) answers as the tree
+		if (!owners?.length) return asSkill(ref);
 		const o =
 			owners.find((x) => x.mos === prefer) ?? owners.find((x) => x.mos === vehicle) ?? owners[0];
 		return {

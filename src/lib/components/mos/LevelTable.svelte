@@ -112,7 +112,7 @@
 									</ul>
 								{:else if c?.lines}
 									<ul class="lines">
-										{#each c.lines as l, k (k)}<li>{l}</li>{/each}
+										{#each c.lines as l, k (k)}<li class:long={l.length > 56}>{l}</li>{/each}
 									</ul>
 								{:else if c?.parts}
 									{#each c.parts as p, k (k)}
@@ -231,8 +231,13 @@
 		white-space: normal;
 		min-width: 16em;
 	}
+	/* a short line ("+2 fitness") stays whole; a sentence (an aura's) wraps at a readable width */
 	.stat td.prose .lines li {
 		white-space: nowrap;
+	}
+	.stat td.prose .lines li.long {
+		white-space: normal;
+		max-width: 30em;
 	}
 	.blocks,
 	.lines {
