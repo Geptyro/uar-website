@@ -566,6 +566,11 @@
 		background: var(--accent-soft);
 		border-color: transparent;
 	}
+	.rich :global(.ref-effect) {
+		color: var(--accent);
+		background: var(--accent-soft);
+		border-color: transparent;
+	}
 	.rich :global(.ref-mission) {
 		color: var(--text);
 		background: var(--surface-sunken);

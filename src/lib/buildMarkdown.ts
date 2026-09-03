@@ -34,7 +34,7 @@
 import { Marked, type Tokens } from 'marked';
 import { imageUrl } from './builds.ts';
 
-export const REF_KINDS = ['skill', 'ability', 'item', 'mos', 'si', 'unit', 'mission', 'player'] as const;
+export const REF_KINDS = ['skill', 'ability', 'item', 'effect', 'mos', 'si', 'unit', 'mission', 'player'] as const;
 export type RefKind = (typeof REF_KINDS)[number];
 
 /** What a `[[…]]` points at, as the resolver answers it. */

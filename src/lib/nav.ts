@@ -81,6 +81,14 @@ export const navItems: NavItemDef[] = [
 		icon: icon('<circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/>')
 	},
 	{
+		href: '/effects',
+		label: 'Effects',
+		alias: ['ailments', 'buffs', 'debuffs', 'status', 'wounds', 'injuries', 'venom', 'burn', 'slow', 'stun'],
+		icon: icon(
+			'<path d="M12 2.5c3.2 3.6 4.8 6.4 4.8 8.9a4.8 4.8 0 0 1-9.6 0c0-1.9 1-3.6 2.4-5.1.3 1.3 1 2.1 1.8 2.7.8-1.9.8-4 .6-6.5Z"/><path d="M6 21h12"/>'
+		)
+	},
+	{
 		href: '/triggers',
 		label: 'Triggers',
 		alias: ['missions', 'mechanics', 'mule', 'objectives', 'script', 'mission flow', 'mission order'],

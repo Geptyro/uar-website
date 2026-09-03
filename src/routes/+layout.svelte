@@ -65,6 +65,11 @@
 		}
 		if (p === '/guide') return { section: '', title: 'Quick guide' };
 		if (p === '/triggers') return { section: '', title: 'Triggers' };
+		if (p === '/effects') return { section: '', title: 'Effects' };
+		if (p.startsWith('/effects/')) {
+			const e = page.data.effect as { name?: string } | undefined;
+			return { section: 'Effects', sectionHref: '/effects', title: e?.name ?? decodeURIComponent(p.slice('/effects/'.length)) };
+		}
 		if (p.startsWith('/triggers/')) {
 			// the group's name, not its slug
 			const g = page.data.group as { name?: string } | undefined;

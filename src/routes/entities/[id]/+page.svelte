@@ -4,7 +4,7 @@
 	import { roleLabel, type RefRole } from '$lib/refs';
 	import FactsCard, { type Fact } from '$lib/components/FactsCard.svelte';
 	import ModelCard from '$lib/components/ModelCard.svelte';
-	import AbilityTiles from '$lib/components/AbilityTiles.svelte';
+	import AbilityCards from '$lib/components/mos/AbilityCards.svelte';
 	import DescCard from '$lib/components/DescCard.svelte';
 	import Seo from '$lib/components/Seo.svelte';
 	import { entityCardUrl, unitDescription } from '$lib/seo';
@@ -101,7 +101,11 @@
 
 			{#if abilities.length}
 				<h2 class="section">Abilities</h2>
-				<AbilityTiles {abilities} size="large" />
+				<AbilityCards
+					items={abilities}
+					stats={Object.fromEntries(abilities.filter((a) => a.rows).map((a) => [a.id, a.rows!]))}
+					anchor="abil"
+				/>
 			{/if}
 
 			{#if unit.weapons.length}

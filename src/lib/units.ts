@@ -112,6 +112,8 @@ export interface UnitAbility {
 	name: string;
 	tooltip: string;
 	icon: string | null;
+	/** The same level rows a class ability carries, when the data has numbers. */
+	rows?: import('./skillstats').LevelStats[];
 }
 
 export interface Unit {

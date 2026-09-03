@@ -97,7 +97,8 @@
 									<ul class="blocks">
 										{#each c.blocks as b, k (k)}
 											<li>
-												<span class="btitle">{b.title}</span>
+												{#if b.icon}<img class="eicon" src={b.icon} alt="" loading="lazy" />{/if}
+												{#if b.href}<a class="btitle" href={b.href}>{b.title}</a>{:else}<span class="btitle">{b.title}</span>{/if}
 												{#if b.note}<span class="bnote">{b.note}</span>{/if}
 												{#if b.modes?.length}
 													<span class="bmodes">
@@ -116,8 +117,11 @@
 								{:else if c?.parts}
 									{#each c.parts as p, k (k)}
 										{#if k > 0}, {/if}
+										{#if p.icon}<img class="eicon" src={p.icon} alt="" loading="lazy" />{/if}
 										{#if p.unit && unitById.has(p.unit)}
 											<a href="/entities/{p.unit}">{p.text}</a>
+										{:else if p.href}
+											<a href={p.href}>{p.text}</a>
 										{:else}
 											{p.text}
 										{/if}
@@ -246,6 +250,23 @@
 	.btitle {
 		font-weight: 550;
 		color: var(--text);
+	}
+	a.btitle {
+		text-decoration: none;
+	}
+	/* the effect's own art, small, before its name */
+	.eicon {
+		width: 16px;
+		height: 16px;
+		border-radius: 3px;
+		object-fit: cover;
+		vertical-align: -3px;
+		margin-right: 4px;
+	}
+	a.btitle:hover {
+		color: var(--accent);
+		text-decoration: underline;
+		text-underline-offset: 3px;
 	}
 	.bnote {
 		margin-left: 6px;

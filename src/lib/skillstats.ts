@@ -27,6 +27,10 @@ export interface LevelExtra {
 }
 
 export interface LevelApply {
+	/** The behaviour's id: its page under /effects. */
+	id?: string;
+	/** The icon the game shows for it. */
+	icon?: string;
 	name: string;
 	effects: string[];
 	dur?: string;
@@ -95,6 +99,9 @@ export interface LevelStats {
 	vitals?: string[];
 	reveal?: { r: number; dur?: number; detects?: boolean; map?: boolean };
 	removes?: string[];
+	/** The removed buffs' ids and icons, parallel to `removes`. */
+	removeIds?: string[];
+	removeIcons?: (string | null)[];
 	/** A toggle's behaviour at this level. */
 	mods?: string[];
 	/** An ammo mode: the weapon this level swaps in while it is on. */
@@ -117,6 +124,10 @@ export type ClassStats = Record<string, LevelStats[]>;
 /** One buff in an Applies cell: its name, what gates it, what it does. */
 export interface CellBlock {
 	title: string;
+	/** The effect's own page. */
+	href?: string;
+	/** The effect's icon, drawn small before the title. */
+	icon?: string;
 	/** Duration, the skill level it needs — after the title. */
 	note?: string;
 	/** Game modes the buff needs, drawn as the modes' own marks. */
@@ -134,8 +145,8 @@ export interface Cell {
 	text: string;
 	/** A smaller second line under the value. */
 	sub?: string;
-	/** The value in pieces, each one naming a unit it can link to; `text` stays the plain reading. */
-	parts?: { text: string; unit?: string }[];
+	/** The value in pieces, each naming a unit or a page it links to; `text` stays the plain reading. */
+	parts?: { text: string; unit?: string; href?: string; icon?: string }[];
 	/** Prose cells read left-aligned, one line per entry, instead of a right-aligned number. */
 	lines?: string[];
 	/** A list of buffs, each its own block; `text` stays the plain reading. */
@@ -258,6 +269,8 @@ function appliesCell(r: LevelStats): Cell | null {
 	if (!applies.length) return null;
 	const blocks = applies.map((a) => ({
 		title: a.name,
+		...(a.id ? { href: `/effects/${encodeURIComponent(a.id)}` } : {}),
+		...(a.icon ? { icon: a.icon } : {}),
 		note: [
 			a.passive ? 'passive' : '',
 			a.chance ? `${pct(a.chance)} chance` : '',
@@ -309,6 +322,8 @@ function weaponFacets(w: LevelWeapon): CellNest['kv'] {
 function onHitBlocks(w: LevelWeapon): CellBlock[] {
 	return (w.applies ?? []).map((a) => ({
 		title: a.name,
+		...(a.id ? { href: `/effects/${encodeURIComponent(a.id)}` } : {}),
+		...(a.icon ? { icon: a.icon } : {}),
 		note: ['on hit', a.chance ? `${pct(a.chance)} chance` : '', a.dur ? `${a.dur} s` : '', a.req ? `with ${a.req}` : '', a.cond ?? '']
 			.filter(Boolean)
 			.join(' · '),
@@ -410,7 +425,7 @@ const MOD_KINDS: [RegExp, string, StatIconName][] = [
 	[/^grants weapon/, 'Weapon', 'damage']
 ];
 
-function modKind(m: string): [string, StatIconName] {
+export function modKind(m: string): [string, StatIconName] {
 	for (const [re, label, icon] of MOD_KINDS) if (re.test(m)) return [label, icon];
 	return ['Effect', 'sparkle'];
 }
@@ -511,7 +526,21 @@ export function statRows(rows: LevelStats[]): StatRow[] {
 						}
 					: null
 		],
-		['Removes', 'remove', (r) => (r.removes?.length ? { text: r.removes.join(', '), lines: r.removes } : null)],
+		[
+			'Removes',
+			'remove',
+			(r) =>
+				r.removes?.length
+					? {
+							text: r.removes.join(', '),
+							parts: r.removes.map((n, i) => ({
+								text: n,
+								...(r.removeIds?.[i] ? { href: `/effects/${encodeURIComponent(r.removeIds[i])}` } : {}),
+								...(r.removeIcons?.[i] ? { icon: r.removeIcons[i]! } : {})
+							}))
+						}
+					: null
+		],
 		['Effect', 'sparkle', () => null],
 		['Sets', 'bonus', (r) => (r.sets?.length ? { text: r.sets.join('\n'), lines: r.sets } : null)],
 		['Duration', 'clock', (r) => plain(r.dur, sec)]

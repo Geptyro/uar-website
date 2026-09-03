@@ -17,6 +17,8 @@
 import { allMos, items, mosById, mosHref, skillIdentifiers, type CommonAbility, type Skill } from './mos';
 import { unitById, units } from './units';
 import { GROUP_TYPES, groupById, groupHref, groups } from './groups';
+import { EFFECT_KIND_WORD, effectById, effectsIndex } from './effectsIndex';
+import { effectHref } from './effects';
 import type { RefKind, RefResolver, RefTarget } from './buildMarkdown';
 
 const fold = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '');
@@ -56,6 +58,20 @@ for (const m of allMos) {
 }
 
 type Finder = (ref: string) => RefTarget | null;
+
+/* An effect — a buff, a debuff, a wound — by id or by name: "Fractured Leg",
+   "Prone", "Napalm Burn". The chip carries the game's icon and links to the
+   effect's page. */
+const effectsByKey = new Map<string, (typeof effectsIndex)[number]>();
+for (const e of effectsIndex) {
+	for (const key of new Set([fold(e.id), fold(e.name)])) {
+		if (!effectsByKey.has(key)) effectsByKey.set(key, e);
+	}
+}
+function effect(ref: string): RefTarget | null {
+	const e = effectById.get(ref) ?? effectsByKey.get(fold(ref));
+	return e ? { kind: 'effect', name: e.name, href: effectHref(e.id), icon: e.icon, tip: EFFECT_KIND_WORD[e.kind] } : null;
+}
 
 function skillFinder(prefer: string | null): Finder {
 	return (ref) => {
@@ -190,13 +206,14 @@ export function refResolver(
 		skill: skillFinder(mosId),
 		ability: abilityFinder(mosId),
 		item,
+		effect,
 		mos,
 		si,
 		unit,
 		mission,
 		player
 	};
-	const order: RefKind[] = ['skill', 'ability', 'item', 'mos', 'si', 'unit', 'mission'];
+	const order: RefKind[] = ['skill', 'ability', 'item', 'mos', 'si', 'effect', 'unit', 'mission'];
 	return (kind, ref) => {
 		if (kind !== null) {
 			const f = (finders as Record<string, Finder | undefined>)[kind];
@@ -265,6 +282,9 @@ export function searchRefs(query: string, mosId: string | null, limit = 8): RefH
 		}
 	}
 	for (const i of items) if (i.playable) add({ kind: 'item', id: i.id, name: i.name, icon: i.icon, ref: `[[item:${i.id}]]` });
+	for (const e of effectsIndex) {
+		add({ kind: 'effect', id: e.id, name: e.name, icon: e.icon, ref: `[[effect:${e.id}]]`, note: EFFECT_KIND_WORD[e.kind] });
+	}
 	for (const g of groups) {
 		add({ kind: 'mission', id: g.id, name: g.name, icon: null, ref: `[[mission:${g.id}]]`, note: GROUP_TYPES.find((t) => t.type === g.type)?.label ?? g.type });
 	}

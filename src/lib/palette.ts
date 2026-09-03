@@ -19,7 +19,7 @@ import type { PaletteRow } from 'sveltekit-commons/palette';
 import { playerHref } from './playerTabs.ts';
 import { mosTabHref, vehicleSlug } from './mosTabs.ts';
 
-export type PaletteKind = 'page' | 'mos' | 'si' | 'trigger' | 'entity' | 'player';
+export type PaletteKind = 'page' | 'mos' | 'si' | 'trigger' | 'entity' | 'effect' | 'player';
 
 /**
  * A tie-break, not a filter: two rows that match equally well are ordered by
@@ -28,7 +28,7 @@ export type PaletteKind = 'page' | 'mos' | 'si' | 'trigger' | 'entity' | 'player
  * same unit, so both outrank a bare entity. `rankRows` reads this off
  * `row.weight`.
  */
-const KIND_WEIGHT: Record<PaletteKind, number> = { page: 0, mos: 1, si: 2, trigger: 2, entity: 3, player: 4 };
+const KIND_WEIGHT: Record<PaletteKind, number> = { page: 0, mos: 1, si: 2, trigger: 2, entity: 3, effect: 3, player: 4 };
 
 /**
  * The entity index shipped at /search.json. Field names are short because
@@ -63,8 +63,36 @@ export interface TriggerIndexRow {
 	a: string[];
 }
 
-export type IndexRow = EntityIndexRow | TriggerIndexRow;
+/**
+ * An effect in the same index — a buff, a debuff, an ailment — by its name,
+ * told apart by its `e`. Leads to the effect's own page.
+ */
+export interface EffectIndexRow {
+	/** the behaviour id — the /effects/<id> segment */
+	e: string;
+	n: string;
+	/** ailment | debuff | buff | status */
+	k: string;
+	p?: string;
+}
+
+export type IndexRow = EntityIndexRow | TriggerIndexRow | EffectIndexRow;
 export const isTriggerRow = (r: IndexRow): r is TriggerIndexRow => 'g' in r;
+export const isEffectRow = (r: IndexRow): r is EffectIndexRow => 'e' in r;
+
+/** Effect rows: the kind is the note, the id an alias (the data's name for it). */
+export function effectRows(index: EffectIndexRow[]): PaletteRow[] {
+	return index.map((e) => ({
+		kind: 'effect',
+		id: e.e,
+		href: `/effects/${encodeURIComponent(e.e)}`,
+		label: e.n,
+		note: e.k,
+		icon: e.p ?? null,
+		alias: [e.e],
+		weight: KIND_WEIGHT.effect
+	}));
+}
 
 /**
  * Trigger group rows. `glyph` is the sidebar's mark for the Triggers section,

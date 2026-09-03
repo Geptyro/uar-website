@@ -15,6 +15,7 @@ import { listedUnits as units } from '$lib/units';
 import { mosList } from '$lib/mos';
 import { groups } from '$lib/groups';
 import { triggerById } from '$lib/server/triggers';
+import { effectsIndex } from '$lib/effectsIndex';
 import { shortCategory, type IndexRow } from '$lib/palette';
 import type { RequestHandler } from './$types';
 
@@ -41,7 +42,9 @@ export const GET: RequestHandler = () => {
 			t: g.type,
 			k: g.triggers.length,
 			a: [...new Set([...g.outcomes.map((o) => o.name), ...g.triggers.map((t) => triggerById(t)?.name ?? t)])]
-		}))
+		})),
+		/* the effects, by name: a wound a reader wants the odds of, a buff a guide names */
+		...effectsIndex.map((e) => ({ e: e.id, n: e.name, k: e.kind, ...(e.icon ? { p: e.icon } : {}) }))
 	];
 	return json(index);
 };

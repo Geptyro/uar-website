@@ -1,6 +1,7 @@
 import { listedUnits as units } from '$lib/units';
 import { mosById, mosList } from '$lib/mos';
 import { groupHref, groupIds } from '$lib/groups';
+import behaviors from '$lib/data/behaviors.json';
 import { mosTabHref, vehicleSlug } from '$lib/mosTabs';
 import { dbConfigured, getClanMembers, getPlayerSitemap } from '$lib/server/db';
 import { SITE_URL } from '$lib/seo';
@@ -28,6 +29,7 @@ const STATIC: SitemapUrl[] = [
 	{ path: '/clans', priority: 0.7 },
 	{ path: '/replays', priority: 0.6 },
 	{ path: '/triggers', priority: 0.7 },
+	{ path: '/effects', priority: 0.7 },
 	{ path: '/map', priority: 0.7 },
 	{ path: '/career', priority: 0.7 },
 	{ path: '/career/si', priority: 0.7 },
@@ -73,7 +75,8 @@ export const GET: RequestHandler = async ({ setHeaders }) => {
 			{ path: groupHref(id), priority: 0.7 },
 			{ path: `${groupHref(id)}/flow`, priority: 0.5 }
 		]),
-		...units.map((u) => ({ path: `/entities/${encodeURIComponent(u.id)}`, priority: 0.5 }))
+		...units.map((u) => ({ path: `/entities/${encodeURIComponent(u.id)}`, priority: 0.5 })),
+		...(behaviors as { id: string }[]).map((e) => ({ path: `/effects/${encodeURIComponent(e.id)}`, priority: 0.4 }))
 	];
 
 	/* The player and clan halves do have a real per-page date, and it is worth

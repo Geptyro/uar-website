@@ -31,8 +31,7 @@
 		siRows,
 		triggerRows,
 		type EntityIndexRow,
-		type IndexRow
-	} from '$lib/palette';
+		type IndexRow, effectRows, isEffectRow } from '$lib/palette';
 
 	/** Rows of the static half shown at once — a keyboard target, not a page. */
 	const HITS = 7;
@@ -43,6 +42,7 @@
 	let q = $state('');
 	let entities = $state<PaletteRow[]>([]);
 	let triggers = $state<PaletteRow[]>([]);
+	let effects = $state<PaletteRow[]>([]);
 	const triggerGlyph = navItems.find((n) => n.href === '/triggers')?.icon;
 	let players = $state<PaletteRow[]>([]);
 	/** True from the keystroke until the answer lands — the debounce included. */
@@ -58,7 +58,8 @@
 		),
 		...siRows(skillIdentifiers),
 		...triggers,
-		...entities
+		...entities,
+		...effects
 	]);
 
 	/** With nothing typed, the palette offers the destinations. */
@@ -84,8 +85,9 @@
 			const res = await fetch('/search.json');
 			if (!res.ok) throw new Error(`search index: ${res.status}`);
 			const index = (await res.json()) as IndexRow[];
-			entities = entityRows(index.filter((r): r is EntityIndexRow => !isTriggerRow(r)));
+			entities = entityRows(index.filter((r): r is EntityIndexRow => !isTriggerRow(r) && !isEffectRow(r)));
 			triggers = triggerRows(index.filter(isTriggerRow), triggerGlyph);
+			effects = effectRows(index.filter(isEffectRow));
 		} catch {
 			indexRequested = false;
 		}
@@ -135,7 +137,7 @@
 	bind:this={dialog}
 	bind:query={q}
 	{groups}
-	placeholder="Search units, classes, triggers, players…"
+	placeholder="Search units, classes, effects, triggers, players…"
 	onopen={() => {
 		players = [];
 		searching = false;
