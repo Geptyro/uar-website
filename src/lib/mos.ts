@@ -19,6 +19,8 @@ export interface CommonAbility {
 	name: string;
 	icon: string | null;
 	tooltip: string;
+	/** Set when the command has more than one level in the data. */
+	levels?: number;
 }
 
 /** Requirement to pick a class while playing one rank track. */

@@ -14,10 +14,10 @@ export const entries: EntryGenerator = () =>
 		.filter((m) => m.vehicle && mosById.get(m.vehicle))
 		.map((m) => ({ id: m.id, vehicle: vehicleSlug(mosById.get(m.vehicle!)!.name) }));
 
-export const load: PageLoad = ({ params, parent }) =>
+export const load: PageLoad = ({ params, parent, data }) =>
 	parent().then(({ mos, vehicle }) => {
 		if (!vehicle || vehicleSlug(vehicle.name) !== params.vehicle) {
 			error(404, `No "${params.vehicle}" tab on the ${mos.name}`);
 		}
-		return { vehicle, vehicleItems: usableItemsFor(vehicle.id) };
+		return { ...data, vehicle, vehicleItems: usableItemsFor(vehicle.id) };
 	});

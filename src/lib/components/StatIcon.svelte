@@ -15,7 +15,20 @@
 		| 'items'
 		| 'regen'
 		| 'sight'
-		| 'damage';
+		| 'damage'
+		| 'clock'
+		| 'cast'
+		| 'range'
+		| 'charges'
+		| 'splash'
+		| 'bonus'
+		| 'burn'
+		| 'sparkle'
+		| 'remove'
+		| 'biological'
+		| 'mechanical'
+		| 'fitness'
+		| 'firerate';
 
 	const ICONS: Record<StatIconName, { p: string; o: number }[]> = {
 		role: [
@@ -72,6 +85,79 @@
 		damage: [
 			{ p: '12,2 7.5,9 7.5,21 12,21', o: 1 },
 			{ p: '12,2 16.5,9 16.5,21 12,21', o: 0.55 }
+		],
+		// The skill-sheet rows. A dial with a wedge gone: time spent, time to wait
+		clock: [
+			{ p: '12,12 12,2 5,5 2,12 5,19 12,22 19,19 22,12', o: 1 },
+			{ p: '12,12 12,2 19,5 22,12', o: 0.35 }
+		],
+		// an hourglass, the top bulb full: the cast still running
+		cast: [
+			{ p: '6,3 18,3 12,12', o: 1 },
+			{ p: '12,12 6,21 18,21', o: 0.5 }
+		],
+		// a reticle: the faint outer diamond is the reach, the solid one the mark
+		range: [
+			{ p: '12,3 21,12 12,21 3,12', o: 0.35 },
+			{ p: '12,8 16,12 12,16 8,12', o: 1 }
+		],
+		// three slabs stacked, the full one at the bottom: a charge count
+		charges: [
+			{ p: '4,15 20,15 20,20 4,20', o: 1 },
+			{ p: '4,9.5 20,9.5 20,13.5 4,13.5', o: 0.7 },
+			{ p: '4,4 20,4 20,8 4,8', o: 0.4 }
+		],
+		// rings around the hit, fading outward like the damage does
+		splash: [
+			{ p: '12,2 22,12 12,22 2,12', o: 0.3 },
+			{ p: '12,6 18,12 12,18 6,12', o: 0.55 },
+			{ p: '12,9.5 14.5,12 12,14.5 9.5,12', o: 1 }
+		],
+		// an arrow up: more against something
+		bonus: [
+			{ p: '12,3 20,11 4,11', o: 1 },
+			{ p: '9,11 15,11 15,21 9,21', o: 0.55 }
+		],
+		// a flame with a lighter core: damage that keeps coming
+		burn: [
+			{ p: '12,2 17,9 19,15 12,22 5,15 7,9', o: 1 },
+			{ p: '12,10 15,15 12,20 9,15', o: 0.45 }
+		],
+		// a spark and a smaller one beside it: a buff or debuff landing
+		sparkle: [
+			{ p: '11,4 12.5,10.5 19,12 12.5,13.5 11,20 9.5,13.5 3,12 9.5,10.5', o: 1 },
+			{ p: '18.5,2 19.5,5 22.5,6 19.5,7 18.5,10 17.5,7 14.5,6 17.5,5', o: 0.55 }
+		],
+		// a cross struck through: an effect taken off
+		remove: [
+			{ p: '5,7 7,5 19,17 17,19', o: 1 },
+			{ p: '19,7 17,5 5,17 7,19', o: 0.55 }
+		],
+		// The two target types a hit can be limited to. Biological: a cell, its
+		// nucleus off-centre; mechanical: a cog, four teeth on a faceted hub.
+		biological: [
+			{ p: '12,2 19,5.5 21.5,12 18,19 11,22 4.5,18 2.5,11 5.5,5', o: 0.55 },
+			{ p: '10,8 14,9 15,13 11,15 8,12', o: 1 }
+		],
+		// a dumbbell: fitness points
+		fitness: [
+			{ p: '3,8 7,8 7,16 3,16', o: 1 },
+			{ p: '17,8 21,8 21,16 17,16', o: 1 },
+			{ p: '7,10.5 17,10.5 17,13.5 7,13.5', o: 0.55 }
+		],
+		// three bars rising: shots coming faster
+		firerate: [
+			{ p: '3,14 6.5,14 6.5,21 3,21', o: 0.45 },
+			{ p: '10,9 13.5,9 13.5,21 10,21', o: 0.7 },
+			{ p: '17,3 20.5,3 20.5,21 17,21', o: 1 }
+		],
+		mechanical: [
+			{ p: '10,2 14,2 14,5 10,5', o: 1 },
+			{ p: '10,19 14,19 14,22 10,22', o: 1 },
+			{ p: '2,10 5,10 5,14 2,14', o: 1 },
+			{ p: '19,10 22,10 22,14 19,14', o: 1 },
+			{ p: '12,5 17,8 17,16 12,19 7,16 7,8', o: 0.75 },
+			{ p: '12,9.5 14.5,12 12,14.5 9.5,12', o: 0.3 }
 		]
 	};
 
@@ -87,7 +173,22 @@
 		items: 'var(--text-dim)',
 		regen: 'var(--accent)',
 		sight: 'var(--text-dim)',
-		damage: 'var(--item)'
+		damage: 'var(--item)',
+		// time waits are blue like armor, what the hit does is gold like damage,
+		// what burns is red like life, what lands on a unit is green like regen
+		clock: 'var(--mos)',
+		cast: 'var(--mos)',
+		range: 'var(--mos)',
+		charges: 'var(--item)',
+		splash: 'var(--item)',
+		bonus: 'var(--item)',
+		burn: 'var(--hostile)',
+		sparkle: 'var(--accent)',
+		remove: 'var(--text-dim)',
+		biological: 'var(--accent)',
+		mechanical: 'var(--mos)',
+		fitness: 'var(--hostile)',
+		firerate: 'var(--item)'
 	};
 </script>
 

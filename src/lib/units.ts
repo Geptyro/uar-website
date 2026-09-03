@@ -44,7 +44,8 @@ export interface Weapon {
 	armor?: number;
 	/** Melee / Splash / Spell; absent for the usual Ranged. */
 	kind?: string;
-	bonus?: { attr: string; value: number }[];
+	/** Flat bonus against an attribute, or a factor (×2) where the effect multiplies instead. */
+	bonus?: { attr: string; value?: number; factor?: number }[];
 	splash?: SplashRing[];
 	/** The hit is a persistent that lands this many times. */
 	hits?: number;
@@ -75,7 +76,10 @@ export function damageNotes(w: Weapon): string[] {
 	if (w.armor) out.push(`ignores ${fmt(w.armor)} armor`);
 	// the ring list already says splash; the kind word is for melee/spell
 	if (w.kind && !(w.kind === 'Splash' && w.splash?.length)) out.push(w.kind.toLowerCase());
-	for (const b of w.bonus ?? []) out.push(`${b.value > 0 ? '+' : ''}${fmt(b.value)} vs ${b.attr}`);
+	for (const b of w.bonus ?? []) {
+		if (b.factor != null) out.push(`${b.factor > 0 ? '+' : '−'}${pct(Math.abs(b.factor))} vs ${b.attr}`);
+		else if (b.value != null) out.push(`${b.value > 0 ? '+' : ''}${fmt(b.value)} vs ${b.attr}`);
+	}
 	if (w.splash?.length) {
 		const rings = w.splash
 			.map((s) => `${pct(s.f)} within ${fmt(s.r)}${s.arc ? ` (${s.arc}° cone)` : ''}`)

@@ -34,11 +34,11 @@
 	<ClassFrame>
 		<BehaviourDuo
 			mos={v}
+			stats={data.vehicleStats}
+			treeNames={Object.fromEntries(v.skills.map((s) => [s.id, s.name]))}
 			lead
 			abilitiesLabel="Abilities"
-			abilitiesNote="What the {v.name} can do once you are in it. Hover — or focus — an icon for what it does."
-			panelLabel="Panel"
-			panelNote="Extra actions on the {v.name}'s mini-panel, with the hotkey for each one."
+			abilitiesNote="What the {v.name} can do once you are in it, with the numbers from the map data."
 		/>
 
 		{#if v.weapons.length || weaponItems.length}
@@ -53,7 +53,7 @@
 		<GearTables mosId={v.id} items={usable} />
 
 		{#snippet rail()}
-			<MosInfobox mos={v} si={[]} usableCount={usable.length} abilities={false} handling={false} />
+			<MosInfobox mos={v} si={[]} usableCount={usable.length} abilities={false} />
 		{/snippet}
 	</ClassFrame>
 </Page>

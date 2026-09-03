@@ -10,7 +10,7 @@
 	 * trees. They are the class's own behaviour, not facts about it, and the
 	 * main column is where behaviour goes.
 	 */
-	import SkillCards from '$lib/components/mos/SkillCards.svelte';
+	import AbilityCards from '$lib/components/mos/AbilityCards.svelte';
 	import BehaviourDuo from '$lib/components/mos/BehaviourDuo.svelte';
 	import Seo from '$lib/components/Seo.svelte';
 	import { mosCardUrl, mosDescription } from '$lib/seo';
@@ -18,13 +18,14 @@
 	let { data } = $props();
 
 	const mos = $derived(data.mos);
+	const treeNames = $derived(Object.fromEntries(mos.skills.map((s) => [s.id, s.name])));
 </script>
 
 <Seo title="{mos.name} — MOS" description={mosDescription(mos)} image={mosCardUrl(mos.id)} />
 
 {#if mos.skills.length}
 	<h2 class="section">Skills · {mos.skills.length} trees</h2>
-	<SkillCards skills={mos.skills} />
+	<AbilityCards items={mos.skills} stats={data.stats} anchor="skill" {treeNames} />
 {/if}
 
-<BehaviourDuo {mos} />
+<BehaviourDuo {mos} stats={data.stats} {treeNames} />

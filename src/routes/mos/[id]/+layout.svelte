@@ -11,9 +11,9 @@
 	 * four wide tables that want the full column, the players tab a board, the
 	 * guide a map beside a list, and the vehicle tab is a class page of its own
 	 * with its own rail — on none of them is a restatement of the pilot's life
-	 * and armour what the reader came for. The abilities and the handling
-	 * cards are the overview's own, in its main column, so the rail keeps to
-	 * the facts: identity, unlock, model, description, SIs.
+	 * and armour what the reader came for. The abilities are the overview's
+	 * own, laid out in full in its main column; the rail keeps to the facts —
+	 * identity, unlock, handling, model, description, SIs.
 	 */
 	import { goto, preloadData } from '$app/navigation';
 	import { page } from '$app/state';
@@ -92,7 +92,7 @@
 		<ClassFrame>
 			{@render children()}
 			{#snippet rail()}
-				<MosInfobox {mos} si={data.si} {usableCount} abilities={false} handling={false} />
+				<MosInfobox {mos} si={data.si} {usableCount} abilities={false} />
 			{/snippet}
 		</ClassFrame>
 	</Page>

@@ -22,6 +22,7 @@
 	import ModelCard from '$lib/components/ModelCard.svelte';
 	import DescCard from '$lib/components/DescCard.svelte';
 	import MechanicsGrid from '$lib/components/MechanicsGrid.svelte';
+	import ClassPanel from '$lib/components/ClassPanel.svelte';
 	import AbilityTiles from '$lib/components/AbilityTiles.svelte';
 	import { mechanicsFor } from '$lib/mechanics';
 	import { mosTabHref, vehicleSlug } from '$lib/mosTabs';
@@ -169,20 +170,6 @@
 			</p>
 		</DescCard>
 	{/if}
-	<!-- Handling reads as a rail block: its cards already carry their own
-	     frame and label, so the group only needs a heading over them. One
-	     element, because below 1080px every child of the rail becomes a
-	     cell of its own grid. -->
-	{#if handling && mechanics}
-		<section class="handling">
-			<h2 class="section">Handling</h2>
-			<p class="note">
-				Ammunition, jamming and shared-class behaviour, read from the map's trigger script rather
-				than the unit data.
-			</p>
-			<MechanicsGrid mosId={mos.id} />
-		</section>
-	{/if}
 	{#if unlock}
 		<DescCard label="Rank tracks">
 			<div class="unlock-grid">
@@ -275,6 +262,27 @@
 			{/each}
 			<a class="si-all" href="/career/si">All Skill Identifiers →</a>
 		</DescCard>
+	{/if}
+	<!-- Handling reads as a rail block: its cards already carry their own
+	     frame and label, so the group only needs a heading over them. One
+	     element, because below 1080px every child of the rail becomes a
+	     cell of its own grid. -->
+	{#if handling && mechanics?.panel.length}
+		<section class="handling">
+			<h2 class="section">Class panel · {mechanics.panel.length} buttons</h2>
+			<p class="note">Extra actions on the class's mini-panel, with the hotkey that triggers each one.</p>
+			<ClassPanel keys={mechanics.panel} />
+		</section>
+	{/if}
+	{#if handling && mechanics}
+		<section class="handling">
+			<h2 class="section">Handling</h2>
+			<p class="note">
+				Ammunition, jamming and shared-class behaviour, read from the map's trigger script rather
+				than the unit data.
+			</p>
+			<MechanicsGrid mosId={mos.id} />
+		</section>
 	{/if}
 </aside>
 
