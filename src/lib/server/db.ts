@@ -241,6 +241,11 @@ export async function ensureIndexes(): Promise<void> {
 		d.collection('replays').createIndex({ sha256: 1 }, { name: 'sha256', sparse: true }),
 		// replace-if-longer resolves an upload against the game it belongs to
 		d.collection('replays').createIndex({ lobbyId: 1 }, { name: 'lobbyId', sparse: true }),
+		// newest first with the `_id` tiebreak: the replays list on every replay
+		// page, the homepage's last games and the activity window. Without it the
+		// server sorts the documents in memory and the free tier's 32 MB cap turns
+		// a cache refresh into a 500.
+		d.collection('replays').createIndex({ playedAt: -1, _id: -1 }, { name: 'playedAt_id' }),
 		// the leaderboard's default order, and the tiebreak under every other one
 		d.collection('players').createIndex({ careerXp: -1, _id: 1 }, { name: 'careerXp' }),
 		// clan pages select a roster by tag
