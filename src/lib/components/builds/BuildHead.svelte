@@ -116,9 +116,11 @@
 								{#each mos.skills as s (s.id)}
 									<tr>
 										<td class="sk">
-											{#if s.icon}<img src={s.icon} alt="" loading="lazy" />{:else}<span class="ph"
-												></span>{/if}
-											<span>{s.name}</span>
+											<span class="skname">
+												{#if s.icon}<img src={s.icon} alt="" loading="lazy" />{:else}<span class="ph"
+													></span>{/if}
+												<span>{s.name}</span>
+											</span>
 										</td>
 										{#each levels as lv (lv)}
 											{@const hit = atLevel.get(lv)?.find((x) => x.id === s.id)}
@@ -240,10 +242,14 @@
 		white-space: nowrap;
 	}
 	.skills td.sk {
+		font-weight: 550;
+	}
+	/* the flex lives on a wrapper, not the td: a flex td stops being a table
+	   cell and no longer fills the row's height */
+	.skname {
 		display: flex;
 		align-items: center;
 		gap: 7px;
-		font-weight: 550;
 	}
 	.skills img,
 	.skills .ph {

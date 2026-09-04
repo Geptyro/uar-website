@@ -43,10 +43,12 @@
 				{#each stats as d, i (i)}
 					<tr>
 						<td class="lbl">
-							<StatIcon name={d.icon} size={16} />
-							<span class="lname">
-								{d.label}
-								{#if d.note}<span class="lnote">{d.note}</span>{/if}
+							<span class="lwrap">
+								<StatIcon name={d.icon} size={16} />
+								<span class="lname">
+									{d.label}
+									{#if d.note}<span class="lnote">{d.note}</span>{/if}
+								</span>
 							</span>
 						</td>
 						{#each spans(d) ? d.cells.slice(0, 1) : d.cells as c, j (j)}
@@ -193,14 +195,18 @@
 		border-bottom: none;
 	}
 	.stat td.lbl {
-		display: flex;
-		align-items: flex-start;
-		gap: 6px;
 		text-align: left;
 		font-family: var(--font-sans);
 		font-size: 12.5px;
 		color: var(--text-dim);
 		white-space: nowrap;
+	}
+	/* the flex lives on a wrapper, not the td: a flex td stops being a table
+	   cell, so its border sits under its own text instead of the row's bottom */
+	.lwrap {
+		display: flex;
+		align-items: flex-start;
+		gap: 6px;
 	}
 	.stat td.lbl :global(svg) {
 		margin-top: 1px;
