@@ -204,20 +204,38 @@ export interface PushSubDoc {
 	seenAt: string;
 }
 
-let client: MongoClient | null = null;
+// One client per process, kept on globalThis so Vite's dev HMR — which
+// re-evaluates this module on every reload — reuses it instead of leaking a
+// fresh connection pool each time. A day of editing piled up 600+ sockets
+// against Atlas that way, over the M0 500-connection cap, which locks out
+// production and every other client too. Keyed by a Symbol.for so a module
+// reload finds the same slot.
+const POOL = Symbol.for('uar.mongoPool');
+interface MongoPool {
+	client: MongoClient;
+	ready: Promise<MongoClient>;
+}
+const store = globalThis as typeof globalThis & { [POOL]?: MongoPool };
 
 export function dbConfigured(): boolean {
 	return Boolean(process.env.MONGODB_URI);
 }
 
 export async function db(): Promise<Db> {
-	if (!client) {
+	if (!store[POOL]) {
 		const uri = process.env.MONGODB_URI;
 		if (!uri) throw new Error('MONGODB_URI is not set');
-		client = new MongoClient(uri);
-		await client.connect();
+		// M0 caps the whole project at 500 connections across every client and
+		// machine; hold one machine's pool well under that so dev, the sveld
+		// dashboard and any script still have room.
+		const client = new MongoClient(uri, { maxPoolSize: 10 });
+		const ready = client.connect().catch((e) => {
+			if (store[POOL]?.client === client) delete store[POOL]; // never cache a failed connect
+			throw e;
+		});
+		store[POOL] = { client, ready };
 	}
-	return client.db(process.env.MONGODB_DB || 'uar');
+	return (await store[POOL].ready).db(process.env.MONGODB_DB || 'uar');
 }
 
 /**
@@ -298,10 +316,10 @@ export async function warmCache(): Promise<void> {
  * against the cluster's connection budget.
  */
 export async function closeDb(): Promise<void> {
-	if (!client) return;
-	const c = client;
-	client = null;
-	await c.close();
+	const pool = store[POOL];
+	if (!pool) return;
+	delete store[POOL];
+	await pool.client.close();
 }
 
 /**
