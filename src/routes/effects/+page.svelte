@@ -108,10 +108,12 @@
 					{#each s.rows as e (e.id)}
 						<tr id="e-{e.id}">
 							<td class="namecell">
-								{#if e.icon}<img class="row-icon" src={e.icon} alt="" loading="lazy" />{:else}<span class="row-icon fb">{initials(e.name)}</span>{/if}
-								<div>
-									<div class="ename"><a href={effectHref(e.id)}>{e.name}</a>{#if e.hidden && e.kind !== 'ailment'}<span class="tag" title="The game does not show it on the status bar">hidden</span>{/if}{#if e.stacks}<span class="tag">up to {e.stacks} stacks</span>{/if}</div>
-									{#if e.tooltip}<div class="tip">{e.tooltip}</div>{/if}
+								<div class="who">
+									{#if e.icon}<img class="row-icon" src={e.icon} alt="" loading="lazy" />{:else}<span class="row-icon fb">{initials(e.name)}</span>{/if}
+									<div>
+										<div class="ename"><a href={effectHref(e.id)}>{e.name}</a>{#if e.hidden && e.kind !== 'ailment'}<span class="tag" title="The game does not show it on the status bar">hidden</span>{/if}{#if e.stacks}<span class="tag">up to {e.stacks} stacks</span>{/if}</div>
+										{#if e.tooltip}<div class="tip">{e.tooltip}</div>{/if}
+									</div>
 								</div>
 							</td>
 							<td class="mono does">
@@ -220,10 +222,14 @@
 		min-width: 900px;
 	}
 	.namecell {
+		min-width: 220px;
+	}
+	/* the flex lives on a wrapper, not the td: a flex td stops being a table
+	   cell, so its border sits under its own text instead of the row's bottom */
+	.who {
 		display: flex;
 		gap: 10px;
 		align-items: flex-start;
-		min-width: 220px;
 	}
 	.row-icon {
 		width: 36px;
