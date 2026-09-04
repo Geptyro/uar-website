@@ -25,8 +25,15 @@
 	import { rules, pityCap } from '$lib/mechanics';
 	import { mapRegions, mapSize, regionCenter } from '$lib/map';
 	import { modeNames } from '$lib/players';
+	import si from '$lib/data/si.json';
 	import Seo from '$lib/components/Seo.svelte';
+	import Rich from '$lib/components/builds/Rich.svelte';
+	import { renderBuildInline, type RefResolver } from '$lib/buildMarkdown';
+	import { refResolver } from '$lib/buildRefs';
 	import { Page } from 'sveltekit-commons';
+	import type { PageData } from './$types';
+
+	let { data }: { data: PageData } = $props();
 
 	const unjam = rules.jam.unjam;
 
@@ -44,6 +51,50 @@
 	const riskMult = +((rules.jam.defaultOdds + 1) / (worstOdds + 1)).toFixed(1);
 
 	const neverJam = rules.jam.excluded.map(mosName).sort((a, b) => a.localeCompare(b));
+
+	/* The magazine economy, every figure from the script. The node in the graph
+	   carries three of them; the cards under it carry the rest. */
+	const ammo = rules.ammo;
+	/** "10 for A, B and C": one clause per count, the classes listed once each */
+	const byCount = new Map<number, string[]>();
+	for (const [id, n] of Object.entries(ammo.start.more)) {
+		byCount.set(n, [...(byCount.get(n) ?? []), mosName(id)]);
+	}
+	const list = (xs: string[]) =>
+		xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}` : xs[0];
+	const moreStarts = [...byCount]
+		.sort(([a], [b]) => b - a)
+		.map(([n, names]) => `${n} for ${list(names.sort((a, b) => a.localeCompare(b)))}`)
+		.join('; ');
+	const pct = (v: number) => `${Math.round(v * 100)}%`;
+	/** 380 s reads as a clock figure, not a count */
+	const mins = (s: number) => {
+		const m = Math.floor(s / 60);
+		const r = Math.round(s - m * 60);
+		return r ? `${m} min ${r} s` : `${m} min`;
+	};
+	const tiers = ammo.tiers.filter((t) => t.over !== null && t.slow !== null) as {
+		over: number;
+		slow: number;
+		behavior: string | null;
+	}[];
+
+	/* The three states are effects in the catalog, so they are drawn as the
+	   same chips a guide would use. The chip's hover card normally carries the
+	   effect's kind; here it carries what the ailment panel says in the game. */
+	const baseResolve = refResolver(null);
+	const chip = (id: string) => {
+		const panelText = new Map(data.tierEffects.map((e) => [e.id, e.tooltip]));
+		const resolve: RefResolver = (kind, ref) => {
+			const t = baseResolve(kind, ref);
+			const tip = t && kind === 'effect' ? panelText.get(ref) : undefined;
+			return t && tip ? { ...t, tip } : t;
+		};
+		return renderBuildInline(`[[effect:${id}]]`, resolve);
+	};
+	const combatLoad = ammo.combatLoad ? si.find((x) => x.num === ammo.combatLoad?.si) : null;
+	const combatCap = ammo.cap && ammo.combatLoad ? Math.floor(ammo.cap * ammo.combatLoad.mult) : null;
+	const skipMode = ammo.spawn.skipMode ? modeNames[ammo.spawn.skipMode - 1] : null;
 
 	// the trigger names its bonuses by behaviour id; these read as a label
 	const BONUS_LABELS: Record<string, string> = {
@@ -98,6 +149,11 @@
 	   button. SC2 ships this whole icon family as a white glyph the game plates
 	   itself, hence the plate in the CSS rather than art with one baked in. */
 	const SUBMENU_ICON = '/icons/btn-techupgrade-terran-neosteelbunker.png';
+	/* The magazine counter's own art, which is also the Magazines pack's: the
+	   thing that runs down and the thing you pick up are one picture. The case
+	   is the other shape ammo takes on the ground. */
+	const RELOAD_ICON = '/icons/icon-mags.png';
+	const CASE_ICON = '/icons/btnammocase.png';
 
 	/* Eight arrows converging on the jam icon, one per compass point. The
 	   corner four rest further out than the edge four: the icon is a square,
@@ -117,7 +173,7 @@
 <Page>
 	<Seo
 		title="Quick guide"
-		description="Undead Assault Reborn in one diagram: where you land, what to pick, why you follow the squad, and how to clear a jammed weapon. Plus the detail underneath."
+		description="Undead Assault Reborn in one diagram: where you land, what to pick, how to keep your gun fed, why you follow the squad, and how to clear a jammed weapon. Plus the detail underneath."
 	/>
 
 	<p class="note">Your first game, top to bottom. Two minutes.</p>
@@ -220,6 +276,41 @@
 				<span class="do-d">the two command-card buttons, or their keys</span>
 				<span class="n-d">Nothing clears it on its own. Step behind the line, then press it.</span>
 			</div>
+
+			<svg class="conn" viewBox="0 0 100 26" preserveAspectRatio="none" aria-hidden="true">
+				<path d="M50 0 V26" />
+			</svg>
+
+			<!-- the quieter mechanic, after the loud one: the magazine is finite,
+			     and so is the stack of them you carry -->
+			<div class="node c-ammo">
+				<span class="n-k">in between</span>
+				<b>Your magazine <em class="k">runs dry</em></b>
+				<!-- no key to press: the reload happens on its own, so the strip is
+				     the cost of one and where the next comes from -->
+				<span class="do">
+					<span class="step">
+						<span class="step-row">
+							<img class="btn-icon" src={RELOAD_ICON} alt="" />
+						</span>
+						<span class="lab">{ammo.magsPerReload} magazine per reload</span>
+					</span>
+					<span class="sep" aria-hidden="true">→</span>
+					<span class="step">
+						<span class="step-row">
+							<img class="btn-icon" src={CASE_ICON} alt="" />
+						</span>
+						<span class="lab">Pick up packs</span>
+					</span>
+				</span>
+				<span class="do-d">it reloads on its own, on the next shot</span>
+				{#if ammo.start.default && ammo.perUse && ammo.cap}
+					<span class="n-d">
+						You land with <b>{ammo.start.default} magazines</b>. A pack on the ground readies
+						<b>{ammo.perUse}</b> more. Past <b>{ammo.cap}</b> you slow down.
+					</span>
+				{/if}
+			</div>
 		</div>
 
 		<aside class="ao">
@@ -294,6 +385,107 @@
 				</li>
 			</ul>
 			<a class="glink" href="/mos">Jam risk per class →</a>
+		</article>
+	</div>
+
+	<h2 class="section">Ammo, in numbers</h2>
+
+	<div class="cards ammo">
+		<article class="card d">
+			<h3>Feeding the gun</h3>
+			<div class="limbs">
+				<div class="limb good">
+					<span class="limb-k">you land with</span>
+					<b>{ammo.start.default} magazines</b>
+					{#if moreStarts}<span class="limb-d">{moreStarts}.</span>{/if}
+				</div>
+				<div class="limb bad">
+					<span class="limb-k">each reload</span>
+					<b>{ammo.magsPerReload} magazine</b>
+					{#if ammo.magsPerReload}
+						<span class="limb-d">{ammo.magsPerReload + 1} with a Magazine Extender.</span>
+					{/if}
+				</div>
+			</div>
+			<ul class="pts">
+				<li>Empty, it reloads <b>on its own</b>, on the next shot. Nothing to press.</li>
+				{#if ammo.lowAmmoAt}
+					<li>
+						A warning tone at <b>a {ammo.lowAmmoAt === 4 ? 'quarter' : `1/${ammo.lowAmmoAt}`}</b>
+						magazine. None left to load: the reload is refused, and the squad hears about it.
+					</li>
+				{/if}
+				{#if ammo.respawn}
+					<li>Respawn at a reinforcement point with <b>{ammo.respawn}</b>.</li>
+				{/if}
+			</ul>
+			<a class="glink" href="/mos">Magazine sizes per class →</a>
+		</article>
+
+		<article class="card d">
+			<h3>Finding more</h3>
+			<ul class="pts">
+				<li>
+					A <a href="/entities/Magazines"><b>pack</b></a> readies <b>{ammo.perUse}</b> per use.
+					{#if ammo.pack.ground && ammo.pack.airdrop}
+						{ammo.pack.ground} use on one you find, {ammo.pack.airdrop} on one airdropped.
+					{/if}
+				</li>
+				<li>
+					An <a href="/entities/AmmoCase"><b>Ammo Case</b></a> readies the same {ammo.perUse} per
+					use{#if ammo.case.start && ammo.case.max}, starts with {ammo.case.start} of {ammo.case
+							.max}{/if}. Packs you pick up pour into it.
+				</li>
+				{#if ammo.spawn.every && ammo.spawn.packs && ammo.spawn.cases}
+					<li>
+						Every <b>{mins(ammo.spawn.every)}</b> the map drops {ammo.spawn.packs.base} packs, one
+						more per {ammo.spawn.packs.perPlayers} players, and {ammo.spawn.cases} cases at random
+						spots{#if skipMode}, in every mode but {skipMode}{/if}.
+					</li>
+				{/if}
+				{#if ammo.cache.packs && ammo.cache.cases}
+					<li>
+						A weapon cache holds <b>{ammo.cache.packs[0]} to {ammo.cache.packs[1]} packs</b> and
+						{ammo.cache.cases[0]} to {ammo.cache.cases[1]} cases.
+					</li>
+				{/if}
+			</ul>
+		</article>
+
+		<article class="card d">
+			<h3>Carrying too many</h3>
+			{#if ammo.cap && tiers.length}
+				<Rich>
+					<div class="tiers">
+						{#each tiers as t (t.over)}
+							<div class="tier" class:stop={t.slow >= 1}>
+								<span class="limb-k">over {ammo.cap + t.over}</span>
+								{#if t.behavior}<span class="md tier-fx">{@html chip(t.behavior)}</span>{/if}
+								<b>{t.slow >= 1 ? 'stuck' : `${pct(t.slow)} slower`}</b>
+							</div>
+						{/each}
+					</div>
+				</Rich>
+			{/if}
+			<ul class="pts">
+				<li>
+					<b>{ammo.cap} readied</b> is the cap{#if combatLoad && combatCap}, {combatCap} with
+						{combatLoad.name}{/if}.
+				</li>
+				{#if ammo.dropMags && ammo.dropmagsPause}
+					<li>
+						<kbd>D</kbd> hands <b>{ammo.dropMags}</b> back as a pack. Stuck? Select your hero and
+						type <code>-dropmags</code>: the excess drops, and you stand still {+ammo.dropmagsPause.toFixed(0)} s.
+					</li>
+				{/if}
+				{#if ammo.deathDropPer}
+					<li>
+						Die, and your readied magazines <b>drop as packs</b> around you, one per {ammo.deathDropPer}.
+						What nobody took is back in your bag when you are revived, not readied.
+					</li>
+				{/if}
+			</ul>
+			<a class="glink" href="/career/si">Skill Identifiers →</a>
 		</article>
 	</div>
 
@@ -379,12 +571,12 @@
 	/* ---------- layout: the graph, and the ground it happens on ---------- */
 	.layout {
 		display: grid;
-		/* even halves: the AO is not an aside, it is the other half of the
-		   explanation — the graph names two places, this shows them */
+		/* even halves of the whole width: the AO is not an aside, it is the
+		   other half of the explanation — the graph names two places, this
+		   shows them */
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 		gap: 28px;
 		align-items: start;
-		max-width: 1040px;
 	}
 	@media (max-width: 780px) {
 		.layout {
@@ -462,6 +654,10 @@
 	}
 	.c-bad {
 		--step: var(--hostile);
+	}
+	/* brass: the colour of the thing itself, and no other step's */
+	.c-ammo {
+		--step: var(--gold);
 	}
 	.node .k {
 		font-style: normal;
@@ -710,6 +906,58 @@
 		font-size: 10.5px;
 		line-height: 1.3;
 		color: var(--text-faint);
+	}
+
+	/* three cards where the other sections have two: the third takes the
+	   whole row rather than dangling at half width, and its three tiers
+	   read across it */
+	.cards.ammo > .card:last-child {
+		grid-column: 1 / -1;
+	}
+	/* the three steps of the carry cap: brass while you can still walk, the
+	   theme's hostile once you cannot */
+	.tiers {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 9px;
+		margin-bottom: 10px;
+	}
+	.tier {
+		border-left: 2px solid var(--gold);
+		padding-left: 9px;
+		min-width: 0;
+	}
+	.tier.stop {
+		border-left-color: var(--hostile);
+	}
+	.tier-fx {
+		display: block;
+		margin-top: 4px;
+	}
+	.tier b {
+		display: block;
+		margin-top: 4px;
+		font-size: 15px;
+		font-weight: 650;
+	}
+	.limbs + .pts {
+		margin-top: 10px;
+	}
+	.pts kbd {
+		font-size: 11px;
+		padding: 0 6px;
+	}
+	.pts code {
+		font-family: var(--font-mono);
+		font-size: 11.5px;
+		color: var(--text);
+	}
+	.pts a {
+		color: inherit;
+		text-decoration-color: var(--border-strong);
+	}
+	.pts a:hover {
+		color: var(--text);
 	}
 
 	.note.done {

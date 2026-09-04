@@ -38,6 +38,11 @@
 		QuickThinking: 'Quick Thinking',
 		InstructorTarget: 'instructor aura'
 	};
+	// the stance the auto-reload trigger checks for, by class; the threshold is data
+	const EARLY_WHEN: Record<string, string> = {
+		Sniper2: 'while prone',
+		Rjx73: 'with the grenade launcher out'
+	};
 </script>
 
 {#if m}
@@ -63,8 +68,11 @@
 					{#if m.ammo.reloadIsDefault}<span class="hint">(default)</span>{/if}
 				</p>
 			{/if}
-			{#if m.ammo.autoReload}
-				<p class="note">Reloads automatically when the magazine runs dry.</p>
+			{#if m.ammo.mag && rules.reload.autoWhenDry}
+				<p class="note">
+					Reloads on its own once the magazine is empty{#if m.ammo.earlyReload}, or under {m
+							.ammo.earlyReload.below} rounds {EARLY_WHEN[mosId] ?? ''}{/if}.
+				</p>
 			{/if}
 			{#if rules.reload.magExtenderMult && m.ammo.mag}
 				<p class="note">

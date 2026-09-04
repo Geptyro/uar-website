@@ -18,7 +18,8 @@ export interface Ammo {
 	/** true when the class never sets its own and inherits the global default */
 	reloadIsDefault: boolean;
 	variants: MagVariant[];
-	autoReload: boolean;
+	/** Reloads before the magazine is empty, under this many rounds, in the stance the class page names. */
+	earlyReload: { below: number } | null;
 	/** spawn paths that disagree about the mag size (a map bug worth flagging) */
 	conflicts: { path: string; mag: number }[];
 }
@@ -55,6 +56,50 @@ export interface MechanicGroup {
 	members: string[];
 }
 
+/** One step of the carry cap: readied magazines past `cap + over` put `behavior` on the hero. */
+export interface EncumbranceTier {
+	over: number | null;
+	behavior: string | null;
+	/** share of move speed taken away; 1 is a full stop */
+	slow: number | null;
+}
+
+/** The magazine economy, as the map script runs it. Nulls are parses that failed. */
+export interface AmmoRules {
+	/** readied magazines on picking a class: the common value, and the classes given more */
+	start: { default: number | null; more: Record<string, number> };
+	/** readied magazines on respawning at a reinforcement point */
+	respawn: number | null;
+	/** the class that burns fuel on the same counter, with its own numbers */
+	fuel: { mos: string[]; start: number | null; cap: number | null; tiers: EncumbranceTier[] };
+	/** magazines one use of a pack or a case readies */
+	perUse: number | null;
+	/** the Magazines item: catalog charges, and the uses left on one the script drops or airdrops */
+	pack: { start: number | null; max: number | null; ground: number | null; airdrop: number | null };
+	case: { start: number | null; max: number | null };
+	magsPerReload: number | null;
+	/** the low-ammo tone plays at mag / this */
+	lowAmmoAt: number | null;
+	cap: number | null;
+	tiers: EncumbranceTier[];
+	/** Drop Magazine takes this many readied and puts them in a pack */
+	dropMags: number | null;
+	/** on death, one pack per this many readied */
+	deathDropPer: number | null;
+	dropmagsPause: number | null;
+	spawn: {
+		first: number | null;
+		every: number | null;
+		packs: { base: number; perPlayers: number } | null;
+		cases: number | null;
+		skipMode: number | null;
+	};
+	/** low and high of the random count each weapon cache spawns */
+	cache: { packs: number[] | null; cases: number[] | null };
+	/** the Skill Identifier that multiplies the cap */
+	combatLoad: { si: number; mult: number } | null;
+}
+
 export interface Rules {
 	/** The highest hero level, and the skill points each level gives (see $lib/builds). */
 	levels: { max: number; pointsPerLevel: number };
@@ -76,8 +121,12 @@ export interface Rules {
 	reload: {
 		default: number | null;
 		magExtenderMult: number | null;
+		/** every class reloads on its own once the magazine is empty and it fires again */
+		autoWhenDry: boolean;
+		autoExcluded: string[];
 		soldierSkills: { base: number; perLevel: number } | null;
 	};
+	ammo: AmmoRules;
 	groups: MechanicGroup[];
 }
 
