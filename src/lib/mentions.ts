@@ -11,6 +11,7 @@
  * carries the name and the renderer needs no lookup.
  */
 import type { RefHit } from './buildRefs';
+import { ANON_PORTRAIT } from './portrait.ts';
 
 export interface PlayerHit {
 	toon: string;
@@ -46,7 +47,8 @@ export function playerHit(p: PlayerHit): RefHit {
 		kind: 'player',
 		id: p.toon,
 		name: p.clan ? `<${p.clan}> ${p.name}` : p.name || p.toon,
-		icon: p.avatarUrl,
+		// the stock portrait for a player with none: the row, and the chip a pick makes, show a person
+		icon: p.avatarUrl ?? ANON_PORTRAIT,
 		ref: playerRef(p.toon, p.name || p.toon),
 		note: 'player'
 	};

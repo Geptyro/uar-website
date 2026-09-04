@@ -16,6 +16,7 @@
 	 */
 	import { tick } from 'svelte';
 	import { refResolver } from '$lib/buildRefs';
+	import { ANON_PORTRAIT as anonPortrait, portraitsIn } from '$lib/portrait';
 
 	let {
 		value = $bindable(''),
@@ -326,6 +327,7 @@
 <div
 	class="ce"
 	bind:this={root}
+	use:portraitsIn={anonPortrait}
 	contenteditable="true"
 	tabindex="0"
 	role="textbox"

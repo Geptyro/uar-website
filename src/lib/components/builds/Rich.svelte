@@ -18,10 +18,11 @@
 	 */
 	import type { Snippet } from 'svelte';
 	import { placeFloating, type Placement } from 'sveltekit-commons/place';
+	import { ANON_PORTRAIT as anonPortrait, portraitsIn } from '$lib/portrait';
 
 	let { children }: { children: Snippet } = $props();
 
-	let tip = $state<{ name: string; text: string; icon: string | null; html: string | null } | null>(null);
+	let tip = $state<{ name: string; text: string; icon: string | null; html: string | null; portrait: boolean } | null>(null);
 	let card = $state<HTMLElement>();
 	let anchor: HTMLElement | null = null;
 	let x = $state(0);
@@ -39,7 +40,11 @@
 		anchor = el;
 		clearTimeout(timer);
 		timer = setTimeout(() => {
-			tip = { name: el.dataset.tipName ?? '', text: el.dataset.tip ?? '', icon: el.dataset.tipIcon ?? null, html: el.dataset.tipHtml ?? null };
+			// a player's card wears the chip's own picture as it stands: already the
+			// placeholder when the portrait turned out dead (see portraitsIn)
+			const portrait = el.classList.contains('ref-player') || el.classList.contains('ref-entry-player');
+			const icon = (portrait ? el.querySelector('img')?.getAttribute('src') : null) ?? el.dataset.tipIcon ?? null;
+			tip = { name: el.dataset.tipName ?? '', text: el.dataset.tip ?? '', icon, html: el.dataset.tipHtml ?? null, portrait };
 			placed = false;
 		}, delay);
 	}
@@ -120,7 +125,7 @@
 	}}
 />
 
-<div class="rich" use:tips>
+<div class="rich" use:tips use:portraitsIn={anonPortrait}>
 	{@render children()}
 </div>
 
@@ -131,10 +136,11 @@
 		class:placed
 		bind:this={card}
 		style="left: {x}px; top: {y}px; --arrow: {arrow}px"
+		use:portraitsIn={anonPortrait}
 	>
 		{#if tip.icon || tip.name}
 			<div class="tt-head">
-				{#if tip.icon}<img class="tt-icon" src={tip.icon} alt="" />{/if}
+				{#if tip.icon}<img class="tt-icon" class:portrait={tip.portrait} src={tip.icon} alt="" />{/if}
 				{#if tip.name}<b class="tt-label">{tip.name}</b>{/if}
 			</div>
 		{/if}

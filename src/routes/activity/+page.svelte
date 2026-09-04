@@ -8,8 +8,7 @@
 	import { Page } from 'sveltekit-commons';
 	import { timeAgo } from 'sveltekit-commons/time';
 	import Seo from '$lib/components/Seo.svelte';
-	import anonPortrait from '$lib/assets/anon-portrait.svg';
-	import { portraitFallback } from '$lib/portrait';
+	import { ANON_PORTRAIT as anonPortrait, portraitFallback } from '$lib/portrait';
 
 	let { data } = $props();
 

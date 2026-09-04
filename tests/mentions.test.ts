@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mergeHits, playerHit, playerRef } from '../src/lib/mentions.ts';
+import { ANON_PORTRAIT } from '../src/lib/portrait.ts';
 
 const thing = (i: number) => ({ kind: 'item' as const, id: `i${i}`, name: `Item ${i}`, icon: null, ref: `[[item:i${i}]]` });
 
@@ -25,4 +26,11 @@ test('the game things come first, players after, within the limit', () => {
 	const kanax = [{ toon: '2-S2-1-3', name: 'KanaxStratz', clan: '', avatarUrl: null }, ...players];
 	assert.deepEqual(mergeHits(things, kanax, 10, 'kan').slice(0, 2).map((h) => h.name), ['KanaxStratz', 'Item 0']);
 	assert.equal(mergeHits(things, kanax, 10, 'kan').filter((h) => h.kind === 'player').length, 3);
+});
+
+test('a player with no portrait on record gets the stock one, so the row and the chip show a person', () => {
+	const bare = playerHit({ toon: '2-S2-1-2', name: 'Nobody', clan: '', avatarUrl: null });
+	assert.equal(bare.icon, ANON_PORTRAIT);
+	const pictured = playerHit({ toon: '2-S2-1-3', name: 'Someone', clan: '', avatarUrl: 'https://static.starcraft2.com/x/1-1.jpg' });
+	assert.equal(pictured.icon, 'https://static.starcraft2.com/x/1-1.jpg');
 });

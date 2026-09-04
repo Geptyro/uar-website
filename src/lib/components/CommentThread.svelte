@@ -24,8 +24,7 @@
 	import VoteArrows from '$lib/components/VoteArrows.svelte';
 	import Reactions from '$lib/components/Reactions.svelte';
 	import { invalidateAll } from '$app/navigation';
-	import anonPortrait from '$lib/assets/anon-portrait.svg';
-	import { portraitFallback } from '$lib/portrait';
+	import { ANON_PORTRAIT as anonPortrait, portraitFallback } from '$lib/portrait';
 	import Rich from '$lib/components/builds/Rich.svelte';
 	import MarkdownField from '$lib/components/builds/MarkdownField.svelte';
 	import type { Mos } from '$lib/mos';

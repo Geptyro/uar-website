@@ -1,6 +1,5 @@
 <script lang="ts">
-	import anonPortrait from '$lib/assets/anon-portrait.svg';
-	import { portraitFallback } from '$lib/portrait';
+	import { ANON_PORTRAIT as anonPortrait, portraitFallback } from '$lib/portrait';
 	import { onMount } from 'svelte';
 	import { rememberUmamiId } from '$lib/analytics';
 	import Seo from '$lib/components/Seo.svelte';

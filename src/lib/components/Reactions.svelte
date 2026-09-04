@@ -10,8 +10,7 @@
 	 * and the count carries the rest.
 	 */
 	import Tooltip from '$lib/components/Tooltip.svelte';
-	import anonPortrait from '$lib/assets/anon-portrait.svg';
-	import { portraitFallback } from '$lib/portrait';
+	import { ANON_PORTRAIT as anonPortrait, portraitFallback } from '$lib/portrait';
 	import { REACTIONS, type ReactionView } from '$lib/reactions';
 
 	let {

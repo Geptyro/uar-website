@@ -6,6 +6,7 @@
 import { redirect } from '@sveltejs/kit';
 import { bnetConfigured, exchangeCode, fetchSc2Profiles, fetchUserInfo } from '$lib/server/bnet';
 import { dbConfigured, pickPrimaryProfile, upsertAccount } from '$lib/server/db';
+import { dropDeadPortraits } from '$lib/server/portraits';
 import { createSession } from '$lib/server/session';
 import { redirectUri } from '../redirect-uri';
 import type { RequestHandler } from './$types';
@@ -29,8 +30,10 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 	try {
 		const token = await exchangeCode(code, redirectUri(url));
 		const { sub, battletag } = await fetchUserInfo(token);
-		const profiles = await fetchSc2Profiles(token, sub);
-		profilesFailed = profiles === null;
+		const fetched = await fetchSc2Profiles(token, sub);
+		profilesFailed = fetched === null;
+		// a portrait Blizzard hands out for a sheet it never published is not kept (see portraits.ts)
+		const profiles = fetched && (await dropDeadPortraits(fetched));
 		await upsertAccount(sub, battletag, profiles);
 		// primary profile = the one the top-bar button links to
 		const primary = await pickPrimaryProfile(profiles ?? []);

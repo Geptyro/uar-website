@@ -7,6 +7,7 @@
  */
 import { getAvatarsByToon, getPlayerSummary } from './db';
 import { mosById } from '$lib/mos';
+import { ANON_PORTRAIT } from '$lib/portrait';
 import type { Teammate } from '$lib/players';
 
 export interface PlayerCard {
@@ -21,7 +22,9 @@ export interface PlayerCard {
 const esc = (s: string) =>
 	s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-/** A row of the card: a picture and a name, and how many games behind it. */
+/** A row of the card: a picture and a name, and how many games behind it. A
+ * class with no picture shows its initial; a player always has one (the stock
+ * portrait when nothing is on record). */
 const entry = (icon: string | null, name: string, games: number, round = false) =>
 	`<span class="pc-entry${round ? ' round' : ''}">${
 		icon ? `<img src="${esc(icon)}" alt="">` : `<i>${esc(name.slice(0, 1).toUpperCase())}</i>`
@@ -55,7 +58,7 @@ export async function playerCards(toons: string[]): Promise<Record<string, Playe
 			const withWhom = [...(p.teammates ?? [])]
 				.sort((a, b) => b.games - a.games)
 				.slice(0, 3)
-				.map((t) => entry(t.avatarUrl ?? avatars[t.toon] ?? null, t.name || t.toon, t.games, true));
+				.map((t) => entry(t.avatarUrl ?? avatars[t.toon] ?? ANON_PORTRAIT, t.name || t.toon, t.games, true));
 			const games = p.historyCount ?? 0;
 			const html =
 				`<div class="pc-line"><b>${(p.careerXp ?? 0).toLocaleString('en')} XP</b> career · ${games} ${games === 1 ? 'game' : 'games'} on record</div>` +

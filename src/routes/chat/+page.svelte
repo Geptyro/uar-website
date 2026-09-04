@@ -15,8 +15,7 @@
 	import MarkdownField from '$lib/components/builds/MarkdownField.svelte';
 	import Confirm from '$lib/components/Confirm.svelte';
 	import Reactions from '$lib/components/Reactions.svelte';
-	import anonPortrait from '$lib/assets/anon-portrait.svg';
-	import { portraitFallback } from '$lib/portrait';
+	import { ANON_PORTRAIT as anonPortrait, portraitFallback } from '$lib/portrait';
 	import { BUILD_LIMITS } from '$lib/builds';
 	import type { ChatView } from '$lib/server/chatView';
 	import { chatSeen } from '$lib/chatUnread.svelte';

@@ -10,8 +10,7 @@
 	import { timeAgo } from 'sveltekit-commons/time';
 	import { mosById } from '$lib/mos';
 	import { formatRating, rating } from '$lib/builds';
-	import anonPortrait from '$lib/assets/anon-portrait.svg';
-	import { portraitFallback } from '$lib/portrait';
+	import { ANON_PORTRAIT as anonPortrait, portraitFallback } from '$lib/portrait';
 	import type { ActivityItem } from '$lib/server/activity';
 
 	let { items }: { items: ActivityItem[] } = $props();

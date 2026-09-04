@@ -7,8 +7,7 @@
 	import 'sveltekit-commons/tokens.css';
 	import 'uar-shared/palette.css';
 	import favicon from '$lib/assets/favicon.svg';
-	import anonPortrait from '$lib/assets/anon-portrait.svg';
-	import { portraitFallback } from '$lib/portrait';
+	import { ANON_PORTRAIT as anonPortrait, portraitFallback } from '$lib/portrait';
 	import { MadeBy } from 'cedricdessalles-commons';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';

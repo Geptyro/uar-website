@@ -15,6 +15,7 @@
 	import { BUILD_LIMITS, imageRef } from '$lib/builds';
 	import { knownAvatars, searchRefs, type RefHit } from '$lib/buildRefs';
 	import { fetchPlayers, mergeHits, PLAYER_QUERY_MIN } from '$lib/mentions';
+	import { ANON_PORTRAIT as anonPortrait, portraitsIn } from '$lib/portrait';
 
 	let {
 		value = $bindable(''),
@@ -482,6 +483,7 @@
 				: `top:${mention.top}px;left:${mention.left}px`}
 			class:up={mention.up}
 			onmousedown={(e) => e.preventDefault()}
+			use:portraitsIn={anonPortrait}
 		>
 			{#each hits as h, n (h.ref)}
 				<!-- the keyboard drives this list from the textarea (keys), the way a
@@ -496,7 +498,7 @@
 						if (mention) mention.index = n;
 					}}
 				>
-					{#if h.icon}<img src={h.icon} alt="" />{:else}<span class="ph"></span>{/if}
+					{#if h.icon}<img src={h.icon} alt="" class:portrait={h.kind === 'player'} />{:else}<span class="ph"></span>{/if}
 					<span class="n">{h.name}</span>
 					<span class="t">{h.note ?? KIND_WORD[h.kind]}</span>
 				</li>

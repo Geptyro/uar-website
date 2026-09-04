@@ -11,8 +11,7 @@
 	import ModeMark from '$lib/components/ModeMark.svelte';
 	import RankMark from '$lib/components/RankMark.svelte';
 	import RatingDial from '$lib/components/builds/RatingDial.svelte';
-	import anonPortrait from '$lib/assets/anon-portrait.svg';
-	import { portraitFallback } from '$lib/portrait';
+	import { ANON_PORTRAIT as anonPortrait, portraitFallback } from '$lib/portrait';
 	import { mosCardUrl } from '$lib/seo';
 	import { mosHref } from '$lib/mos';
 	import { modeNames } from '$lib/players';

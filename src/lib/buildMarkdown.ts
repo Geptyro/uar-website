@@ -138,7 +138,7 @@ const md = new Marked({
 				const label = esc(t.label ?? target.name);
 				const base = t.style === 'entry' ? 'ref-entry' : 'ref';
 				// a thing with no picture shows its initials: the words on the chip, when the
-				// author gave some (a player's chip carries the name, its ref the handle)
+				// author gave some (a player always has a picture; see buildRefs)
 				const icon = target.icon
 					? `<img class="${base}-icon" src="${esc(target.icon)}" alt="" loading="lazy">`
 					: `<span class="${base}-icon ph">${esc(initials(t.label ?? target.name))}</span>`;

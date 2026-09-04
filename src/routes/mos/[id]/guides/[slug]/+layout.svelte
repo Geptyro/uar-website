@@ -9,8 +9,7 @@
 	import { Page } from 'sveltekit-commons';
 	import ModeMark from '$lib/components/ModeMark.svelte';
 	import RankMark from '$lib/components/RankMark.svelte';
-	import anonPortrait from '$lib/assets/anon-portrait.svg';
-	import { portraitFallback } from '$lib/portrait';
+	import { ANON_PORTRAIT as anonPortrait, portraitFallback } from '$lib/portrait';
 	import { modeNames } from '$lib/players';
 	import { formatRating, rating } from '$lib/builds';
 

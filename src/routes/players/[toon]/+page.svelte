@@ -6,8 +6,7 @@
 	 */
 	import { rankFor, nextRank, totalWins, modeNames, fmtPlaytime, XP_CAP } from '$lib/players';
 	import { mosById, mosHref } from '$lib/mos';
-	import anonPortrait from '$lib/assets/anon-portrait.svg';
-	import { portraitFallback } from '$lib/portrait';
+	import { ANON_PORTRAIT as anonPortrait, portraitFallback } from '$lib/portrait';
 	import ModeMark from '$lib/components/ModeMark.svelte';
 	import Seo from '$lib/components/Seo.svelte';
 	import { playerDescription } from '$lib/seo';

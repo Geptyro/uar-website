@@ -20,6 +20,7 @@ import { GROUP_TYPES, groupById, groupHref, groups } from './groups';
 import { EFFECT_KIND_WORD, effectById, effectsIndex } from './effectsIndex';
 import { effectHref } from './effects';
 import type { RefKind, RefResolver, RefTarget } from './buildMarkdown';
+import { ANON_PORTRAIT } from './portrait.ts';
 
 const fold = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '');
 
@@ -174,7 +175,8 @@ const mission: Finder = (ref) => {
 /* A player, by handle: the chip's words come from the label the @ search wrote
    (`[[player:<toon>|Name]]`); nothing here can look a name up. The portrait
    comes from the map the caller has (the server's, by toon), or from what a
-   box has seen go by in its @ search (see knownAvatars). */
+   box has seen go by in its @ search (see knownAvatars); a player with none
+   on record wears the stock one, so a person is never an initials tile. */
 const TOON = /^\d+-S2-\d+-\d+$/;
 /** Portraits a page has learned in passing, by toon: the @ search's hits feed it. */
 export const knownAvatars = new Map<string, string>();
@@ -192,7 +194,7 @@ function playerFinder(
 		const toon = ref.trim();
 		if (!TOON.test(toon)) return null;
 		const card = players?.[toon];
-		const icon = card?.avatar ?? avatars?.[toon] ?? knownAvatars.get(toon) ?? null;
+		const icon = card?.avatar ?? avatars?.[toon] ?? knownAvatars.get(toon) ?? ANON_PORTRAIT;
 		const name = card ? (card.clan ? `<${card.clan}> ${card.name}` : card.name) : toon;
 		return { kind: 'player', name, href: `/players/${toon}`, icon, tip: null, tipHtml: card?.html ?? null };
 	};

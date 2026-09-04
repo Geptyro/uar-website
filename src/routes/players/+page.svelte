@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { totalWins, careerXp, fmtPlaytime, type PlayerProfile } from '$lib/players';
-	import anonPortrait from '$lib/assets/anon-portrait.svg';
-	import { portraitFallback } from '$lib/portrait';
+	import { ANON_PORTRAIT as anonPortrait, portraitFallback } from '$lib/portrait';
 	import Pager from '$lib/components/Pager.svelte';
 	import Seo from '$lib/components/Seo.svelte';
 	import { goto } from '$app/navigation';

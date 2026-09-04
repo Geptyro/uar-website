@@ -14,8 +14,7 @@
 	import ModeMark from '$lib/components/ModeMark.svelte';
 	import { fmtDuration } from '$lib/outcome';
 	import { modeName } from '$lib/players';
-	import anonPortrait from '$lib/assets/anon-portrait.svg';
-	import { portraitFallback } from '$lib/portrait';
+	import { ANON_PORTRAIT as anonPortrait, portraitFallback } from '$lib/portrait';
 	import { timeAgo } from 'sveltekit-commons/time';
 
 	import { mosById, mosHref } from '$lib/mos';

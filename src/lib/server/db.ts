@@ -32,6 +32,7 @@ import { BANNED_TOONS } from '../banned.ts';
 import { bucketConfigured, deleteObject } from './replay/s3.ts';
 import { pinnedOnArrival, prunableReplays } from '../replayRetention.ts';
 import { withLock } from '../mutex.ts';
+import { deadPortraits } from './portraits.ts';
 import { classBoardsByMos, type MosBoard } from './playtime.ts';
 import { topTeammates } from './teammates.ts';
 import { LOOPS_PER_SECOND, startedAtOf } from '../gameEnd.ts';
@@ -1520,7 +1521,6 @@ export async function pickPrimaryProfile(profiles: Sc2Profile[]): Promise<Sc2Pro
 	return profiles[0];
 }
 
-/** toon -> SC2 portrait URL, across every linked account (small collection). */
 /**
  * In-game names → the player we know under that name (most recently seen
  * wins, since SC2 profile names are not unique). Lets live rosters link to
@@ -1572,6 +1572,15 @@ export async function getPlayerSitemap(): Promise<{ toon: string; lastSeen?: str
 	});
 }
 
+/**
+ * toon -> SC2 portrait URL, across every linked account (small collection).
+ *
+ * A portrait Blizzard handed out for a sheet it never published (see
+ * ./portraits.ts) is forgotten here and on the account both, so no reader of
+ * this map, or of the accounts, finds out in a browser. New links are checked
+ * as they are made; this catches what was stored before that, and costs one
+ * HEAD per url per process after.
+ */
 export async function getAvatarsByToon(): Promise<Record<string, string>> {
 	return cached('avatars', async () => {
 		const d = await db();
@@ -1582,6 +1591,17 @@ export async function getAvatarsByToon(): Promise<Record<string, string>> {
 		const map: Record<string, string> = {};
 		for (const a of docs) {
 			for (const p of a.profiles ?? []) if (p.avatarUrl) map[p.toon] = p.avatarUrl;
+		}
+		const dead = await deadPortraits(Object.values(map));
+		if (dead.length) {
+			await d.collection<AccountDoc>('accounts').updateMany(
+				{ 'profiles.avatarUrl': { $in: dead } },
+				{ $unset: { 'profiles.$[p].avatarUrl': '' } },
+				{ arrayFilters: [{ 'p.avatarUrl': { $in: dead } }] }
+			);
+			for (const [toon, url] of Object.entries(map)) if (dead.includes(url)) delete map[toon];
+			// the other readers of the account docs rebuild from the cleaned ones
+			invalidateCache('facesBySub', 'playerDirectory', 'accountByToon');
 		}
 		return map;
 	});

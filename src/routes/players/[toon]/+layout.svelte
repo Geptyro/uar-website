@@ -24,8 +24,7 @@
 	import { careerXp, totalWins, camoName, decalName, fmtPlaytime } from '$lib/players';
 	import { decals } from '$lib/unlocks';
 	import { BAN_EFFECT, banKind } from '$lib/banned';
-	import anonPortrait from '$lib/assets/anon-portrait.svg';
-	import { portraitFallback } from '$lib/portrait';
+	import { ANON_PORTRAIT as anonPortrait, portraitFallback } from '$lib/portrait';
 
 	let { data, children } = $props();
 
