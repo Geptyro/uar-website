@@ -12,6 +12,7 @@
  */
 
 import { CAREER_TABS, careerHref } from './careerTabs';
+import { MOS_VIEWS, mosViewHref } from './mosViews';
 
 const icon = (paths: string) =>
 	`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
@@ -143,6 +144,13 @@ export const navItems: NavItemDef[] = [
  */
 export const extraDestinations: NavDestination[] = [
 	{ href: '/mos', label: 'Compare all classes', alias: ['mos', 'classes', 'compare'] },
+	/* The roster's second table. One sidebar line reaches the page; the palette
+	   names the other view too, because "how do I unlock X" is what people type. */
+	...MOS_VIEWS.filter((v) => v.key).map((v) => ({
+		href: mosViewHref(v.key),
+		label: `Class ${v.label.toLowerCase()}`,
+		alias: v.alias
+	})),
 	/* The career tabs past the first: one sidebar line, but four things someone
 	   types for. The ranks share the section's own URL, so they ride on it. */
 	...CAREER_TABS.filter((t) => t.segment).map((t) => ({

@@ -12,6 +12,7 @@
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 	import { mosList, mosById, mosHrefSameTab } from '$lib/mos';
+	import { isMosViewPath } from '$lib/mosViews';
 	import { displayName } from '$lib/ogcard';
 	import { latestVersionInfo, monthLabel } from '$lib/changelog';
 	import { rememberUmamiId } from '$lib/analytics';
@@ -108,7 +109,10 @@
 		if (p === '/account') return { section: '', title: 'Account' };
 		if (p === '/activity') return { section: '', title: 'Activity' };
 		if (p === '/chat') return { section: '', title: 'Chat' };
-		if (p === '/mos') return { section: 'MOS', title: 'Classes compared' };
+		/* The roster, whichever of its two tables is open — the tab bar names the
+		   table. /mos/unlocks has the shape of a class page and is not one, so it
+		   has to be caught before the branch below reads its segment as an id. */
+		if (isMosViewPath(p)) return { section: 'MOS', title: 'Compare all classes' };
 		if (p.startsWith('/mos/')) {
 			// the class, whichever of its tabs is open — the tab bar names the tab
 			const id = decodeURIComponent(p.slice(5).split('/')[0]);
@@ -403,7 +407,7 @@
 		<NavItem
 			href="/mos"
 			label="Compare all"
-			active={page.url.pathname === '/mos'}
+			active={isMosViewPath(page.url.pathname)}
 			onclick={close}
 			title="Compare all classes"
 		>

@@ -25,6 +25,7 @@ const STATIC: SitemapUrl[] = [
 	{ path: '/guide', priority: 0.9 },
 	{ path: '/entities', priority: 0.9 },
 	{ path: '/mos', priority: 0.9 },
+	{ path: '/mos/unlocks', priority: 0.8 },
 	{ path: '/players', priority: 0.8 },
 	{ path: '/clans', priority: 0.7 },
 	{ path: '/replays', priority: 0.6 },
