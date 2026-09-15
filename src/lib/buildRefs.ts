@@ -151,7 +151,7 @@ const unit: Finder = (ref) => {
 
 /* A third of the entities carry no description (a hero, a prop, a projectile):
    the card then reads what the sheet knows for sure, so a hover is never blank. */
-function unitLine(u: { category: string; life: number | null; armor: number | null; speed: number | null }): string {
+export function unitLine(u: { category: string; life: number | null; armor: number | null; speed: number | null }): string {
 	return [
 		u.category,
 		u.life ? `${u.life.toLocaleString('en')} HP` : null,

@@ -6,7 +6,8 @@
 	 * off, each linking to the card that does it. The ailments lead, with the
 	 * roll the script makes for each.
 	 */
-	import { KIND_LABELS, KIND_ORDER, ailmentRule, effectHref, refHref, type Effect, type EffectKind } from '$lib/effects';
+	import { KIND_LABELS, KIND_ORDER, effectHref, refHref, type Effect, type EffectKind } from '$lib/effects';
+	import { ailmentChain, ailmentSummary } from '$lib/rolls';
 	import { modKind, sec } from '$lib/skillstats';
 	import StatIcon from '$lib/components/StatIcon.svelte';
 	import Seo from '$lib/components/Seo.svelte';
@@ -34,6 +35,12 @@
 			(s) => s.rows.length
 		)
 	);
+	/** An ailment's roll in one line, on Normal: the page of the ailment has every mode. */
+	const ailments = $derived(data.effects.filter((e) => e.ailment));
+	function ruleOf(e: Effect): string {
+		const c = ailmentChain(e, data.rules, ailments, 2);
+		return c ? `On Normal: ${ailmentSummary(c)}` : '';
+	}
 	const counts = $derived(KIND_ORDER.map((k) => ({ kind: k, n: data.effects.filter((e) => e.kind === k).length })));
 
 	function lasts(e: Effect): string {
@@ -129,7 +136,7 @@
 							</td>
 							<td class="num">{lasts(e) || '–'}</td>
 							<td class="from">
-								{#if e.ailment}<div class="rule">{ailmentRule(e)}</div>{/if}
+								{#if e.ailment}<div class="rule">{ruleOf(e)}</div>{/if}
 								{#if e.appliedBy.length}
 									<ul>
 										{#each grouped(e.appliedBy) as g, i (i)}

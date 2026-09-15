@@ -1,0 +1,273 @@
+{
+ "gates": [
+  {
+   "kind": "minDamage",
+   "value": 15
+  },
+  {
+   "kind": "effect",
+   "is": false,
+   "effects": [
+    {
+     "id": "ShreddedDoT",
+     "name": "Shredded DoT",
+     "behavior": {
+      "id": "Shredded2",
+      "name": "Shredded",
+      "icon": "/icons/btnammoshredding.png"
+     }
+    }
+   ]
+  },
+  {
+   "kind": "playerUnit"
+  },
+  {
+   "kind": "targetAttr",
+   "attr": "Biological",
+   "is": true,
+   "classes": {
+    "of": 27,
+    "lacking": [
+     {
+      "id": "AlligatorLK19",
+      "name": "Alligator LK19"
+     },
+     {
+      "id": "SiegeTank",
+      "name": "AMX S-880"
+     },
+     {
+      "id": "MilitarizedColonistTransportNova",
+      "name": "APC"
+     },
+     {
+      "id": "FP500CombatWalker",
+      "name": "FP-500 Combat Walker"
+     },
+     {
+      "id": "Goliath2",
+      "name": "Predator"
+     },
+     {
+      "id": "Rjx73",
+      "name": "Rjx-73"
+     }
+    ]
+   }
+  },
+  {
+   "kind": "targetHas",
+   "is": false,
+   "behaviors": [
+    {
+     "id": "PlasmaShield1",
+     "name": "Plasma Shield",
+     "icon": "/icons/btn-tips-terran-psishield.png"
+    },
+    {
+     "id": "PlasmaShield2",
+     "name": "Plasma Shield",
+     "icon": "/icons/btn-tips-terran-psishield.png"
+    },
+    {
+     "id": "PlasmaShield3",
+     "name": "Plasma Shield",
+     "icon": "/icons/btn-tips-terran-psishield.png"
+    },
+    {
+     "id": "PlasmaShield4",
+     "name": "Plasma Shield",
+     "icon": "/icons/btn-tips-terran-psishield.png"
+    },
+    {
+     "id": "PlasmaShieldIgnis",
+     "name": "Plasma Shield",
+     "icon": "/icons/btn-tips-terran-psishield.png"
+    },
+    {
+     "id": "PlasmaShieldMini",
+     "name": "Plasma Shield",
+     "icon": "/icons/btn-tips-terran-psishield.png"
+    },
+    {
+     "id": "StonewallProtocol",
+     "name": "Stonewall Protocol",
+     "icon": "/icons/btn-techupgrade-terran-shapedblast.png"
+    }
+   ]
+  },
+  {
+   "kind": "sourceType",
+   "is": false,
+   "units": [
+    {
+     "id": "Spitter",
+     "name": "Spitter",
+     "icon": "/icons/btn-unit-zerg-baneling.png",
+     "page": true
+    }
+   ]
+  }
+ ],
+ "global": {
+  "base": 10,
+  "byMode": {
+   "1": 10,
+   "2": 9,
+   "3": 8,
+   "4": 7,
+   "5": 6,
+   "6": 9,
+   "7": 7,
+   "8": 9,
+   "9": 8,
+   "10": 8,
+   "11": 6,
+   "12": 5
+  }
+ },
+ "pick": {
+  "indexes": [
+   0,
+   1
+  ],
+  "any": [
+   {
+    "kind": "sourceType",
+    "is": true,
+    "units": [
+     {
+      "id": "Tarantula",
+      "name": "Tarantula",
+      "icon": "/icons/btn-unit-zerg-lurker.png",
+      "page": true
+     },
+     {
+      "id": "ArachnidMother",
+      "name": "Arachnid Mother",
+      "icon": "/icons/btn-unit-zerg-lurker.png",
+      "page": true
+     },
+     {
+      "id": "Crab",
+      "name": "Crab",
+      "icon": "/icons/btn-unit-zerg-lurker.png",
+      "page": true
+     }
+    ]
+   },
+   {
+    "kind": "effect",
+    "is": true,
+    "effects": [
+     {
+      "id": "SwollenExplosionDmg",
+      "name": "Swollen Explosion Dmg",
+      "behavior": {
+       "id": "AcidSplash",
+       "name": "Acid Splash",
+       "icon": "/icons/btn-ability-zerg-explode-color.png"
+      }
+     }
+    ]
+   }
+  ]
+ },
+ "order": {
+  "from": 2,
+  "to": 10,
+  "firstWins": true,
+  "stops": [
+   {
+    "indexes": [
+     8,
+     10
+    ],
+    "need": [
+     {
+      "kind": "sourceSide",
+      "is": true,
+      "player": 14,
+      "side": "undead"
+     },
+     {
+      "kind": "sourceType",
+      "is": false,
+      "units": [
+       {
+        "id": "Vesania",
+        "name": "Vesania",
+        "icon": "/icons/btn-unit-terran-marauder.png",
+        "page": true
+       },
+       {
+        "id": "Ignis",
+        "name": "Ignis",
+        "icon": "/icons/btn-unit-terran-firebat.png",
+        "page": true
+       },
+       {
+        "id": "GhostMini",
+        "name": "Ghost",
+        "icon": "/icons/ghostportrait-static.png",
+        "page": true
+       },
+       {
+        "id": "JavelinGunner",
+        "name": "Javelin Gunner",
+        "icon": "/icons/btn-unit-terran-marine.png",
+        "page": true
+       },
+       {
+        "id": "Sniper",
+        "name": "Sniper",
+        "icon": "/icons/btn-unit-terran-marine.png",
+        "page": true
+       },
+       {
+        "id": "InfantryRifleman",
+        "name": "Infantry Rifleman",
+        "icon": "/icons/btn-unit-terran-marine.png",
+        "page": true
+       },
+       {
+        "id": "InfantryAutomaticRifleman",
+        "name": "Infantry Automatic Rifleman",
+        "icon": "/icons/btn-unit-terran-marine.png",
+        "page": true
+       },
+       {
+        "id": "SquadLeaderMini",
+        "name": "Squad Leader",
+        "icon": "/icons/btn-unit-terran-marine.png",
+        "page": true
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "indexes": [
+     7
+    ],
+    "need": [
+     {
+      "kind": "targetAttr",
+      "attr": "Heroic",
+      "is": true,
+      "classes": {
+       "of": 27,
+       "lacking": [
+        {
+         "id": "Goliath2",
+         "name": "Predator"
+        }
+       ]
+      }
+     }
+    ]
+   }
+  ]
+ }
+}

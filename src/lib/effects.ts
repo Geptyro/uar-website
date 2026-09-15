@@ -4,6 +4,8 @@
  * the extractor from the behaviour catalog and the map script's ailment table.
  */
 
+import type { EffectOutcome } from './rolls.ts';
+
 export type EffectKind = 'ailment' | 'debuff' | 'buff' | 'status';
 
 export interface EffectRef {
@@ -35,19 +37,13 @@ export interface Effect {
 	durSpread?: number;
 	stacks?: number;
 	ailment?: {
+		/** Its slot in the script's ailment table: the order the loop rolls them in. */
 		index: number;
-		/** One in this many, on a hit that passed the global roll. */
+		/** Its own 1 in N, once the global roll passed. The rest of the roll is ailment-rules.json. */
 		chance: number;
-		globalChance: number | null;
-		/** The two venoms: only from the spiders, the crab and a Swollen's burst. */
-		venom: boolean;
-		/** Only from the undead's own attacks. */
-		undeadOnly: boolean;
-		/** Never on a heroic unit. */
-		sparesHeroic: boolean;
-		/** Dying with it raises the hero as a Risen. */
-		risen?: boolean;
 	};
+	/** What it does when it ticks, runs out or ends, where that rolls, kills, spawns or cures (lib/rolls). */
+	outcomes?: EffectOutcome[];
 	appliedBy: EffectRef[];
 	curedBy: EffectRef[];
 }
@@ -100,17 +96,47 @@ export function ownerHref(r: EffectRef, isClass: (id: string) => boolean): strin
 	}
 }
 
-/** The sentence an ailment's rules make. */
-export function ailmentRule(e: Effect): string {
-	const a = e.ailment;
-	if (!a) return '';
-	const gate = a.globalChance ? `passes a 1 in ${a.globalChance} roll, then ` : '';
-	const own = `1 in ${a.chance}`;
-	if (a.venom) {
-		return `A bite of the Tarantula, the Arachnid Mother or the Crab, or a Swollen's burst, ${gate}one of the two venoms.`;
+/** One ability in an "applied by" or "cured by" list, with every class and unit that has it. */
+export interface RefGroup {
+	key: string;
+	name: string;
+	icon: string | null;
+	/** Where the name links: a class's card before a unit's. */
+	first: EffectRef;
+	/** How it comes (standard ability, ability, item…), in order of first appearance. */
+	kinds: EffectRef['kind'][];
+	/** The levels of the ability that do it; empty unless every reference has one, since
+	    a level on one class's copy says nothing about the others. */
+	levels: number[];
+	classes: EffectRef[];
+	units: EffectRef[];
+}
+
+/**
+ * References grouped by the ability's name, the way a reader sees it: every
+ * class's Perform Self-Aid, and the copy the data keeps under another id for
+ * twenty-eight NPC units, is one row. Owners split into classes and other units,
+ * each listed once, in the order the extractor found them.
+ */
+export function groupRefs(refs: EffectRef[], isClass: (id: string) => boolean): RefGroup[] {
+	const by = new Map<string, RefGroup>();
+	const unleveled = new Set<string>();
+	for (const r of refs) {
+		const key = r.abilityName.trim().toLowerCase();
+		let g = by.get(key);
+		if (!g) {
+			g = { key, name: r.abilityName, icon: r.abilityIcon ?? null, first: r, kinds: [], levels: [], classes: [], units: [] };
+			by.set(key, g);
+		}
+		const cls = r.kind !== 'item' && isClass(r.owner);
+		if (cls && !(g.first.kind !== 'item' && isClass(g.first.owner))) g.first = r;
+		if (!g.icon && r.abilityIcon) g.icon = r.abilityIcon;
+		if (!g.kinds.includes(r.kind)) g.kinds.push(r.kind);
+		if (!r.level) unleveled.add(key);
+		else if (!g.levels.includes(r.level)) g.levels.push(r.level);
+		const side = cls ? g.classes : g.units;
+		if (!side.some((o) => o.owner === r.owner)) side.push(r);
 	}
-	const who = a.undeadOnly ? "an undead's own attack" : 'any hit of 15 or more damage';
-	const spare = a.sparesHeroic ? ', never on a heroic unit' : '';
-	const risen = a.risen ? ' A hero who dies with it rises as a Risen.' : '';
-	return `${who[0].toUpperCase()}${who.slice(1)} on a biological hero without a plasma shield ${gate}${own} for this one${spare}.${risen}`;
+	for (const g of by.values()) g.levels = unleveled.has(g.key) ? [] : g.levels.sort((a, b) => a - b);
+	return [...by.values()];
 }
