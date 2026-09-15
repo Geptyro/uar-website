@@ -9,13 +9,17 @@
 	import { page } from '$app/state';
 	import { TabBar, TabSwipe } from 'sveltekit-commons';
 	import { TRIGGER_TABS, triggerHref, tabSegment } from '$lib/triggerTabs';
+	import { holdData } from '$lib/heldData';
 
 	let { data, children } = $props();
+	// the next route's data can reach this before it unmounts: read the last own one ($lib/heldData)
+	const hold = holdData((d: typeof data) => !!d.group);
+	const view = $derived(hold(data));
 
 	const active = $derived(tabSegment(page.route.id) ?? '');
 	const barTabs = $derived(
 		TRIGGER_TABS.map((t) => ({
-			href: triggerHref(data.group.id, t.segment),
+			href: triggerHref(view.group.id, t.segment),
 			label: t.label,
 			icon: t.icon,
 			key: t.segment
@@ -35,7 +39,7 @@
 	docked
 	tabs={barTabs}
 	{active}
-	label="{data.group.name} sections"
+	label="{view.group.name} sections"
 	shortcuts
 	gestures="both"
 	onnavigate={(to) => void goto(to, { noScroll: true })}

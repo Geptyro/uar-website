@@ -16,22 +16,26 @@
 	import StatIcon from '$lib/components/StatIcon.svelte';
 	import Seo from '$lib/components/Seo.svelte';
 	import { Page } from 'sveltekit-commons';
+	import { holdData } from '$lib/heldData';
 
 	let { data } = $props();
+	// the next route's data can reach this before it unmounts: read the last own one ($lib/heldData)
+	const hold = holdData((d: typeof data) => !!d.effect);
+	const view = $derived(hold(data));
 
-	const e = $derived(data.effect as Effect);
+	const e = $derived(view.effect as Effect);
 	setRolls({
 		get tips() {
-			return data.tips;
+			return view.tips;
 		},
 		get rules() {
-			return data.rules;
+			return view.rules;
 		}
 	});
 
 	/** The mode the rolls are worked out for; Normal until a reader picks one. */
 	let mode = $state(2);
-	const chain = $derived(ailmentChain(e, data.rules, data.ailments, mode));
+	const chain = $derived(ailmentChain(e, view.rules, view.ailments, mode));
 	const outcomes = $derived(e.outcomes ?? []);
 	const hasRolls = $derived(!!chain || outcomes.length > 0);
 

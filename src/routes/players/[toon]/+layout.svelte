@@ -25,21 +25,25 @@
 	import { decals } from '$lib/unlocks';
 	import { BAN_EFFECT, banKind } from '$lib/banned';
 	import { ANON_PORTRAIT as anonPortrait, portraitFallback } from '$lib/portrait';
+	import { holdData } from '$lib/heldData';
 
 	let { data, children } = $props();
+	// the next route's data can reach this before it unmounts: read the last own one ($lib/heldData)
+	const hold = holdData((d: typeof data) => !!d.player);
+	const view = $derived(hold(data));
 
-	const p = $derived(data.player);
+	const p = $derived(view.player);
 	/* Every tab, not just the overview: the figures this qualifies are spread
 	   across all four of them, and a visitor who arrives on the collection
 	   should not have to find the overview to learn the boards left this
 	   profile out. */
-	const ban = $derived(banKind(data.toon));
+	const ban = $derived(banKind(view.toon));
 	// num 0 (rank insignia) is everyone's default decal, never bank-stored
 	const decalsUnlocked = $derived(new Set([0, ...p.unlocks.decals]));
 	/* The games behind "time on record" — the ingested ones, which is why the
 	   figure carries a count of its own beside the map's career total. */
 	const recordedGames = $derived(
-		`${data.historyCount.toLocaleString('en')} ${data.historyCount === 1 ? 'game' : 'games'}`
+		`${view.historyCount.toLocaleString('en')} ${view.historyCount === 1 ? 'game' : 'games'}`
 	);
 
 	const active = $derived(tabSegment(page.route.id) ?? '');
@@ -56,7 +60,7 @@
 
 	const barTabs = $derived(
 		PLAYER_TABS.map((t) => ({
-			href: playerHref(data.toon, t.segment),
+			href: playerHref(view.toon, t.segment),
 			label: t.label,
 			icon: t.icon,
 			key: t.segment
@@ -142,7 +146,7 @@
 				<div class="idhead">
 					<img
 						class="portrait-lg"
-						src={data.avatarUrl ?? anonPortrait}
+						src={view.avatarUrl ?? anonPortrait}
 						alt=""
 						use:portraitFallback={anonPortrait}
 					/>
@@ -150,12 +154,12 @@
 						<div class="idname">
 							{#if p.clan}<span class="idclan">&lt;{p.clan}&gt;</span>{/if}{p.name}
 						</div>
-						{#if data.verified}
+						{#if view.verified}
 							<div>
 								<span class="tag t-mos" title="Linked via Battle.net login">
-									✓ {data.verified.battletag}
+									✓ {view.verified.battletag}
 								</span>
-								{#if data.verified.isOwner}
+								{#if view.verified.isOwner}
 									<a class="you" href="/account">you</a>
 								{/if}
 							</div>
@@ -207,10 +211,10 @@
 					<dt>Decal</dt>
 					<dd>{decalName(p.decal)}</dd>
 					<dt>Camos</dt>
-					<dd><a href={playerHref(data.toon, 'collection')}>{p.unlocks.camos.length} / 25</a></dd>
+					<dd><a href={playerHref(view.toon, 'collection')}>{p.unlocks.camos.length} / 25</a></dd>
 					<dt>Decals</dt>
 					<dd>
-						<a href={playerHref(data.toon, 'collection')}
+						<a href={playerHref(view.toon, 'collection')}
 							>{decalsUnlocked.size} / {decals.length}</a
 						>
 					</dd>
@@ -218,8 +222,8 @@
 					<dd class="mono">{fmtDate(p.lastSeen)}</dd>
 				</dl>
 
-				{#if data.latestFile}
-					<a class="dl-latest" href="/replays/{data.latestFile}" download rel="external">
+				{#if view.latestFile}
+					<a class="dl-latest" href="/replays/{view.latestFile}" download rel="external">
 						Download latest replay ⬇
 					</a>
 				{/if}

@@ -24,12 +24,16 @@
 	import ClassFrame from '$lib/components/mos/ClassFrame.svelte';
 	import BuildBar from '$lib/components/builds/BuildBar.svelte';
 	import type { BuildStatus } from '$lib/builds';
+	import { holdData } from '$lib/heldData';
 
 	let { data, children } = $props();
+	// the next route's data can reach this before it unmounts: read the last own one ($lib/heldData)
+	const hold = holdData((d: typeof data) => !!d.mos);
+	const view = $derived(hold(data));
 
-	const mos = $derived(data.mos);
+	const mos = $derived(view.mos);
 	// mission items (supply) are objective props, not class gear — keep them off class pages
-	const usableCount = $derived(data.items.filter((i) => i.type !== 'supply').length);
+	const usableCount = $derived(view.items.filter((i) => i.type !== 'supply').length);
 
 	const active = $derived(tabSegment(page.route.id, page.params) ?? '');
 	const onOverview = $derived(active === '');
@@ -46,7 +50,7 @@
 	);
 
 	const barTabs = $derived(
-		data.tabs.map((t) => ({
+		view.tabs.map((t) => ({
 			href: mosTabHref(mos.id, t.segment),
 			label: t.label,
 			icon: t.icon,
@@ -92,7 +96,7 @@
 		<ClassFrame>
 			{@render children()}
 			{#snippet rail()}
-				<MosInfobox {mos} si={data.si} {usableCount} abilities={false} />
+				<MosInfobox {mos} si={view.si} {usableCount} abilities={false} />
 			{/snippet}
 		</ClassFrame>
 	</Page>

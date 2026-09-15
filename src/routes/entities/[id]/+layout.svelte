@@ -10,13 +10,17 @@
 	import { TabBar, TabSwipe } from 'sveltekit-commons';
 	import { ENTITY_TABS, entityHref, entityTabSegment } from '$lib/entityTabs';
 	import { displayName } from '$lib/ogcard';
+	import { holdData } from '$lib/heldData';
 
 	let { data, children } = $props();
+	// the next route's data can reach this before it unmounts: read the last own one ($lib/heldData)
+	const hold = holdData((d: typeof data) => !!d.unit);
+	const view = $derived(hold(data));
 
 	const active = $derived(entityTabSegment(page.route.id) ?? '');
 	const barTabs = $derived(
 		ENTITY_TABS.map((t) => ({
-			href: entityHref(data.unit.id, t.segment),
+			href: entityHref(view.unit.id, t.segment),
 			label: t.label,
 			icon: t.icon,
 			key: t.segment
@@ -36,7 +40,7 @@
 	docked
 	tabs={barTabs}
 	{active}
-	label="{displayName(data.unit.name) || data.unit.id} sections"
+	label="{displayName(view.unit.name) || view.unit.id} sections"
 	shortcuts
 	gestures="both"
 	onnavigate={(to) => void goto(to, { noScroll: true })}

@@ -104,8 +104,8 @@ export function ailmentChain(
 	ailments: Pick<Effect, 'id' | 'name' | 'icon' | 'ailment'>[],
 	mode: number
 ): AilmentChain | null {
-	const own = effect.ailment;
-	if (!own) return null;
+	const own = effect?.ailment;
+	if (!own || !rules) return null;
 	const N = globalN(rules, mode);
 	const g = N ? 1 / N : 1;
 	const byIndex = new Map(ailments.filter((a) => a.ailment).map((a) => [a.ailment!.index, a]));
