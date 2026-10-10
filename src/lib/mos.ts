@@ -14,6 +14,14 @@ export interface Skill {
 	tooltip: string;
 	/** Ids and names the tree also answers to: the per-level commands folded into it. */
 	aliases?: string[];
+	/** Lobby modifiers the slot needs on (`on`) or off: the Combat Medic's Revive is gone in 1 life. */
+	modifiers?: ModifierGate[];
+}
+
+/** A gate on a lobby modifier, by its gv_modifiervote id (see $lib/modifiers). */
+export interface ModifierGate {
+	id: number;
+	on: boolean;
 }
 
 export interface CommonAbility {
@@ -25,6 +33,7 @@ export interface CommonAbility {
 	levels?: number;
 	/** Ids and names of the per-level copies folded into this command. */
 	aliases?: string[];
+	modifiers?: ModifierGate[];
 }
 
 /** Requirement to pick a class while playing one rank track. */

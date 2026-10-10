@@ -1,0 +1,468 @@
+{
+ "effect": "CriticalShotBonus",
+ "roll": 100,
+ "chance": 12.0,
+ "gates": [
+  {
+   "kind": "damageType",
+   "value": "Ranged"
+  },
+  {
+   "kind": "minDamage",
+   "value": 10,
+   "strict": true
+  },
+  {
+   "kind": "targetAttr",
+   "attr": "Biological",
+   "is": true
+  },
+  {
+   "kind": "hostile"
+  }
+ ],
+ "requires": [
+  [
+   {
+    "b": "Marksmanship1"
+   }
+  ],
+  [
+   {
+    "b": "Marksmanship2"
+   }
+  ],
+  [
+   {
+    "b": "Marksmanship3"
+   }
+  ],
+  [
+   {
+    "b": "Marksmanship4"
+   }
+  ],
+  [
+   {
+    "b": "MarksmanshipLN"
+   },
+   {
+    "upg": "Training",
+    "min": 2
+   }
+  ],
+  [
+   {
+    "b": "MarksmanshipLNlesser"
+   },
+   {
+    "upg": "Training",
+    "min": 4
+   }
+  ],
+  [
+   {
+    "b": "MarksmanshipMedic"
+   }
+  ],
+  [
+   {
+    "b": "Agility2"
+   }
+  ],
+  [
+   {
+    "b": "Agility3"
+   }
+  ],
+  [
+   {
+    "b": "Cybernetics2"
+   }
+  ],
+  [
+   {
+    "b": "Cybernetics3"
+   }
+  ],
+  [
+   {
+    "b": "Marksmanship12"
+   }
+  ],
+  [
+   {
+    "b": "Marksmanship22"
+   }
+  ],
+  [
+   {
+    "b": "Marksmanship32"
+   }
+  ],
+  [
+   {
+    "b": "Marksmanship42"
+   }
+  ]
+ ],
+ "rules": [
+  {
+   "when": [
+    [
+     {
+      "b": "Marksmanship1"
+     }
+    ]
+   ],
+   "ops": [
+    [
+     "mult",
+     "set",
+     2.0,
+     false
+    ]
+   ]
+  },
+  {
+   "when": [
+    [
+     {
+      "b": "Marksmanship2"
+     }
+    ]
+   ],
+   "ops": [
+    [
+     "mult",
+     "set",
+     3.0,
+     false
+    ]
+   ]
+  },
+  {
+   "when": [
+    [
+     {
+      "b": "Marksmanship3"
+     }
+    ]
+   ],
+   "ops": [
+    [
+     "mult",
+     "set",
+     4.0,
+     false
+    ]
+   ]
+  },
+  {
+   "when": [
+    [
+     {
+      "b": "Marksmanship4"
+     }
+    ]
+   ],
+   "ops": [
+    [
+     "mult",
+     "set",
+     5.0,
+     false
+    ]
+   ]
+  },
+  {
+   "when": [
+    [
+     {
+      "b": "MarksmanshipMedic"
+     }
+    ],
+    [
+     {
+      "b": "MarksmanshipLNlesser"
+     },
+     {
+      "upg": "Training",
+      "min": 4
+     }
+    ],
+    [
+     {
+      "b": "Agility2"
+     }
+    ],
+    [
+     {
+      "b": "Cybernetics2"
+     }
+    ],
+    [
+     {
+      "b": "Cybernetics3"
+     }
+    ]
+   ],
+   "ops": [
+    [
+     "mult",
+     "set",
+     2.0,
+     false
+    ]
+   ]
+  },
+  {
+   "when": [
+    [
+     {
+      "b": "Agility3"
+     }
+    ],
+    [
+     {
+      "b": "MarksmanshipLN"
+     },
+     {
+      "upg": "Training",
+      "min": 2
+     }
+    ]
+   ],
+   "ops": [
+    [
+     "mult",
+     "set",
+     3.0,
+     false
+    ]
+   ]
+  },
+  {
+   "when": [
+    [
+     {
+      "b": "Agility2"
+     }
+    ],
+    [
+     {
+      "b": "Agility3"
+     }
+    ],
+    [
+     {
+      "b": "Cybernetics2"
+     }
+    ]
+   ],
+   "ops": [
+    [
+     "chance",
+     "set",
+     25.0,
+     false
+    ]
+   ]
+  },
+  {
+   "when": [
+    [
+     {
+      "b": "Cybernetics3"
+     }
+    ]
+   ],
+   "ops": [
+    [
+     "chance",
+     "set",
+     37.0,
+     false
+    ]
+   ]
+  },
+  {
+   "when": [
+    [
+     {
+      "b": "SOFAR"
+     }
+    ]
+   ],
+   "ops": [
+    [
+     "chance",
+     "add",
+     20.0,
+     false
+    ]
+   ]
+  },
+  {
+   "when": [
+    [
+     {
+      "b": "FocusFire"
+     }
+    ]
+   ],
+   "ops": [
+    [
+     "chance",
+     "add",
+     20.0,
+     false
+    ],
+    [
+     "mult",
+     "add",
+     2.0,
+     false
+    ]
+   ]
+  },
+  {
+   "when": [
+    [
+     {
+      "b": "Marksmanship12"
+     }
+    ]
+   ],
+   "ops": [
+    [
+     "chance",
+     "set",
+     8.0,
+     false
+    ],
+    [
+     "mult",
+     "set",
+     2.0,
+     false
+    ]
+   ]
+  },
+  {
+   "when": [
+    [
+     {
+      "b": "Marksmanship22"
+     }
+    ]
+   ],
+   "ops": [
+    [
+     "chance",
+     "set",
+     10.0,
+     false
+    ],
+    [
+     "mult",
+     "set",
+     3.0,
+     false
+    ]
+   ]
+  },
+  {
+   "when": [
+    [
+     {
+      "b": "Marksmanship32"
+     }
+    ]
+   ],
+   "ops": [
+    [
+     "chance",
+     "set",
+     12.0,
+     false
+    ],
+    [
+     "mult",
+     "set",
+     4.0,
+     false
+    ]
+   ]
+  },
+  {
+   "when": [
+    [
+     {
+      "b": "Marksmanship42"
+     }
+    ]
+   ],
+   "ops": [
+    [
+     "chance",
+     "set",
+     14.0,
+     false
+    ],
+    [
+     "mult",
+     "set",
+     5.0,
+     false
+    ]
+   ]
+  },
+  {
+   "when": [
+    [
+     {
+      "multAbove": 0.0
+     },
+     {
+      "b": "PowerArmorMKIV"
+     }
+    ]
+   ],
+   "ops": [
+    [
+     "chance",
+     "mul",
+     1.5,
+     true
+    ],
+    [
+     "mult",
+     "add",
+     1.0,
+     false
+    ]
+   ]
+  },
+  {
+   "when": [
+    [
+     {
+      "multAbove": 0.0
+     },
+     {
+      "b": "Camping"
+     }
+    ]
+   ],
+   "ops": [
+    [
+     "chance",
+     "mul",
+     2.0,
+     false
+    ]
+   ]
+  }
+ ]
+}

@@ -7,6 +7,7 @@
  * lives here so the skill sheets and the command list draw the same thing.
  */
 import type { StatIconName } from '$lib/components/StatIcon.svelte';
+import { critBaseChance, critWhen, isCritPhrase, isCritSource } from '$lib/crit';
 
 export interface Charges {
 	max: number;
@@ -116,6 +117,22 @@ export interface LevelStats {
 	treeLevel?: number;
 	/** A tree whose levels are upgrades: what this level sets, on whom. */
 	sets?: string[];
+	/**
+	 * This level's crit replayed with another tree's crit buff on too, where that changes
+	 * it: the map checks the buffs in a fixed order and the last match sets the multiplier.
+	 */
+	critWith?: CritWith[];
+}
+
+export interface CritWith {
+	/** The other tree's name. */
+	by: string;
+	level: number;
+	/** Its buff stays from that level on (a passive), rather than that level only. */
+	onward: boolean;
+	/** Chance in %, and the multiplier the crit ends on with both. */
+	chance: number;
+	mult: number;
 }
 
 /** One class's rows, by ability id. */
@@ -406,6 +423,7 @@ const plain = (v: number | undefined, f: (n: number) => string): Cell | null =>
 const MOD_KINDS: [RegExp, string, StatIconName][] = [
 	[/ on (units within|the target)\b/, 'Aura', 'sparkle'],
 	[/^removes /, 'Removes', 'remove'],
+	[/^critical shot /, 'Critical shot', 'bonus'],
 	[/^shares sight|^radar |^detects /, 'Sight', 'sight'],
 	[/\bfitness\b/, 'Fitness', 'fitness'],
 	[/\bmechanical\b/, 'Mechanical', 'mechanical'],
@@ -434,7 +452,7 @@ export function modKind(m: string): [string, StatIconName] {
 function bareValue(m: string, label: string): string {
 	if (label === 'Effect' || label === 'Aura' || label === 'Removes') return m;
 	const out = m
-		.replace(/^(weapon range|move speed|attack speed|sight|energy regen|life regen)\s*/, '')
+		.replace(/^(critical shot|weapon range|move speed|attack speed|sight|energy regen|life regen)\s*/, '')
 		.replace(/\s*\b(fitness|mechanical|dexterity|shields?|armor|life regen|energy regen|life|energy)\b\s*/, ' ')
 		.replace(/\s*\bdmg\b\s*/, ' ')
 		.replace(/\s+/g, ' ')
@@ -450,10 +468,24 @@ function splitMods(mods: string[]): string[] {
 	});
 }
 
+/** "12% · 4×", held together: a narrow level column must not split the pair. */
+const glue = (v: string) => v.replace(/ · /g, '\u00a0·\u00a0');
+const critText = (w: { chance: number; mult: number }) => glue(`${fmt(w.chance)}% · ${fmt(w.mult)}×`);
+/** "2× with Soldier Skills 2+": the chance only when the other tree changes it too. */
+const critWithLine = (w: CritWith, chance?: number) =>
+	`${chance === w.chance ? `${fmt(w.mult)}×` : critText(w)} with ${w.by} ${w.level}${w.onward ? '+' : ''}`;
+
 function modRows(rows: LevelStats[]): StatRow[] {
 	const kinds = new Map<string, { icon: StatIconName; cells: (string[] | null)[] }>();
+	const critOnly = new Set<number>();
 	rows.forEach((r, i) => {
-		for (const m of splitMods(r.mods ?? [])) {
+		const mods = splitMods(r.mods ?? []);
+		// a level whose own crit sits in Applies still gets the row the other tree changes
+		if (r.critWith?.length && !mods.some(isCritPhrase)) {
+			mods.push(...r.critWith.map((w) => `critical shot ${critWithLine(w)}`));
+			critOnly.add(i);
+		}
+		for (const m of mods) {
 			const [label, icon] = modKind(m);
 			if (!kinds.has(label)) kinds.set(label, { icon, cells: rows.map(() => null) });
 			const k = kinds.get(label)!;
@@ -463,9 +495,15 @@ function modRows(rows: LevelStats[]): StatRow[] {
 	return [...kinds].map(([label, k]) => ({
 		label,
 		icon: k.icon,
-		cells: k.cells.map((c) => {
+		cells: k.cells.map((c, i) => {
 			if (!c) return null;
-			const vals = c.map((m) => bareValue(m, label));
+			const vals = c.map((m) => bareValue(m, label)).map((v) => (label === 'Critical shot' ? glue(v) : v));
+			// the crit another tree turns this one into, under it
+			const crit = label === 'Critical shot' && c.length === 1 && !critOnly.has(i) ? rows[i].critWith : undefined;
+			if (crit?.length) {
+				const chance = Number(vals[0].match(/^([\d.]+)%/)?.[1]);
+				return { text: vals[0], sub: crit.map((w) => critWithLine(w, chance)).join(' · ') };
+			}
 			// a bare number reads as one, right-aligned; a phrase keeps its lines
 			return label === 'Effect' || vals.some((v) => v.length > 18)
 				? { text: vals.join('\n'), lines: vals }
@@ -600,6 +638,30 @@ export function footNotes(rows: LevelStats[], treeNames: Record<string, string> 
 		out.push({
 			lead: 'Linked by name',
 			text: "the ability's effect slot is empty in the map data; these are the numbers of the effect that carries its name."
+		});
+	}
+	const crits = rows.flatMap((r) => [
+		...(r.mods ?? []),
+		...(r.applies ?? []).flatMap((a) => a.effects),
+		...(r.critWith?.length ? ['critical shot 0'] : [])
+	]).filter(isCritPhrase);
+	if (crits.length) {
+		const own = crits.some(isCritSource);
+		out.push({
+			lead: 'Critical shot',
+			text:
+				`rolled by the map script on ${critWhen()}, ${fmt(critBaseChance)}% unless a skill sets another chance. ` +
+				'A crit adds the hit (multiplier − 1) more times, and the red number shows the hit times the multiplier.' +
+				(own ? '' : ' On its own this makes no crit: it changes the one a skill gives.')
+		});
+	}
+	const w = rows.flatMap((r) => r.critWith ?? [])[0];
+	if (w) {
+		out.push({
+			lead: 'Crit order',
+			text:
+				`${w.by} ${w.level} gives a critical shot of its own, and the map checks it after this one, so with both ` +
+				`the multiplier is ${fmt(w.mult)}× whatever this level says. Everything else the two give still adds up.`
 		});
 	}
 	return out;

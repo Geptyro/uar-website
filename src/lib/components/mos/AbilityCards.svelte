@@ -7,6 +7,8 @@
 	 * so a page reads as one list of what the class can do.
 	 */
 	import type { ClassStats } from '$lib/skillstats';
+	import type { ModifierGate } from '$lib/mos';
+	import ModifierMark from '$lib/components/ModifierMark.svelte';
 	import LevelTable from './LevelTable.svelte';
 
 	export interface AbilityCard {
@@ -15,6 +17,8 @@
 		icon: string | null;
 		tooltip: string;
 		levels?: number | null;
+		/** Lobby modifiers the ability needs on or off (Revive is gone in 1 life). */
+		modifiers?: ModifierGate[];
 	}
 
 	let {
@@ -45,6 +49,9 @@
 					<span class="icon placeholder"></span>
 				{/if}
 				<span class="name">{a.name}</span>
+				{#each a.modifiers ?? [] as m (m.id)}
+					<span class="gate">{m.on ? 'only in' : 'not in'} <ModifierMark id={m.id} /></span>
+				{/each}
 				{#if a.levels}<span class="lv">{a.levels} lv</span>{/if}
 			</h3>
 			{#if a.tooltip}<p class="tip">{a.tooltip}</p>{/if}
@@ -114,6 +121,18 @@
 	}
 	.name {
 		flex: 1;
+	}
+	/* "only in 1 life": the game's own modifier chip, its blurb on hover */
+	.gate {
+		/* centred, not on a baseline: the chip opens with its icon, which has none */
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		font-size: 11px;
+		font-weight: 500;
+		line-height: 1;
+		color: var(--text-dim);
+		white-space: nowrap;
 	}
 	.lv {
 		font-family: var(--font-mono);
