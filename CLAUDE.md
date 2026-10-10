@@ -59,7 +59,7 @@ files the change under a heading it never touched, so run
   step unseen. Run `docker build .` before shipping anything that touches
   dependencies or the build passes.
 - `npm test` = unit tests (node:test, `tests/**/*.test.ts`).
-- `npm run test:integration` = throwaway docker mongo+minio against the real
+- `npm run test:integration` = throwaway docker mongo+versitygw (S3) against the real
   built server.
 - Form actions from dev/curl need an `Origin` header or adapter-node returns
   403 cross-site; prod sets `ORIGIN` in fly.toml.

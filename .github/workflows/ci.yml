@@ -26,7 +26,7 @@ jobs:
       # not the deploy (v0.5.1 broke exactly this way)
       - run: npm run build
 
-  # full-stack upload API test: throwaway Mongo + MinIO containers, the real
+  # full-stack upload API test: throwaway Mongo + S3 (versitygw) containers, the real
   # built server, real HTTP — covers accept/dedupe/replace/download paths
   integration:
     runs-on: ubuntu-latest

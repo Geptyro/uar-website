@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Full-stack integration test for the replay upload API — everything local:
-# throwaway MongoDB + MinIO containers, the real built server, real HTTP.
+# throwaway MongoDB + S3 (versitygw) containers, the real built server, real HTTP.
 #
 #   npm run test:integration        (requires docker; runs `npm run build` first)
 #
@@ -22,18 +22,23 @@ SUFFIX=$$
 TMP=$(mktemp -d)
 CLEANUP() {
 	rm -rf "$TMP"
-	docker rm -f "uar-it-mongo-$SUFFIX" "uar-it-minio-$SUFFIX" >/dev/null 2>&1 || true
+	docker rm -f "uar-it-mongo-$SUFFIX" "uar-it-s3-$SUFFIX" >/dev/null 2>&1 || true
 	# SIGKILL, not TERM: adapter-node shuts down gracefully and lingers on
 	# open connections, which leaves an orphan holding the script's stdout
 	[ -n "${SERVER_PID:-}" ] && kill -9 "$SERVER_PID" 2>/dev/null || true
 }
 trap CLEANUP EXIT
 
-echo "· containers (mongo:$MPORT minio:$SPORT app:$APPPORT)"
+echo "· containers (mongo:$MPORT s3:$SPORT app:$APPPORT)"
 docker run -d --rm --name "uar-it-mongo-$SUFFIX" -p "$MPORT:27017" mongo:7 >/dev/null
-docker run -d --rm --name "uar-it-minio-$SUFFIX" -p "$SPORT:9000" \
-	-e MINIO_ROOT_USER=itkey -e MINIO_ROOT_PASSWORD=itsecret123 \
-	quay.io/minio/minio server /data >/dev/null
+# versitygw, not MinIO: MinIO no longer publishes images (by 2026-10 Docker
+# Hub's minio/minio was gone and quay.io's private), which broke every tag's verify.
+# It checks SigV4 like Tigris does, region "auto" included, so a signing bug
+# still fails here. Pinned: a moving tag is how the last one broke unseen.
+docker run -d --rm --name "uar-it-s3-$SUFFIX" -p "$SPORT:7070" \
+	-e ROOT_ACCESS_KEY=itkey -e ROOT_SECRET_KEY=itsecret123 \
+	-e VGW_REGION=auto -e VGW_HEALTH=/health \
+	versity/versitygw:v1.8.0 posix /tmp >/dev/null
 
 npm run build --silent >/dev/null
 # static/replays/*.SC2Replay is gitignored seed data — absent in CI, present on
@@ -43,7 +48,7 @@ npm run build --silent >/dev/null
 rm -f build/client/replays/*.SC2Replay
 
 for i in $(seq 1 30); do
-	curl -sf "http://localhost:$SPORT/minio/health/live" >/dev/null && break
+	curl -sf "http://localhost:$SPORT/health" >/dev/null && break
 	sleep 0.5
 done
 curl -sf -X PUT -u itkey:itsecret123 --aws-sigv4 "aws:amz:auto:s3" \
