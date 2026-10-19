@@ -23,6 +23,7 @@ import {
 } from '../src/lib/server/replay/extract.ts';
 import { hx1, hxList, decodeUnlocks } from '../src/lib/server/replay/bank.ts';
 import { decideIngest } from '../src/lib/server/replay/ingest.ts';
+import progression from '../src/lib/data/progression.json' with { type: 'json' };
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FIXTURES = join(HERE, 'fixtures');
@@ -64,6 +65,15 @@ test('bank cipher: unlock bit-strings', () => {
 	assert.deepEqual(gear.walker, [true, false, true, false, true, false]);
 	// cluster rockets (walker[5]) grant decal 11
 	assert.deepEqual(decodeUnlocks({ p: 'ccccch' }).decals.includes(11), true);
+});
+
+test('gear ladders: one generated item per bank flag the decoder reads', () => {
+	// progression.json's ladders come from the map's load code, the decoder is
+	// written by hand: a map update that adds a flag must reach both
+	const flags = decodeUnlocks({}) as unknown as Record<string, boolean[]>;
+	for (const g of progression.gear) {
+		assert.equal(g.items.length, flags[g.key]?.length, g.key);
+	}
 });
 
 test('filetimeToIso: 100ns ticks since 1601', () => {

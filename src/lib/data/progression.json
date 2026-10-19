@@ -79,5 +79,197 @@
 			"name": "Rainy Day",
 			"desc": "Increases XP gain by 10%, the Mayor has installed a powerful missiles launcher turret at the top of his house. Asked about that surprising fact, the Mayor just said: \"Yes, this is a missiles turret. The biggest I could find.\"."
 		}
+	],
+	"gear": [
+		{
+			"key": "walker",
+			"label": "Walker gear",
+			"mosId": "FP500CombatWalker",
+			"ordered": true,
+			"items": [
+				{
+					"name": "Auxiliary Generator",
+					"rank": 2,
+					"desc": "Utilizes kinetic motion to generate additional power. Increases energy regeneration by 30%.",
+					"req": "Win PMC"
+				},
+				{
+					"name": "Shield Amplifier",
+					"rank": 3,
+					"desc": "Module improving the regeneration of shields. +2 shield /s.",
+					"req": "Win Hard, Insane, Nightmare or Apocalypse with Outbreak"
+				},
+				{
+					"name": "Floodlights",
+					"rank": 4,
+					"desc": "Switch the Floodlights on, draining energy over time.",
+					"req": "Win Hard, Insane, Nightmare or Apocalypse with Tier 1"
+				},
+				{
+					"name": "Flare Gun",
+					"rank": 1,
+					"desc": "Fires a flare at the target point providing vision. Enemies also gain vision from flare.",
+					"req": "Kill 100 undead with rockets in one game (500 with Outbreak), not in Recruit. Killing a friendly unit adds 50 back (250 with Outbreak)"
+				},
+				{
+					"name": "Motion Sensor",
+					"rank": 5,
+					"desc": "Activate the FP-500 integrated Motion Sensor, draining energy over time.",
+					"req": "Win Insane, Nightmare or Apocalypse with Outbreak"
+				},
+				{
+					"name": "Cluster Rockets",
+					"rank": 6,
+					"desc": "Fires a barrage of 6 rockets at the target area, dealing 900 damage per rocket and temporarily stunning the targets. Beeing randomly guided, the cluster rockets can go outside the red indicator circle. Explosions damage allies and items.",
+					"req": "Win Nightmare or Apocalypse, taking 5 hits or fewer and without dying"
+				}
+			]
+		},
+		{
+			"key": "lk19",
+			"label": "Alligator LK19",
+			"mosId": "AlligatorLK19",
+			"ordered": true,
+			"items": [
+				{
+					"name": "Enhanced Weaponry",
+					"rank": 1,
+					"desc": "An enhanced weaponry allows to avoid the jams, improves the reload speed and the move speed. Jam immunity. Reload speed +15%. Move speed +0.2.",
+					"req": "Win Hard, Insane, Nightmare or Apocalypse with Outbreak"
+				},
+				{
+					"name": "Auxiliary Generator",
+					"rank": 2,
+					"desc": "Utilizes kinetic motion to create energy to produce additional power. Regenerates 1.25 energy per second.",
+					"req": "Win Insane, Nightmare or Apocalypse with Outbreak"
+				},
+				{
+					"name": "Reconfigured Energy I",
+					"rank": 3,
+					"desc": "Facing the necessity of important amounts of energy, the UT Army has reconfigured the energy system of the Alligator LK19. Energy max + 50. Energy regeneration + 0.5.",
+					"req": "Win Nightmare or Apocalypse"
+				},
+				{
+					"name": "Reconfigured Energy II",
+					"rank": 3,
+					"desc": null,
+					"req": "Win PMC"
+				},
+				{
+					"name": "Improved Rockets I",
+					"rank": 4,
+					"desc": "An enhanced combustion system allows an increased speed for the rockets. Rockets speed +100%.",
+					"req": "Win Hard"
+				},
+				{
+					"name": "Improved Rockets II",
+					"rank": 4,
+					"desc": null,
+					"req": "Win Hard"
+				},
+				{
+					"name": "Improved Rockets III",
+					"rank": 4,
+					"desc": null,
+					"req": "Win Insane"
+				},
+				{
+					"name": "Improved Rockets IV",
+					"rank": 4,
+					"desc": null,
+					"req": "Win Insane"
+				},
+				{
+					"name": "Improved Rockets V",
+					"rank": 4,
+					"desc": null,
+					"req": "Win Nightmare or Apocalypse"
+				}
+			]
+		},
+		{
+			"key": "predator",
+			"label": "Predator",
+			"mosId": "AssaultEngineer",
+			"ordered": true,
+			"items": [
+				{
+					"name": "Floodlights",
+					"rank": 1,
+					"desc": "Switch the Floodlights on, draining energy over time.",
+					"req": "Win Hard, Insane, Nightmare or Apocalypse with Outbreak"
+				},
+				{
+					"name": "Predator MK II",
+					"rank": 2,
+					"desc": "Move speed + 0.01, energy max +20.",
+					"req": "Win PMC"
+				},
+				{
+					"name": "Flare Gun",
+					"rank": 3,
+					"desc": "Fires a flare at the target point providing vision. Enemies also gain vision from flare.",
+					"req": "Win Hard, Insane, Nightmare or Apocalypse with 1 life"
+				},
+				{
+					"name": "Predator MK III",
+					"rank": 4,
+					"desc": "Move speed + 0.01, energy max +20, life +20.",
+					"req": "Win Insane, Nightmare or Apocalypse"
+				},
+				{
+					"name": "Auxiliary Shield Generator",
+					"rank": 5,
+					"desc": "Shield regeneration +2/s.",
+					"req": "Win Nightmare or Apocalypse"
+				},
+				{
+					"name": "Predator MK IV",
+					"rank": 6,
+					"desc": "Move speed + 0.01, energy max +20, life +60.",
+					"req": "Win Insane, Nightmare or Apocalypse with 1 life"
+				}
+			]
+		},
+		{
+			"key": "robot",
+			"label": "Robot Rjx-73",
+			"mosId": "Rjx73",
+			"ordered": true,
+			"items": [
+				{
+					"name": "Strike Walk",
+					"rank": 1,
+					"desc": "Lasts 2 seconds. Particularity of the Robot, this is here only a movement modifier, it doesn't give any move order. You should it it moving, and you can change the movement during the Strike.",
+					"req": "See a Predator use Strike Walk 7 times within 20 range in one game"
+				},
+				{
+					"name": "Focus Fire",
+					"rank": 2,
+					"desc": "Increases damage by 20%, range by 1.5  for 10 seconds.",
+					"req": "See a Rifleman use Focus Fire 4 times within 20 range in one game"
+				}
+			]
+		},
+		{
+			"key": "medvisor",
+			"label": "Combat Medic",
+			"mosId": "CombatMedic",
+			"ordered": false,
+			"items": [
+				{
+					"name": "Advanced medical visor",
+					"rank": 1,
+					"desc": "Provides the auto-SITREP.",
+					"req": "Win Hard, Insane, Nightmare, PMC or Apocalypse, with 10 or more heals"
+				},
+				{
+					"name": "Visor activated",
+					"rank": 2,
+					"desc": "Whether the auto-SITREP visor is switched on (profile checkbox).",
+					"req": null
+				}
+			]
+		}
 	]
 }
