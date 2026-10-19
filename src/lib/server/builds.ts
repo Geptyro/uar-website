@@ -203,17 +203,25 @@ export async function listBuilds(mos: string): Promise<BuildListing[]> {
 	});
 }
 
-/** The published guides that moved last, across every class: the home page's handful. */
+/**
+ * How many rows the two "recent" queries keep. Each is cached under one key
+ * whatever a caller asks for, so the cap is the most any page can show: the
+ * home page takes its handful off the top, the activity page the lot.
+ */
+const RECENT_CAP = 30;
+
+/** The published guides that moved last, across every class, newest first. */
 export async function listRecentBuilds(n: number): Promise<BuildListing[]> {
-	return cached('builds:recent', async () => {
+	const all = await cached('builds:recent', async () => {
 		const d = await db();
 		return d
 			.collection<BuildDoc>('builds')
 			.find({ status: 'published' }, { projection: LISTING_PROJECTION })
 			.sort({ updatedAt: -1 })
-			.limit(n)
+			.limit(RECENT_CAP)
 			.toArray() as Promise<BuildListing[]>;
 	});
+	return all.slice(0, n);
 }
 
 /** Everything one account has written for a class, drafts and hidden included, newest first. */
@@ -433,15 +441,16 @@ export const entityHost = (unitId: string): CommentHost => ({
 
 /** The newest comments across every thread that stand (not hidden, not taken back): the activity list. */
 export async function listRecentComments(n: number): Promise<BuildCommentDoc[]> {
-	return cached('comments:recent', async () => {
+	const all = await cached('comments:recent', async () => {
 		const d = await db();
 		return d
 			.collection<BuildCommentDoc>('buildComments')
 			.find({ hiddenAt: { $exists: false }, deletedAt: { $exists: false } })
 			.sort({ createdAt: -1 })
-			.limit(n)
+			.limit(RECENT_CAP)
 			.toArray();
 	});
+	return all.slice(0, n);
 }
 
 /** Several guides by id, as listings; what the activity list names its guide threads with. */

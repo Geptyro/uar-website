@@ -1,9 +1,10 @@
 <script lang="ts">
 	/**
 	 * The activity page, two columns of the same row (who, where, the first
-	 * words, when; a row is a link to the comment on its thread): what the
-	 * player was told, and what is being said anywhere. One column under the
-	 * other when the screen is narrow.
+	 * words, when; a row is a link to the comment on its thread, or to the
+	 * guide): what the player was told, and what moved anywhere, guides
+	 * written or edited and comments alike. One column under the other when
+	 * the screen is narrow.
 	 */
 	import { Page } from 'sveltekit-commons';
 	import { timeAgo } from 'sveltekit-commons/time';
@@ -19,7 +20,7 @@
 </script>
 
 <Page>
-	<Seo title="Activity" description="Comments on your guides, answers to your comments, and what is being said on the site." noindex />
+	<Seo title="Activity" description="Comments on your guides, answers to your comments, and what moved on the site: guides written or edited, and what is being said." noindex />
 
 	{#if !data.enabled}
 		<p class="note">Activity is not available on this deployment.</p>
@@ -53,27 +54,41 @@
 	</section>
 
 	<section>
-		<h2 class="sect">Everywhere <small>· the newest comments on the site</small></h2>
+		<h2 class="sect">Everywhere <small>· guides written or edited, and the newest comments</small></h2>
 		{#if data.activity.length}
 			<ol class="rows">
-				{#each data.activity as c (c.id)}
+				{#each data.activity as it (it.kind === 'guide' ? `g:${it.mos}/${it.slug}` : it.id)}
 					<li>
-						<a class="card row" href={c.href}>
-							<img class="av" src={c.avatar ?? anonPortrait} alt="" loading="lazy" use:portraitFallback={anonPortrait} />
-							<span class="body">
-								<span class="line">
-									<b>{c.name}</b> on <b>{c.subject.title}</b>
-									<span class="kind">{KIND[c.subject.kind]}</span>
+						{#if it.kind === 'guide'}
+							<a class="card row" href={it.href}>
+								<img class="av" src={it.avatar ?? anonPortrait} alt="" loading="lazy" use:portraitFallback={anonPortrait} />
+								<span class="body">
+									<span class="line">
+										<b>{it.name}</b> {it.fresh ? 'published' : 'updated'} <b>{it.title}</b>
+										<span class="kind">{KIND.guide}</span>
+									</span>
+									<span class="excerpt">{it.summary}</span>
 								</span>
-								<span class="excerpt">{c.excerpt}</span>
-							</span>
-							<span class="when">{timeAgo(c.at, now)}</span>
-						</a>
+								<span class="when">{timeAgo(it.at, now)}</span>
+							</a>
+						{:else}
+							<a class="card row" href={it.href}>
+								<img class="av" src={it.avatar ?? anonPortrait} alt="" loading="lazy" use:portraitFallback={anonPortrait} />
+								<span class="body">
+									<span class="line">
+										<b>{it.name}</b> on <b>{it.subject.title}</b>
+										<span class="kind">{KIND[it.subject.kind]}</span>
+									</span>
+									<span class="excerpt">{it.excerpt}</span>
+								</span>
+								<span class="when">{timeAgo(it.at, now)}</span>
+							</a>
+						{/if}
 					</li>
 				{/each}
 			</ol>
 		{:else}
-			<p class="fine">Nothing said anywhere yet.</p>
+			<p class="fine">Nothing moved anywhere yet.</p>
 		{/if}
 	</section>
 	</div>

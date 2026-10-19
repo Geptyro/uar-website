@@ -1,9 +1,9 @@
 /**
  * What moved last on the community side: guides published or edited, and
  * comments said anywhere, each as a row a widget can draw. The home page
- * shows a handful of both in one feed; the notifications page lists the
- * comments at length. Read from the same two narrow queries (see
- * $lib/server/builds) and the same name and portrait lookups.
+ * shows a handful of both in one feed; the activity page lists both at
+ * length. Read from the same two narrow queries (see $lib/server/builds)
+ * and the same name and portrait lookups.
  */
 import { cached, getAvatarsByToon, getNamesByToon } from './db';
 import { getBuildsByIds, listRecentBuilds, listRecentComments } from './builds';
@@ -30,6 +30,8 @@ export interface GuideActivity extends Who {
 	href: string;
 	/** Published and not edited since. */
 	fresh: boolean;
+	/** The guide's first words, as its listing shows them. */
+	summary: string;
 	ups: number;
 	downs: number;
 }
@@ -67,6 +69,7 @@ export async function recentGuides(n: number): Promise<GuideActivity[]> {
 		href: buildHref(b.mos, b.slug),
 		// publishing stamps both dates alike: not touched since is new, touched since is an update
 		fresh: !b.publishedAt || b.updatedAt <= b.publishedAt,
+		summary: b.summary,
 		ups: b.ups ?? 0,
 		downs: b.downs ?? 0,
 		...who(b.author)
@@ -109,15 +112,18 @@ export async function recentComments(n: number): Promise<CommentActivity[]> {
 	});
 }
 
+/** Both in one feed, newest first, n rows: what the activity page lists at length. */
+export async function activityFeed(n: number): Promise<ActivityItem[]> {
+	const [guides, comments] = await Promise.all([recentGuides(n), recentComments(n)]);
+	return [...guides, ...comments].sort((a, b) => b.at.localeCompare(a.at)).slice(0, n);
+}
+
 /**
- * Both, in one feed, newest first: the home page's handful. Cached as one,
- * since the home page is the busiest page on the site and the guide lookup
- * behind the comment rows is not cached on its own; every guide and comment
- * write drops it (see invalidateBuild and the comment writes in builds.ts).
+ * The same feed as the home page's handful. Cached as one, since the home
+ * page is the busiest page on the site and the guide lookup behind the
+ * comment rows is not cached on its own; every guide and comment write drops
+ * it (see invalidateBuild and the comment writes in builds.ts).
  */
 export async function recentActivity(n: number): Promise<ActivityItem[]> {
-	return cached(`activity:recent`, async () => {
-		const [guides, comments] = await Promise.all([recentGuides(n), recentComments(n)]);
-		return [...guides, ...comments].sort((a, b) => b.at.localeCompare(a.at)).slice(0, n);
-	});
+	return cached(`activity:recent`, () => activityFeed(n));
 }

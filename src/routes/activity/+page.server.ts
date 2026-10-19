@@ -1,14 +1,14 @@
 import { dbConfigured, getAvatarsByToon, getNamesByToon } from '$lib/server/db';
 import { listNotifications, markAllRead } from '$lib/server/notifications';
-import { recentComments } from '$lib/server/activity';
+import { activityFeed } from '$lib/server/activity';
 import type { BuildAuthor } from '$lib/builds';
 import type { PageServerLoad } from './$types';
 
 /**
- * What is being said, and what a player was told: the newest comments
- * across every thread on the site, for whoever wants to see what moves,
- * beside the player's own notifications (a comment on their guide, an
- * answer to their comment), newest first. Opening the page reads the
+ * What moved, and what a player was told: the guides written or edited and
+ * the newest comments across every thread on the site, for whoever wants to
+ * see what moves, beside the player's own notifications (a comment on their
+ * guide, an answer to their comment), newest first. Opening the page reads the
  * notifications: what is unread when it loads is drawn as new, and the bell
  * goes back to nothing. The activity column needs no sign-in.
  */
@@ -26,7 +26,7 @@ export const load: PageServerLoad = async ({ locals, setHeaders }) => {
 
 	const [told, activity, names, avatars] = await Promise.all([
 		session ? listNotifications(session.sub, NOTIFICATIONS) : Promise.resolve([]),
-		recentComments(ACTIVITY),
+		activityFeed(ACTIVITY),
 		getNamesByToon(),
 		getAvatarsByToon()
 	]);
