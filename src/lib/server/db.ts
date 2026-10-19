@@ -165,9 +165,13 @@ export interface FeedbackDoc {
 export interface AccountDoc {
 	_id: string; // Battle.net account id (the OAuth `sub` claim)
 	battletag: string;
-	/** Toon handles of the account's SC2 profiles — the players._id format. */
-	toons: string[];
-	profiles: Sc2Profile[];
+	/**
+	 * Toon handles of the account's SC2 profiles — the players._id format.
+	 * Both lists are missing, not empty, on an account whose first sign-in
+	 * lookup failed: [] means Blizzard said it has none.
+	 */
+	toons?: string[];
+	profiles?: Sc2Profile[];
 	linkedAt: string; // ISO timestamp of the first link
 	updatedAt: string;
 }
@@ -1511,6 +1515,26 @@ export async function upsertAccount(
 		.collection<AccountDoc>('accounts')
 		.updateOne({ _id: sub }, { $set: set, $setOnInsert: { linkedAt: iso } }, { upsert: true });
 	invalidateCache('avatars', 'names', 'facesBySub', 'playerDirectory', 'accountByToon');
+}
+
+/**
+ * Store the profile list of an account that has never had one (its sign-in
+ * lookup failed). Not an upsert, and only where `toons` is still missing: an
+ * account disconnected meanwhile stays gone, and a sign-in that landed
+ * meanwhile keeps what it fetched. True when the list was stored.
+ */
+export async function fillMissingProfiles(sub: string, profiles: Sc2Profile[]): Promise<boolean> {
+	const d = await db();
+	const res = await d
+		.collection<AccountDoc>('accounts')
+		.updateOne(
+			{ _id: sub, toons: { $exists: false } },
+			{ $set: { profiles, toons: profiles.map((p) => p.toon) } }
+		);
+	if (res.modifiedCount) {
+		invalidateCache('avatars', 'names', 'facesBySub', 'playerDirectory', 'accountByToon');
+	}
+	return res.modifiedCount > 0;
 }
 
 /** The account's primary profile: first seen in UAR replays, else the first. */

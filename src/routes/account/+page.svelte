@@ -97,11 +97,13 @@
 			</div>
 
 			<h2 class="section">Linked profiles</h2>
-			{#if data.linked.length === 0}
+			{#if data.linked.length === 0 && data.lookupFailed}
 				<p class="note">
-					No StarCraft&nbsp;II profiles were found on this Battle.net account
-					{#if data.error === 'profiles'}(the lookup failed — try a refresh){/if}.
+					Battle.net has not sent your StarCraft&nbsp;II profiles yet. The site asks again every few
+					minutes while you browse, or use “Refresh from Battle.net” to try right now.
 				</p>
+			{:else if data.linked.length === 0}
+				<p class="note">No StarCraft&nbsp;II profiles were found on this Battle.net account.</p>
 			{:else}
 				<ul class="linked">
 					{#each data.linked as l (l.toon)}

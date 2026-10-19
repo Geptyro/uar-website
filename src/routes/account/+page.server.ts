@@ -7,6 +7,7 @@ import {
 	getAccount,
 	getPlayerSummary
 } from '$lib/server/db';
+import { healProfiles } from '$lib/server/profileHeal';
 import { clearSession } from '$lib/server/session';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -28,13 +29,21 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const enabled = bnetConfigured() && dbConfigured();
 	const error = url.searchParams.get('error');
 	if (!locals.session || !enabled) {
-		return { enabled, error, battletag: null, avatar: null, linked: [] as LinkedToon[] };
+		return {
+			enabled,
+			error,
+			battletag: null,
+			avatar: null,
+			linked: [] as LinkedToon[],
+			lookupFailed: false
+		};
 	}
 
-	const account = await getAccount(locals.session.sub);
+	const stored = await getAccount(locals.session.sub);
+	const account = stored && (await healProfiles(stored));
 	const linked: LinkedToon[] = account
 		? await Promise.all(
-				account.profiles.map(async (p) => {
+				(account.profiles ?? []).map(async (p) => {
 					const player = (await getPlayerSummary(p.toon)) as {
 						name: string;
 						clan: string;
@@ -56,7 +65,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		error,
 		battletag: locals.session.battletag,
 		avatar: locals.session.avatar ?? null,
-		linked
+		linked,
+		// no list stored at all: Blizzard has not answered for this account yet
+		lookupFailed: account !== null && account.profiles === undefined
 	};
 };
 

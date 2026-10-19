@@ -45,6 +45,6 @@ export const load: LayoutServerLoad = async ({ params, locals }) => {
 		verified: account
 			? { battletag: account.battletag, isOwner: locals.session?.sub === account._id }
 			: null,
-		avatarUrl: account?.profiles.find((p) => p.toon === params.toon)?.avatarUrl ?? null
+		avatarUrl: account?.profiles?.find((p) => p.toon === params.toon)?.avatarUrl ?? null
 	};
 };

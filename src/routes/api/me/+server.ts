@@ -5,6 +5,7 @@
  */
 import { json } from '@sveltejs/kit';
 import { dbConfigured, getAccount, pickPrimaryProfile } from '$lib/server/db';
+import { healProfiles } from '$lib/server/profileHeal';
 import { createSession } from '$lib/server/session';
 import { unreadCount } from '$lib/server/notifications';
 import { latestChatAt } from '$lib/server/chat';
@@ -16,11 +17,14 @@ export const GET: RequestHandler = async ({ locals, cookies, setHeaders }) => {
 	setHeaders({ 'cache-control': 'private, no-store' });
 	let session = locals.session;
 
-	// Sessions issued before avatar/toon lived in the cookie: backfill from the
-	// accounts collection and re-issue the cookie so this runs only once.
+	// Sessions issued before avatar/toon lived in the cookie, or whose sign-in
+	// lookup failed: backfill from the accounts collection (asking Blizzard
+	// again for an account that never got its profiles) and re-issue the
+	// cookie so this runs only once.
 	if (session && !session.toon && dbConfigured()) {
 		try {
-			const account = await getAccount(session.sub);
+			const stored = await getAccount(session.sub);
+			const account = stored && (await healProfiles(stored));
 			const primary = account?.profiles?.length
 				? await pickPrimaryProfile(account.profiles)
 				: undefined;
@@ -30,7 +34,7 @@ export const GET: RequestHandler = async ({ locals, cookies, setHeaders }) => {
 					avatar:
 						session.avatar ??
 						primary.avatarUrl ??
-						account?.profiles.find((p) => p.avatarUrl)?.avatarUrl,
+						account?.profiles?.find((p) => p.avatarUrl)?.avatarUrl,
 					toon: primary.toon
 				};
 				createSession(cookies, session);

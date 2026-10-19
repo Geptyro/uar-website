@@ -3,11 +3,13 @@
  *
  * Authorization-code login flow:
  *   /auth/bnet          -> authorizeUrl() redirect (scope "openid sc2.profile")
- *   /auth/bnet/callback -> exchangeCode() + fetchUserInfo() + fetchSc2Profiles()
+ *   /auth/bnet/callback -> exchangeCode() + fetchUserInfo() + lookupSc2Profiles()
  *
- * The SC2 player endpoint only works with the *user's* access token — Blizzard
- * offers no public battletag -> profile lookup — so a linked toon is proof the
- * visitor owns the Battle.net account behind it.
+ * Blizzard offers no battletag -> profile lookup, only account id -> profiles,
+ * and the account id is read off the user's own token by fetchUserInfo — so a
+ * linked toon is proof the visitor owns the Battle.net account behind it. The
+ * player endpoint itself also answers the app's own token (checked 2026-10-19),
+ * which is what lets a failed lookup be retried after the user's token is gone.
  *
  * Env: BNET_CLIENT_ID / BNET_CLIENT_SECRET (from develop.battle.net), plus
  * AUTH_SECRET for the session cookie (see ./session.ts). The registered
@@ -68,12 +70,16 @@ export function authorizeUrl(redirectUri: string, state: string): string {
 	return `${OAUTH_HOST}/authorize?${params}`;
 }
 
+function basicAuth(): string {
+	return `Basic ${Buffer.from(`${clientId()}:${clientSecret()}`).toString('base64')}`;
+}
+
 /** Exchange the callback's authorization code for a user access token. */
 export async function exchangeCode(code: string, redirectUri: string): Promise<string> {
 	const res = await fetch(`${OAUTH_HOST}/token`, {
 		method: 'POST',
 		headers: {
-			Authorization: `Basic ${Buffer.from(`${clientId()}:${clientSecret()}`).toString('base64')}`,
+			Authorization: basicAuth(),
 			'Content-Type': 'application/x-www-form-urlencoded'
 		},
 		body: new URLSearchParams({ grant_type: 'authorization_code', code, redirect_uri: redirectUri }),
@@ -112,6 +118,29 @@ export function toToon(regionId: number, realmId: number, profileId: string): st
 	return `${regionId}-S2-${realmId}-${profileId}`;
 }
 
+/** The app's own (client-credentials) token, reused until a minute before it expires. */
+let app: { token: string; until: number } | null = null;
+
+export async function appToken(fetchFn: typeof fetch = fetch, now = Date.now()): Promise<string> {
+	if (app && app.until > now) return app.token;
+	const res = await fetchFn(`${OAUTH_HOST}/token`, {
+		method: 'POST',
+		headers: { Authorization: basicAuth(), 'Content-Type': 'application/x-www-form-urlencoded' },
+		body: new URLSearchParams({ grant_type: 'client_credentials' }),
+		signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
+	});
+	if (!res.ok) throw new Error(`Battle.net app token failed: ${res.status}`);
+	const json = (await res.json()) as { access_token?: string; expires_in?: number };
+	if (!json.access_token) throw new Error('Battle.net app token response missing access_token');
+	app = { token: json.access_token, until: now + ((json.expires_in ?? 3600) - 60) * 1000 };
+	return app.token;
+}
+
+/** Test hook: forget the cached app token. */
+export function forgetAppToken(): void {
+	app = null;
+}
+
 /**
  * All SC2 profiles linked to the account, merged across regional hosts.
  * Returns null when every host failed (the flaky SC2 API is a known hazard) —
@@ -119,11 +148,12 @@ export function toToon(regionId: number, realmId: number, profileId: string): st
  */
 export async function fetchSc2Profiles(
 	accessToken: string,
-	accountId: string
+	accountId: string,
+	fetchFn: typeof fetch = fetch
 ): Promise<Sc2Profile[] | null> {
 	const results = await Promise.allSettled(
 		API_HOSTS.map(async (host) => {
-			const res = await fetch(`${host}/sc2/player/${encodeURIComponent(accountId)}`, {
+			const res = await fetchFn(`${host}/sc2/player/${encodeURIComponent(accountId)}`, {
 				headers: { Authorization: `Bearer ${accessToken}` },
 				signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
 			});
@@ -133,7 +163,14 @@ export async function fetchSc2Profiles(
 	);
 
 	const ok = results.filter((r) => r.status === 'fulfilled');
-	if (!ok.length) return null;
+	if (!ok.length) {
+		// three accounts were stored with no profiles before this said why
+		const why = results.map((r) =>
+			r.status === 'rejected' ? String((r.reason as Error)?.message ?? r.reason) : ''
+		);
+		console.warn(`sc2 profile lookup for ${accountId} failed on every host: ${why.join('; ')}`);
+		return null;
+	}
 
 	const byToon = new Map<string, Sc2Profile>();
 	for (const r of ok) {
@@ -157,4 +194,27 @@ export async function fetchSc2Profiles(
 		}
 	}
 	return [...byToon.values()];
+}
+
+/**
+ * The account's profiles at sign-in: asked with the user's token, and when no
+ * host answers that, once more with the app's. Three first sign-ins in October
+ * 2026 came back with nothing from every host, while the same accounts
+ * answered the app token in two seconds a few days later. Why the first try
+ * failed went unlogged, so this does not claim to fix that cause; it is a
+ * second, independent try before the user is told the lookup failed.
+ */
+export async function lookupSc2Profiles(
+	userToken: string,
+	accountId: string,
+	fetchFn: typeof fetch = fetch
+): Promise<Sc2Profile[] | null> {
+	const mine = await fetchSc2Profiles(userToken, accountId, fetchFn);
+	if (mine !== null) return mine;
+	try {
+		return await fetchSc2Profiles(await appToken(fetchFn), accountId, fetchFn);
+	} catch (e) {
+		console.warn(`sc2 profile lookup for ${accountId}: app token retry failed:`, e);
+		return null;
+	}
 }
