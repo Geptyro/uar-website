@@ -3,6 +3,7 @@ import rawItems from '$lib/data/items.json';
 import rawSi from '$lib/data/si.json';
 import rawRanks from '$lib/data/ranks.json';
 import type { Weapon } from '$lib/units';
+import type { KindMod } from '$lib/damageKinds';
 import { rankRewardsForMos, type MosRankReward, type RankTrack } from './ranks';
 import { mosTabHref, sameTabHref, vehicleSlug, type MosCapabilities } from './mosTabs';
 
@@ -170,6 +171,10 @@ export interface Si {
 	special: boolean;
 	/** A menu the SI opens in the game, when it has one. */
 	choices?: SiChoice[];
+	/** The behaviour picking it puts on the hero: its page under /effects. */
+	behavior?: string;
+	/** The damage kinds that behaviour raises (Whiz Kid: spell +30%). */
+	dmgKinds?: KindMod[];
 }
 
 export type {

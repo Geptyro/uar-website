@@ -5,6 +5,7 @@
  */
 
 import type { EffectOutcome } from './rolls.ts';
+import type { KindMod } from './damageKinds.ts';
 
 export type EffectKind = 'ailment' | 'debuff' | 'buff' | 'status';
 
@@ -18,6 +19,8 @@ export interface EffectRef {
 	level?: number;
 	/** Items: the entity page of the item's unit, when it has one. */
 	unit?: string;
+	/** It lands on the one who uses the ability (a stance, a self-buff), not on a target. */
+	self?: boolean;
 	/** The ability's own art, and the class's or unit's. */
 	abilityIcon?: string | null;
 	ownerIcon?: string | null;
@@ -44,6 +47,10 @@ export interface Effect {
 	};
 	/** What it does when it ticks, runs out or ends, where that rolls, kills, spawns or cures (lib/rolls). */
 	outcomes?: EffectOutcome[];
+	/** The damage kinds it raises or cuts ($lib/damageKinds). */
+	dmgKinds?: KindMod[];
+	/** The SI that puts it on the hero. */
+	si?: { num: number; name: string; code: string; icon: string | null };
 	appliedBy: EffectRef[];
 	curedBy: EffectRef[];
 }

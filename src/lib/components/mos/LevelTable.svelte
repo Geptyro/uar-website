@@ -8,6 +8,7 @@
 	 */
 	import StatIcon from '$lib/components/StatIcon.svelte';
 	import ModeMark from '$lib/components/ModeMark.svelte';
+	import KindTag from '$lib/components/KindTag.svelte';
 	import { unitById } from '$lib/units';
 	import { changed, columnLabel, footNotes, statRows, type LevelStats } from '$lib/skillstats';
 
@@ -74,7 +75,11 @@
 															{#if x.tags?.length}
 																<span class="tags">
 																	{#each x.tags as t, q (q)}
-																		<span class="tag">{#if t.icon}<StatIcon name={t.icon} size={12} />{/if}{t.text}</span>
+																		{#if t.kind}
+																			<KindTag kind={t.kind} dummy={t.dummy} carries={t.carries} />
+																		{:else}
+																			<span class="tag">{#if t.icon}<StatIcon name={t.icon} size={12} />{/if}{t.text}</span>
+																		{/if}
 																	{/each}
 																</span>
 															{/if}
@@ -134,9 +139,13 @@
 									{#if c.tags?.length}
 										<span class="tags">
 											{#each c.tags as t, k (k)}
-												<span class="tag">
-													{#if t.icon}<StatIcon name={t.icon} size={12} />{/if}{t.text}
-												</span>
+												{#if t.kind}
+													<KindTag kind={t.kind} dummy={t.dummy} carries={t.carries} />
+												{:else}
+													<span class="tag">
+														{#if t.icon}<StatIcon name={t.icon} size={12} />{/if}{t.text}
+													</span>
+												{/if}
 											{/each}
 										</span>
 									{/if}
@@ -303,9 +312,13 @@
 	.bmodes :global(.mode) {
 		font-size: 11px;
 	}
-	/* a target type after a number: the type's icon and word, small and quiet */
+	/* a target type or a damage kind after a number: small and quiet, on a line of their own */
 	.tags {
-		display: block;
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: flex-end;
+		gap: 2px 6px;
+		margin-top: 2px;
 	}
 	.tag {
 		display: inline-flex;
@@ -315,9 +328,6 @@
 		font-size: 10.5px;
 		color: var(--text-faint);
 		white-space: nowrap;
-	}
-	.tag + .tag {
-		margin-left: 6px;
 	}
 	/* the weapon an ammo mode brings: a small key/value table inside the cell */
 	.nest {
@@ -354,8 +364,9 @@
 		white-space: normal;
 	}
 	.kv td .tags {
-		display: inline;
-		margin-left: 6px;
+		display: inline-flex;
+		margin: 0 0 0 6px;
+		vertical-align: middle;
 	}
 	.stat td a {
 		color: inherit;

@@ -28,10 +28,18 @@ export interface ExtraDamage {
 	/** Set when it is the tick of a persistent: seconds between ticks, number of ticks. */
 	period?: number;
 	count?: number;
+	/** Ranged, Spell, Splash or Melee: which buffs reach it ($lib/damageKinds). */
+	kind?: string;
+	/** The kind the units around its target take, when it has an area. */
+	splashKind?: string;
 }
 
 export interface Weapon {
 	id: string;
+	/** The game's name for it, when the data has one. */
+	name?: string;
+	/** A module the script swaps in once this skill tree is learned (the Rjx-73's guns). */
+	tree?: string;
 	/** Direct-hit damage; null only when no damage effect could be read at all. */
 	dmg: number | null;
 	range: number | null;
@@ -42,8 +50,10 @@ export interface Weapon {
 	random?: number;
 	/** Target armor ignored. */
 	armor?: number;
-	/** Melee / Splash / Spell; absent for the usual Ranged. */
+	/** Ranged, Spell, Splash or Melee, of the direct hit: which buffs reach it ($lib/damageKinds). */
 	kind?: string;
+	/** The kind the units around the target take: its own field, often not the hit's kind. */
+	splashKind?: string;
 	/** Flat bonus against an attribute, or a factor (×2) where the effect multiplies instead. */
 	bonus?: { attr: string; value?: number; factor?: number }[];
 	splash?: SplashRing[];
@@ -74,8 +84,6 @@ export function damageNotes(w: Weapon): string[] {
 	if (w.random) out.push(`+0–${fmt(w.random)} roll`);
 	if (w.hits && w.hits > 1) out.push(`×${w.hits} hits`);
 	if (w.armor) out.push(`ignores ${fmt(w.armor)} armor`);
-	// the ring list already says splash; the kind word is for melee/spell
-	if (w.kind && !(w.kind === 'Splash' && w.splash?.length)) out.push(w.kind.toLowerCase());
 	for (const b of w.bonus ?? []) {
 		if (b.factor != null) out.push(`${b.factor > 0 ? '+' : '−'}${pct(Math.abs(b.factor))} vs ${b.attr}`);
 		else if (b.value != null) out.push(`${b.value > 0 ? '+' : ''}${fmt(b.value)} vs ${b.attr}`);
@@ -84,7 +92,7 @@ export function damageNotes(w: Weapon): string[] {
 		const rings = w.splash
 			.map((s) => `${pct(s.f)} within ${fmt(s.r)}${s.arc ? ` (${s.arc}° cone)` : ''}`)
 			.join(', ');
-		out.push(`splash: ${rings}`);
+		out.push(`splash: ${rings}${w.splashKind && w.splashKind !== w.kind ? ` ${w.splashKind.toLowerCase()}` : ''}`);
 	}
 	for (const e of w.extra ?? []) {
 		let s = `${fmt(e.dmg)}`;
@@ -92,6 +100,8 @@ export function damageNotes(w: Weapon): string[] {
 		else if (e.count) s += ` ×${e.count}`;
 		s += ` ${e.id}`;
 		if (e.cond) s += ` (if ${e.cond})`;
+		// the direct hit's kind is the Kind column; a branch of another kind says its own
+		if (e.kind && e.kind !== w.kind) s += ` ${e.kind.toLowerCase()}`;
 		out.push(s);
 	}
 	return out;

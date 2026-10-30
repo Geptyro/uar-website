@@ -17,6 +17,7 @@
 	import Seo from '$lib/components/Seo.svelte';
 	import { Page } from 'sveltekit-commons';
 	import { holdData } from '$lib/heldData';
+	import { modLine, type LineChip } from '$lib/damageKinds';
 
 	let { data } = $props();
 	// the next route's data can reach this before it unmounts: read the last own one ($lib/heldData)
@@ -69,6 +70,17 @@
 	/** Up to this many owners in a row keep their names beside their art. */
 	const NAMED = 3;
 	let expanded = $state<Record<string, boolean>>({});
+	/* the damage kinds it raises or cuts, and every class's hits split by it */
+	const boosts = $derived(view.boosts);
+	const boostKinds = $derived(new Set((boosts?.kinds ?? []).map((m) => m.kind)));
+	const verb = $derived.by(() => {
+		const signs = (boosts?.kinds ?? []).map((m) => Math.sign(m.frac ?? m.flat ?? 0));
+		return signs.every((s) => s > 0) ? 'raise' : signs.every((s) => s < 0) ? 'cut' : 'change';
+	});
+	const done = $derived(verb === 'cut' ? 'Cut' : `${verb[0].toUpperCase()}${verb.slice(1)}d`);
+	/** "spell", "melee or ranged": the kinds the columns split on, in their headers */
+	const kindWords = $derived([...boostKinds].map((k) => k.toLowerCase()).join(' or '));
+
 	const description = $derived(
 		[e.tooltip.split('\n')[0], e.effects.length ? e.effects.join(', ') : '', lasts ? `Lasts ${lasts}.` : '']
 			.filter(Boolean)
@@ -99,6 +111,23 @@
 			{/if}
 		</span>
 	</div>
+{/snippet}
+
+{#snippet chipList(list: LineChip[], missed = false)}
+	{#if list.length}
+		<span class="chips">
+			{#each list as c, i (i)}
+				{@const why = missed && c.dummy && boostKinds.has(c.kind) ? 'dropped on the target' : c.kind.toLowerCase()}
+				{#if c.href}
+					<a class="chip k-{c.kind.toLowerCase()}" href={c.href}>{c.label}<span class="ck">{why}</span></a>
+				{:else}
+					<span class="chip k-{c.kind.toLowerCase()}">{c.label}<span class="ck">{why}</span></span>
+				{/if}
+			{/each}
+		</span>
+	{:else}
+		<span class="none">nothing</span>
+	{/if}
 {/snippet}
 
 {#snippet refRows(groups: RefGroup[], field: string)}
@@ -173,6 +202,10 @@
 				{/if}
 				<dt>Kind</dt>
 				<dd>{KIND_WORD[e.kind]}</dd>
+				{#if e.si}
+					<dt>From</dt>
+					<dd><a href="/career/si#si-{e.si.num}">the SI {e.si.name}</a></dd>
+				{/if}
 				{#if e.hidden && e.kind !== 'ailment'}
 					<dt>Status bar</dt>
 					<dd>not shown</dd>
@@ -186,6 +219,8 @@
 			{/if}
 			{#if e.appliedBy.length}
 				{@render refRows(applied, 'applied')}
+			{:else if e.si}
+				<p class="note">Picking the SI {e.si.name} puts it on your hero for the whole game.</p>
 			{:else if !e.ailment}
 				<p class="note">Nothing on the site applies it by name: the script puts it on, or it is a marker.</p>
 			{/if}
@@ -196,6 +231,52 @@
 			{/if}
 		</section>
 	</div>
+
+	{#if boosts}
+		<section class="boosts">
+			<h2 class="section">What it {verb}s</h2>
+			<p class="note">
+				{boosts.kinds.map(modLine).join(', ')}. A buff like this only reaches hits of that kind, so each
+				class's damage splits in two. The area damage on the units around a target has a kind of its
+				own, often not the hit's, so one gun can land on both sides.{#if boosts.dummy}{' '}A hit the map deals from a unit it drops on the target belongs to that unit, not to you: it
+					gets {e.name} only when the map copies it over.{/if}
+			</p>
+			<div class="tablewrap">
+				<table class="data bst">
+					<thead>
+						<tr>
+							<th>Class</th>
+							<th>{done}: {kindWords} hits</th>
+							<th>Not {done.toLowerCase()}: other kinds</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each boosts.rows as r (r.id)}
+							<tr>
+								<td class="who">
+									<a href={r.href}>
+										{#if r.icon}<img src={r.icon} alt="" loading="lazy" />{:else}<span class="ph">{initials(r.name)}</span>{/if}
+										<span>{r.name}</span>
+									</a>
+								</td>
+								<td>{@render chipList(r.raised)}</td>
+								<td>{@render chipList(r.not, true)}</td>
+							</tr>
+						{/each}
+						{#if boosts.items}
+							<tr>
+								<td class="who">
+									<span class="itm">Items<span class="as">guns they can carry</span></span>
+								</td>
+								<td>{@render chipList(boosts.items.raised)}</td>
+								<td>{@render chipList(boosts.items.not, true)}</td>
+							</tr>
+						{/if}
+					</tbody>
+				</table>
+			</div>
+		</section>
+	{/if}
 
 	{#if hasRolls}
 		<section class="rolls">
@@ -402,5 +483,85 @@
 	.more:hover {
 		border-color: var(--border-strong);
 		color: var(--text);
+	}
+	.boosts {
+		margin-top: var(--section-gap);
+	}
+	.boosts .note {
+		max-width: 80ch;
+	}
+	.bst td {
+		vertical-align: top;
+	}
+	.bst .who {
+		white-space: nowrap;
+	}
+	.bst .who a {
+		display: flex;
+		align-items: center;
+		gap: 7px;
+		font-weight: 550;
+		text-decoration: none;
+	}
+	.bst .who a:hover {
+		color: var(--accent);
+	}
+	.bst .who img,
+	.bst .who .ph {
+		width: 22px;
+		height: 22px;
+		border-radius: 4px;
+		object-fit: cover;
+		flex-shrink: 0;
+	}
+	.bst .who .ph {
+		display: inline-grid;
+		place-items: center;
+		font-family: var(--font-mono);
+		font-size: 8px;
+		color: var(--text-faint);
+		background: var(--surface-raised);
+	}
+	.itm {
+		font-weight: 550;
+	}
+	.itm .as {
+		display: block;
+		margin: 2px 0 0;
+		font-weight: 400;
+	}
+	/* a class's hits as chips, each with its kind: the reason it lands on one side or the other */
+	.chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 4px;
+		min-width: 200px;
+		max-width: 380px;
+	}
+	.chip {
+		display: inline-flex;
+		align-items: baseline;
+		gap: 5px;
+		padding: 1px 7px;
+		border: 1px solid var(--border);
+		border-radius: var(--radius-1);
+		font-size: 12px;
+		color: var(--text);
+		text-decoration: none;
+		/* a long branch label wraps inside its chip rather than run under the next column */
+		max-width: 100%;
+	}
+	a.chip:hover {
+		border-color: var(--accent);
+		color: var(--accent);
+	}
+	.chip .ck {
+		font-family: var(--font-mono);
+		font-size: 10px;
+		color: var(--text-faint);
+	}
+	.none {
+		font-size: 12px;
+		color: var(--text-faint);
 	}
 </style>

@@ -5,6 +5,7 @@
 	import FactsCard, { type Fact } from '$lib/components/FactsCard.svelte';
 	import ModelCard from '$lib/components/ModelCard.svelte';
 	import AbilityCards from '$lib/components/mos/AbilityCards.svelte';
+	import KindTag from '$lib/components/KindTag.svelte';
 	import DescCard from '$lib/components/DescCard.svelte';
 	import Seo from '$lib/components/Seo.svelte';
 	import { entityCardUrl, unitDescription } from '$lib/seo';
@@ -111,11 +112,12 @@
 			{#if unit.weapons.length}
 				<h2 class="section">Weapons</h2>
 				<div class="tablewrap">
-					<table class="data" style="min-width: 500px">
+					<table class="data" style="min-width: 560px">
 						<thead>
 							<tr>
 								<th>Weapon</th>
 								<th class="num">Damage</th>
+								<th>Kind</th>
 								<th class="num">Range</th>
 								<th class="num">Period (s)</th>
 								<th class="num">DPS</th>
@@ -125,8 +127,14 @@
 						<tbody>
 							{#each unit.weapons as w (w.id)}
 								<tr>
-									<td class="mono">{w.id}</td>
+									<td class="mono">{w.name ?? w.id}</td>
 									<td class="num">{w.dmg ?? '?'}</td>
+									<td>
+										{#if w.kind && w.dmg != null}
+											<KindTag kind={w.kind} />
+											{#if w.splashKind && w.splashKind !== w.kind}<KindTag kind={w.splashKind} on="area" />{/if}
+										{/if}
+									</td>
 									<td class="num">{w.range ?? '?'}</td>
 									<td class="num">{w.period ?? '?'}</td>
 									<td class="num">{w.dmg && w.period ? Math.round(w.dmg / w.period) : '?'}</td>
@@ -142,7 +150,8 @@
 					Damage is the direct hit, before the roll on top and the target's armor. The notes
 					column carries what else the shot does, read from its effect tree: the roll, armor it
 					bypasses, splash rings as a share of the damage within a radius, and damage on other
-					branches such as an upgrade's rounds.
+					branches such as an upgrade's rounds. Kind is what buffs check: one that raises
+					ranged damage misses a spell hit.
 				</p>
 			{/if}
 

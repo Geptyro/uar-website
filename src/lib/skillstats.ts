@@ -25,6 +25,11 @@ export interface LevelExtra {
 	count?: number;
 	/** Attributes the hit demands (a fallout that only burns Biological). */
 	only?: string[];
+	/** Ranged, Spell, Splash or Melee ($lib/damageKinds). */
+	kind?: string;
+	splashKind?: string;
+	/** On a tree row: the class weapon whose branch this is. */
+	weapon?: string;
 }
 
 export interface LevelApply {
@@ -57,6 +62,7 @@ export interface LevelWeapon {
 	random?: number;
 	armor?: number;
 	kind?: string;
+	splashKind?: string;
 	bonus?: { attr: string; value?: number; factor?: number }[];
 	splash?: { r: number; f: number; arc?: number }[];
 	hits?: number;
@@ -86,6 +92,8 @@ export interface LevelStats {
 	random?: number;
 	armor?: number;
 	kind?: string;
+	/** The kind the units around the target take: its own field, often not the hit's kind. */
+	splashKind?: string;
 	cond?: string;
 	bonus?: { attr: string; value?: number; factor?: number }[];
 	splash?: { r: number; f: number; arc?: number }[];
@@ -110,6 +118,10 @@ export interface LevelStats {
 	dur?: number;
 	/** The ability's effect slot is empty in the data; these are the same-named effect's numbers. */
 	inferred?: boolean;
+	/** The script deals the hit from a unit it drops on the target: the hero's buffs stay behind. */
+	dummy?: boolean;
+	/** …except these, which the script copies onto that unit (Whiz Kid). */
+	carries?: string[];
 	/** The ability carries no effect: `applies` is what the map script puts on the caster. */
 	viaScript?: boolean;
 	/** This row is the base numbers rewritten by a skill tree's upgrades at `treeLevel`. */
@@ -156,6 +168,24 @@ export interface CellBlock {
 export interface CellTag {
 	icon: StatIconName | null;
 	text: string;
+	/** A damage kind: drawn as its own tag, with the card on which buffs reach the hit. */
+	kind?: string;
+	dummy?: boolean;
+	carries?: string[];
+}
+
+/** The hit's kind as a tag, with what the dummy note needs. */
+function kindTag(kind: string | undefined, r?: { dummy?: boolean; carries?: string[] }): CellTag[] {
+	if (!kind) return [];
+	return [
+		{
+			icon: null,
+			text: kind.toLowerCase(),
+			kind,
+			...(r?.dummy ? { dummy: true } : {}),
+			...(r?.carries?.length ? { carries: r.carries } : {})
+		}
+	];
 }
 
 export interface Cell {
@@ -227,7 +257,7 @@ function damageCell(r: LevelStats): Cell | null {
 	const subs: string[] = [];
 	if (r.hits && r.hits > 1) subs.push(`= ${fmt(r.dmg * r.hits)} total`);
 	if (r.cond) subs.push(`only if ${r.cond}`);
-	const tags = onlyTags(r.only);
+	const tags = [...kindTag(r.kind, r), ...onlyTags(r.only)];
 	return {
 		text: `${text}${r.only?.length ? ` (${lower(r.only)} only)` : ''}`,
 		...(subs.length ? { sub: subs.join(' · ') } : {}),
@@ -256,7 +286,9 @@ function ringRows(rows: LevelStats[]): StatRow[] {
 				const ring = r.splash?.[i];
 				if (!ring) return null;
 				const same = ring.f === first.f && ring.arc === first.arc;
-				return { text: fmt(ring.r), ...(same ? {} : { sub: share(ring.f, ring.arc) }) };
+				// the units around the target take a kind of their own: said once, on the first ring
+				const tags = i === 0 ? kindTag(r.splashKind) : [];
+				return { text: fmt(ring.r), ...(same ? {} : { sub: share(ring.f, ring.arc) }), ...(tags.length ? { tags } : {}) };
 			})
 		});
 	}
@@ -265,15 +297,17 @@ function ringRows(rows: LevelStats[]): StatRow[] {
 
 function extraCell(r: LevelStats): Cell | null {
 	if (!r.extra?.length) return null;
+	const many = r.extra.length > 1;
 	const lines = r.extra.map((e) => {
 		let s = fmt(e.dmg);
 		if (e.period && e.count) s += ` every ${fmt(e.period)} s for ${sec(e.period * e.count)}`;
 		else if (e.count) s += ` × ${e.count}`;
 		if (e.cond) s += ` (if ${e.cond})`;
+		if (many && e.kind) s += ` · ${e.kind.toLowerCase()}`;
 		return s;
 	});
-	// one burn is the usual case: its target type goes on as a tag, not in the line
-	const tags = r.extra.length === 1 ? onlyTags(r.extra[0].only) : [];
+	// one burn is the usual case: its kind and target type go on as tags, not in the line
+	const tags = many ? [] : [...kindTag(r.extra[0].kind), ...onlyTags(r.extra[0].only)];
 	const text = r.extra
 		.map((e, i) => `${lines[i]}${e.only?.length && r.extra!.length > 1 ? ` (${lower(e.only)} only)` : ''}`)
 		.join('\n');
@@ -319,7 +353,7 @@ function weaponFacets(w: LevelWeapon): CellNest['kv'] {
 	if (w.dmg != null) {
 		let d = w.hits && w.hits > 1 ? `${w.hits} × ${fmt(w.dmg)}` : fmt(w.dmg);
 		if (w.random) d += ` +0–${fmt(w.random)}`;
-		const tags = onlyTags(w.only);
+		const tags = [...kindTag(w.kind), ...onlyTags(w.only)];
 		kv.push({ k: 'damage', v: d, ...(tags.length ? { tags } : {}) });
 	}
 	if (w.period) kv.push({ k: 'every', v: sec(w.period) });
@@ -328,10 +362,20 @@ function weaponFacets(w: LevelWeapon): CellNest['kv'] {
 	if (w.armor) kv.push({ k: 'ignores armor', v: fmt(w.armor) });
 	if (w.bonus?.length) kv.push({ k: 'bonus', v: bonusText(w.bonus) });
 	if (w.splash?.length) {
-		kv.push({ k: 'splash', v: w.splash.map((s) => `${pct(s.f)} ≤ ${fmt(s.r)}${s.arc ? ` (${s.arc}°)` : ''}`).join(' · ') });
+		const tags = kindTag(w.splashKind);
+		kv.push({
+			k: 'splash',
+			v: w.splash.map((s) => `${pct(s.f)} ≤ ${fmt(s.r)}${s.arc ? ` (${s.arc}°)` : ''}`).join(' · '),
+			...(tags.length ? { tags } : {})
+		});
 	}
 	for (const e of w.extra ?? []) {
-		kv.push({ k: 'over time', v: `${fmt(e.dmg)}${e.period && e.count ? ` every ${fmt(e.period)} s for ${sec(e.period * e.count)}` : ''}` });
+		const tags = kindTag(e.kind);
+		kv.push({
+			k: 'over time',
+			v: `${fmt(e.dmg)}${e.period && e.count ? ` every ${fmt(e.period)} s for ${sec(e.period * e.count)}` : ''}`,
+			...(tags.length ? { tags } : {})
+		});
 	}
 	return kv;
 }
@@ -632,6 +676,16 @@ export function footNotes(rows: LevelStats[], treeNames: Record<string, string> 
 		out.push({
 			lead: 'From the script',
 			text: 'the command itself carries no effect; these are the behaviours the map script puts on you when it is used.'
+		});
+	}
+	const dummy = rows.find((r) => r.dummy);
+	if (dummy) {
+		const kept = (dummy.carries ?? []).map((b) => b.replace(/([a-z])([A-Z])/g, '$1 $2'));
+		out.push({
+			lead: 'Dropped on the target',
+			text:
+				'the map deals the hit from a unit it places there, not from you, so your buffs do not reach it' +
+				(kept.length ? `, except ${kept.join(' and ')}, which the map copies onto it.` : '.')
 		});
 	}
 	if (rows.some((r) => r.inferred)) {

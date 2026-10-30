@@ -8,8 +8,9 @@
 	 * An item's card is its entity page; the handful that have no entity of
 	 * their own (mission props) are named but not linked.
 	 */
-	import { allowedLabel, modsFor, type Item } from '$lib/mos';
+	import { allowedLabel, modsFor, mosById, type Item } from '$lib/mos';
 	import { applyText, damageNotes, type Weapon } from '$lib/units';
+	import KindTag from '$lib/components/KindTag.svelte';
 
 	let {
 		mosId,
@@ -43,8 +44,22 @@
 		])
 	);
 	const showSource = $derived(kinds.size > 1);
-	const cols = $derived(showSource ? 7 : 6);
+	const cols = $derived(showSource ? 8 : 7);
+
+	/** A module weapon's tree, by name: the Rjx-73 swaps its gun with the tree it last learned. */
+	function treeName(id: string): string {
+		return mosById.get(mosId)?.skills.find((s) => s.id === id)?.name ?? id;
+	}
 </script>
+
+{#snippet kindCell(w: Weapon)}
+	{#if w.kind && w.dmg != null}
+		<span class="kinds">
+			<KindTag kind={w.kind} />
+			{#if w.splashKind && w.splashKind !== w.kind}<KindTag kind={w.splashKind} on="area" />{/if}
+		</span>
+	{/if}
+{/snippet}
 
 {#snippet itemName(item: Item)}
 	{#if item.unit}
@@ -64,12 +79,13 @@
 {/snippet}
 
 <div class="tablewrap">
-	<table class="data items" style="min-width: {showSource ? 660 : 580}px">
+	<table class="data items" style="min-width: {showSource ? 720 : 640}px">
 		<thead>
 			<tr>
 				<th>Weapon</th>
 				{#if showSource}<th>Source</th>{/if}
 				<th class="num">Damage</th>
+				<th>Kind</th>
 				<th class="num">Range</th>
 				<th class="num">Period (s)</th>
 				<th class="num">DPS</th>
@@ -79,9 +95,13 @@
 		<tbody>
 			{#each weapons as w (w.id)}
 				<tr>
-					<td class="wname">{w.id}</td>
-					{#if showSource}<td><span class="tag">standard issue</span></td>{/if}
+					<td class="wname">
+						{w.name ?? w.id}
+						{#if w.tree}<span class="module">{treeName(w.tree)} module</span>{/if}
+					</td>
+					{#if showSource}<td><span class="tag">{w.tree ? 'module' : 'standard issue'}</span></td>{/if}
 					<td class="num">{w.dmg ?? '?'}</td>
+					<td>{@render kindCell(w)}</td>
 					<td class="num">{w.range ?? '?'}</td>
 					<td class="num">{w.period ?? '?'}</td>
 					<td class="num">{dps(w.dmg, w.period)}</td>
@@ -97,6 +117,7 @@
 							{@render itemCell(item)}
 							{#if showSource}<td><span class="tag t-item">item</span></td>{/if}
 							<td class="num">{g.dmg ?? '?'}</td>
+							<td>{@render kindCell(g)}</td>
 							<td class="num">{g.range ?? '?'}</td>
 							<td class="num">{g.period ?? '?'}</td>
 							<td class="num">{dps(g.dmg, g.period)}</td>
@@ -123,6 +144,17 @@
 <style>
 	.wname {
 		font-weight: 550;
+	}
+	.kinds {
+		display: inline-flex;
+		flex-wrap: wrap;
+		gap: 3px;
+	}
+	.module {
+		display: block;
+		font-weight: 400;
+		font-size: 11px;
+		color: var(--text-faint);
 	}
 	td.notes {
 		max-width: 240px;
