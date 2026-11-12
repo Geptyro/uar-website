@@ -2,7 +2,7 @@ import { error, fail, redirect, type RequestEvent } from '@sveltejs/kit';
 import { rateLimiter } from 'sveltekit-commons/rate-limit';
 import { dbConfigured, getAvatarsByToon, insertFeedback } from '$lib/server/db';
 import { playerCards } from '$lib/server/playerCards';
-import { allText, playerRefsIn } from '$lib/builds';
+import { allText, anchorSections, playerRefsIn } from '$lib/builds';
 import {
 	canPublish,
 	deleteBuild,
@@ -45,20 +45,23 @@ export const load: PageServerLoad = async (event) => {
 	const { build, session, isAuthor } = await context(event);
 	const [avatars, players] = await Promise.all([getAvatarsByToon(), playerCards(playerRefsIn(allText(build.blocks)))]);
 	const blocks = renderBlocks(build.blocks, refResolver(build.mos, { avatars, players }));
+	const outline = anchorSections(blocks);
 	const vote = session && !isAuthor ? await myBuildVote(build._id, session.sub) : 0;
-	return { blocks, vote };
+	return { blocks, outline, vote };
 };
 
 export const actions: Actions = {
 	vote: async (event) => {
 		const { build, session, isAuthor } = await context(event);
-		if (!session) return fail(401, { error: 'Sign in with Battle.net to vote.' });
-		if (isAuthor) return fail(400, { error: 'Your own guide is helpful by definition.' });
-		if (build.status !== 'published') return fail(400, { error: 'Not published.' });
-		if (!votes.hit(session.sub)) return fail(429, { error: 'Slow down a little.' });
+		// `on` tells the page which form an error answers: the vote box shows its own
+		const no = (status: number, error: string) => fail(status, { error, on: 'vote' as const });
+		if (!session) return no(401, 'Sign in with Battle.net to vote.');
+		if (isAuthor) return no(400, 'Your own guide is helpful by definition.');
+		if (build.status !== 'published') return no(400, 'Not published.');
+		if (!votes.hit(session.sub)) return no(429, 'Slow down a little.');
 		const form = await event.request.formData();
 		const dir = Number(form.get('dir'));
-		if (dir !== 1 && dir !== -1 && dir !== 0) return fail(400, { error: 'Up, down, or neither.' });
+		if (dir !== 1 && dir !== -1 && dir !== 0) return no(400, 'Helpful, not really, or neither.');
 		const tally = await voteBuild(build, session.sub, dir);
 		return { vote: dir, ...tally };
 	},
@@ -69,8 +72,9 @@ export const actions: Actions = {
 		const reason = String(form.get('reason') ?? '')
 			.trim()
 			.slice(0, 500);
-		if (reason.length < 5) return fail(400, { error: 'Say what is wrong with it, in a few words.' });
-		if (!reports.hit(event.getClientAddress())) return fail(429, { error: 'Enough reports for now.' });
+		const no = (status: number, error: string) => fail(status, { error, on: 'report' as const });
+		if (reason.length < 5) return no(400, 'Say what is wrong with it, in a few words.');
+		if (!reports.hit(event.getClientAddress())) return no(429, 'Enough reports for now.');
 		await insertFeedback({
 			createdAt: new Date().toISOString(),
 			message: `Report on guide ${SITE_URL}${buildHref(build.mos, build.slug)}\n"${build.title}" by ${build.author.battletag}\n\n${reason}`,

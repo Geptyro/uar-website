@@ -15,7 +15,8 @@
 
 {#each blocks as b, i (i)}
 	{#if b.type === 'section'}
-		<section class="bsec">
+		<!-- the id is the page's contents list's target; the editor's preview has none -->
+		<section class="bsec" id={b.anchor}>
 			{#if b.title}<h2 class="section">{b.title}</h2>{/if}
 			<Self blocks={b.children} />
 		</section>
@@ -86,6 +87,8 @@
 <style>
 	.bsec {
 		margin-top: 24px;
+		/* a contents link lands the heading clear of the scroller's top edge */
+		scroll-margin-top: 18px;
 	}
 	.bsec:first-child {
 		margin-top: 0;

@@ -7,6 +7,7 @@ import {
 	SKILL_LEVELS_FALLBACK,
 	allText,
 	allowedIn,
+	anchorSections,
 	blocksFromSections,
 	buildHref,
 	countBlocks,
@@ -384,4 +385,32 @@ test('skillCounts groups points by skill in first-seen order', () => {
 		{ id: 'b', points: 3 },
 		{ id: 'a', points: 1 }
 	]);
+});
+
+test('anchorSections: an id per titled section, in reading order, unique', () => {
+	const blocks = [
+		{ type: 'markdown', html: '<p>intro</p>' },
+		{
+			type: 'section',
+			title: 'The caves',
+			children: [
+				{ type: 'section', title: 'Sealing one', children: [] },
+				{ type: 'columns', columns: [[{ type: 'section', title: 'The caves', children: [] }]] }
+			]
+		},
+		{ type: 'section', title: '', children: [] },
+		{ type: 'section', title: '!!!', children: [] },
+		{ type: 'section', title: 'Build', children: [] }
+	];
+	const outline = anchorSections(blocks);
+	assert.deepEqual(outline, [
+		{ id: 'the-caves', title: 'The caves', depth: 0 },
+		{ id: 'sealing-one', title: 'Sealing one', depth: 1 },
+		{ id: 'the-caves-2', title: 'The caves', depth: 1 },
+		{ id: 'section', title: '!!!', depth: 0 },
+		{ id: 'build', title: 'Build', depth: 0 }
+	]);
+	// the ids are written on the blocks the page draws
+	assert.equal((blocks[1] as { anchor?: string }).anchor, 'the-caves');
+	assert.equal((blocks[2] as { anchor?: string }).anchor, undefined);
 });

@@ -2,6 +2,8 @@
  * Battle.net OAuth callback: verifies state, trades the code for a user token,
  * reads the battletag + SC2 profiles, stores the link in `accounts`, and opens
  * a session. All failure modes land on /account?error=… — never a bare 500.
+ * Success lands on /account too, or back where the reader asked to sign in
+ * from (the `bnet_next` cookie /auth/bnet set).
  */
 import { redirect } from '@sveltejs/kit';
 import { bnetConfigured, exchangeCode, fetchUserInfo, lookupSc2Profiles } from '$lib/server/bnet';
@@ -9,6 +11,7 @@ import { dbConfigured, pickPrimaryProfile, upsertAccount } from '$lib/server/db'
 import { dropDeadPortraits } from '$lib/server/portraits';
 import { createSession } from '$lib/server/session';
 import { redirectUri } from '../redirect-uri';
+import { safeNext } from '$lib/signin';
 import type { RequestHandler } from './$types';
 
 export const prerender = false;
@@ -18,6 +21,9 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 
 	const expected = cookies.get('bnet_state');
 	cookies.delete('bnet_state', { path: '/auth/bnet' });
+	// where the reader was when they chose to sign in; checked again here, a cookie is input too
+	const next = safeNext(cookies.get('bnet_next'));
+	cookies.delete('bnet_next', { path: '/auth/bnet' });
 
 	if (url.searchParams.get('error')) redirect(302, '/account?error=denied');
 
@@ -48,5 +54,5 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 		console.error('bnet callback failed:', e);
 	}
 	if (!ok) redirect(302, '/account?error=bnet');
-	redirect(302, profilesFailed ? '/account?error=profiles' : '/account');
+	redirect(302, profilesFailed ? '/account?error=profiles' : (next ?? '/account'));
 };

@@ -25,7 +25,8 @@ import type { Block, MapMark, TableColumn } from './builds';
 const placed = placedRaw as Record<string, number[][]>;
 
 export type Rendered =
-	| { type: 'section'; title: string; children: Rendered[] }
+	/** `anchor`: the id the guide page gives it (anchorSections in $lib/builds) */
+	| { type: 'section'; title: string; children: Rendered[]; anchor?: string }
 	| { type: 'columns'; columns: Rendered[][] }
 	| { type: 'markdown'; html: string }
 	| { type: 'table'; columns: TableColumn[]; rows: string[][] }

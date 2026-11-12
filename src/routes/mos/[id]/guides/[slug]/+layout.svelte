@@ -1,9 +1,10 @@
 <script lang="ts">
 	/**
-	 * A guide's own layer inside the class frame: its byline and its state.
-	 * The guide's tabs and actions are in the bar above (BuildBar, which the
-	 * class layout shows in place of its own tabs on a guide page), and the
-	 * top bar's crumb reads the guide's title, so nothing is repeated here.
+	 * A guide's own layer inside the class frame: its state, and over the
+	 * editor its byline. The guide's tabs and actions are in the bar above
+	 * (BuildBar, which the class layout shows in place of its own tabs on a
+	 * guide page). The view draws its own title block (title, byline, marks,
+	 * votes) and the comments tab is the conversation, so neither gets this.
 	 */
 	import { page } from '$app/state';
 	import { Page } from 'sveltekit-commons';
@@ -15,8 +16,7 @@
 
 	let { data, children } = $props();
 
-	/* the comments tab is the conversation, not the guide: no byline over it */
-	const onComments = $derived(page.route.id?.endsWith('/comments') ?? false);
+	const onEdit = $derived(page.route.id?.endsWith('/edit') ?? false);
 
 	const mos = $derived(data.mos);
 	const build = $derived(data.build);
@@ -26,7 +26,7 @@
 </script>
 
 <Page>
-	{#if !onComments}
+	{#if onEdit}
 	<header class="bhead">
 		<div class="who">
 			<span class="byline">
@@ -44,7 +44,8 @@
 					· edited {fmtDate.format(new Date(build.updatedAt))}
 				{/if}
 				{#if mark !== null}
-					· <span class="score">{formatRating(mark)} / 10</span> from {(build.ups ?? 0) + (build.downs ?? 0)} votes
+					{@const n = (build.ups ?? 0) + (build.downs ?? 0)}
+					· <span class="score">{formatRating(mark)} / 10</span> from {n} {n === 1 ? 'vote' : 'votes'}
 				{/if}
 			</span>
 			{#if build.modes.length}

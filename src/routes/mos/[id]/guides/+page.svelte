@@ -6,6 +6,7 @@
 	 * (the Guide tab) is the site's; these are the players', and the page says
 	 * so at the bottom rather than dressing them up as checked.
 	 */
+	import { page } from '$app/state';
 	import { Page } from 'sveltekit-commons';
 	import Seo from '$lib/components/Seo.svelte';
 	import ModeMark from '$lib/components/ModeMark.svelte';
@@ -16,6 +17,7 @@
 	import { mosHref } from '$lib/mos';
 	import { modeNames } from '$lib/players';
 	import { buildHref } from '$lib/builds';
+	import { signInHref } from '$lib/signin';
 	import type { PageData } from './$types';
 
 	type Row = PageData['builds'][number];
@@ -86,7 +88,7 @@
 					</span>
 				{/if}
 			{:else}
-				<a class="chip" href="/account">Sign in with Battle.net to write one</a>
+				<a class="chip" href={signInHref(page.url.pathname)} data-sveltekit-reload>Sign in with Battle.net to write one</a>
 			{/if}
 		</div>
 

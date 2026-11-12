@@ -24,6 +24,8 @@
 	import VoteArrows from '$lib/components/VoteArrows.svelte';
 	import Reactions from '$lib/components/Reactions.svelte';
 	import { invalidateAll } from '$app/navigation';
+	import { page } from '$app/state';
+	import { signInHref } from '$lib/signin';
 	import { ANON_PORTRAIT as anonPortrait, portraitFallback } from '$lib/portrait';
 	import Rich from '$lib/components/builds/Rich.svelte';
 	import MarkdownField from '$lib/components/builds/MarkdownField.svelte';
@@ -276,7 +278,9 @@
 		{#if canPost}
 			{@render composer(null)}
 		{:else}
-			<p class="fine signin"><a href="/account">Sign in with Battle.net</a> to comment.</p>
+			<p class="fine signin">
+				<a href={signInHref(page.url.pathname)} data-sveltekit-reload>Sign in with Battle.net</a> to comment. You come back here after.
+			</p>
 		{/if}
 	{/if}
 

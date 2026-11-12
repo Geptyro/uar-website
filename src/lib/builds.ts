@@ -682,6 +682,54 @@ export function slugify(title: string): string {
 	return s || 'build';
 }
 
+/** One titled section of a guide, as the page's contents list shows it. */
+export interface OutlineEntry {
+	id: string;
+	title: string;
+	/** 0 for a top-level section, 1 for one inside it, and so on */
+	depth: number;
+}
+
+/** What `anchorSections` needs of a drawn block (`Rendered`; a table's `columns` are not blocks). */
+interface Anchorable {
+	type: string;
+	title?: string;
+	anchor?: string;
+	children?: unknown;
+	columns?: unknown;
+}
+
+/**
+ * Gives every titled section of a drawn guide an `anchor` (an id the page
+ * puts on it, so `#the-caves` scrolls there) and returns them in reading
+ * order for the contents list. Two sections with one title get `-2`, `-3`.
+ * Writes on the blocks it is handed: call it on a fresh `renderBlocks`.
+ */
+export function anchorSections(blocks: Anchorable[]): OutlineEntry[] {
+	const used = new Set<string>();
+	const out: OutlineEntry[] = [];
+	const walk = (list: Anchorable[], depth: number) => {
+		for (const b of list) {
+			if (b.type === 'section') {
+				if (b.title?.trim()) {
+					// slugify's own fallback is 'build'; a title of only symbols gets 'section'
+					const base = /[a-z0-9]/i.test(b.title.normalize('NFKD')) ? slugify(b.title) : 'section';
+					let id = base;
+					for (let n = 2; used.has(id); n++) id = `${base}-${n}`;
+					used.add(id);
+					b.anchor = id;
+					out.push({ id, title: b.title.trim(), depth });
+				}
+				if (Array.isArray(b.children)) walk(b.children as Anchorable[], depth + 1);
+			} else if (b.type === 'columns' && Array.isArray(b.columns)) {
+				for (const col of b.columns as Anchorable[][]) walk(col, depth);
+			}
+		}
+	};
+	walk(blocks, 0);
+	return out;
+}
+
 /** The guide's page, or its editor. */
 export function buildHref(mos: string, slug: string, edit = false): string {
 	const base = `/mos/${encodeURIComponent(mos)}/guides/${encodeURIComponent(slug)}`;

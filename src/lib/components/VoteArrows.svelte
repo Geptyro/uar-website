@@ -6,9 +6,11 @@
 	 * press takes the vote back), enhanced so the page redraws in place and
 	 * still a plain post with scripts off. `fields` travel as hidden inputs
 	 * (a comment's id). When the reader cannot vote the arrows stand off,
-	 * with `why` as their title, or lead to sign-in.
+	 * with `why` as their title, or lead to sign-in (and back to this page).
 	 */
 	import { enhance } from '$app/forms';
+	import { page } from '$app/state';
+	import { signInHref } from '$lib/signin';
 
 	let {
 		action = '?/vote',
@@ -26,7 +28,7 @@
 		vote?: 1 | -1 | 0;
 		/** Signed in and allowed to. */
 		can?: boolean;
-		/** Not signed in: the arrows lead to the account page. */
+		/** Not signed in: the arrows lead to sign-in, which comes back here. */
 		signin?: boolean;
 		/** Why the arrows are off, when they are. */
 		why?: string;
@@ -48,7 +50,9 @@
 			<button class="arrow" aria-pressed={vote === dir} aria-label={name} title={name}>{@html glyph}</button>
 		</form>
 	{:else if signin}
-		<a class="arrow" href="/account" aria-label="Sign in to vote" title="Sign in to vote">{@html glyph}</a>
+		<a class="arrow" href={signInHref(page.url.pathname)} data-sveltekit-reload aria-label="Sign in to vote" title="Sign in to vote"
+			>{@html glyph}</a
+		>
 	{:else}
 		<span class="arrow off" title={why}>{@html glyph}</span>
 	{/if}
